@@ -466,13 +466,36 @@ export default function QuoteBuilderPage() {
     return customPrices[option.id] || 0;
   };
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     if (!lead || !selectedPackage) {
       alert('Selecteer eerst een pakket voordat je de offerte downloadt.');
       return;
     }
 
     try {
+      // Load logo as base64
+      let logoBase64: string | null = null;
+      try {
+        const logoResponse = await fetch('/Nudge websdesign & marketing Hasselt logo.png');
+        if (logoResponse.ok) {
+          const logoBlob = await logoResponse.blob();
+          logoBase64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              if (typeof reader.result === 'string') {
+                resolve(reader.result);
+              } else {
+                reject(new Error('Failed to convert logo to base64'));
+              }
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(logoBlob);
+          });
+        }
+      } catch (logoError) {
+        console.warn('Could not load logo:', logoError);
+      }
+
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
@@ -513,43 +536,65 @@ export default function QuoteBuilderPage() {
         return y;
       };
 
-      // Header with logo space
+      // Enhanced Header with gradient effect
+      const headerHeight = 70;
       doc.setFillColor(144, 103, 198); // Primary purple
-      doc.rect(0, 0, pageWidth, 60, 'F');
+      doc.rect(0, 0, pageWidth, headerHeight, 'F');
       
-      // Logo placeholder (40x40px space at top right)
-      // TODO: Replace this placeholder with actual logo image
-      // To add logo: doc.addImage(logoData, 'PNG', pageWidth - margin - 40, margin, 40, 40)
-      // Logo should be placed at: public/nudge-logo.png (or .jpg)
-      doc.setFillColor(255, 255, 255);
-      doc.rect(pageWidth - margin - 40, margin, 40, 40, 'F');
-      doc.setDrawColor(200, 200, 200);
-      doc.setLineWidth(0.5);
-      doc.rect(pageWidth - margin - 40, margin, 40, 40, 'S');
-      doc.setFontSize(8);
-      doc.setTextColor(150, 150, 150);
-      doc.text('LOGO', pageWidth - margin - 20, margin + 20, { align: 'center' });
+      // Subtle gradient effect (darker bottom)
+      doc.setFillColor(120, 85, 170);
+      doc.rect(0, headerHeight - 10, pageWidth, 10, 'F');
       
-      // Company name and title
+      // Logo with transparent background
+      const logoSize = 45;
+      const logoX = pageWidth - margin - logoSize;
+      const logoY = margin;
+      
+      if (logoBase64) {
+        try {
+          // Add logo image with transparent background
+          doc.addImage(logoBase64, 'PNG', logoX, logoY, logoSize, logoSize, undefined, 'FAST');
+        } catch (imageError) {
+          console.warn('Could not add logo image:', imageError);
+          // Fallback to text if image fails
+          doc.setFontSize(7);
+          doc.setTextColor(255, 255, 255);
+          doc.setFont('helvetica', 'normal');
+          doc.text('Nudge', logoX + logoSize / 2, logoY + logoSize / 2, { align: 'center' });
+        }
+      } else {
+        // Fallback to text if logo not loaded
+        doc.setFontSize(7);
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Nudge', logoX + logoSize / 2, logoY + logoSize / 2, { align: 'center' });
+      }
+      
+      // Company name and title with better typography
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(20);
+      doc.setFontSize(24);
       doc.setFont('helvetica', 'bold');
-      doc.text(businessName, margin, margin + 15);
-      doc.setFontSize(12);
+      doc.text(businessName, margin, margin + 18);
+      doc.setFontSize(14);
       doc.setFont('helvetica', 'normal');
-      doc.text('Offerte', margin, margin + 25);
+      doc.setTextColor(255, 255, 255);
+      doc.text('Offerte', margin, margin + 30);
       
-      // Date
+      // Date with better styling - positioned to avoid logo overlap
       const today = new Date();
-      const dateStr = today.toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const dateStr = today.toLocaleDateString('nl-BE', { day: '2-digit', month: 'long', year: 'numeric' });
       doc.setFontSize(10);
-      doc.text(`Datum: ${dateStr}`, pageWidth - margin, margin + 15, { align: 'right' });
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'normal');
+      // Place date to the left of the logo with 10px spacing
+      const dateX = logoX - 10;
+      doc.text(`Datum: ${dateStr}`, dateX, margin + 20, { align: 'right' });
 
       // Reset for content
       doc.setTextColor(0, 0, 0);
-      yPos = 75;
+      yPos = headerHeight + 20;
 
-      // Client information section
+      // Enhanced Client information section
       let clientInfoHeight = 35;
       let clientInfoLines = 4; // Base: naam, email, phone, company
       if (lead.company_name) clientInfoLines++;
@@ -558,119 +603,178 @@ export default function QuoteBuilderPage() {
       if (lead.company_postal_code || lead.company_city) clientInfoLines++;
       if (lead.company_country) clientInfoLines++;
       if (lead.company_website) clientInfoLines++;
-      clientInfoHeight = Math.max(35, 8 + (clientInfoLines * lineHeight) + 5);
+      clientInfoHeight = Math.max(40, 12 + (clientInfoLines * (lineHeight + 1)) + 8);
       
-      doc.setFillColor(240, 240, 240);
-      doc.rect(margin, yPos, contentWidth, clientInfoHeight, 'F');
-      doc.setDrawColor(200, 200, 200);
-      doc.rect(margin, yPos, contentWidth, clientInfoHeight, 'S');
+      // Background with subtle border
+      doc.setFillColor(248, 248, 252);
+      doc.setDrawColor(144, 103, 198);
+      doc.setLineWidth(1.5);
+      doc.rect(margin, yPos, contentWidth, clientInfoHeight, 'FD');
       
-      yPos += 8;
-      doc.setFontSize(12);
+      yPos += 10;
+      doc.setFontSize(13);
       doc.setFont('helvetica', 'bold');
-      doc.text('Klantgegevens', margin + 5, yPos);
-      yPos += 8;
+      doc.setTextColor(144, 103, 198);
+      doc.text('Klantgegevens', margin + 8, yPos);
+      doc.setTextColor(0, 0, 0);
+      yPos += 10;
+      
+      // Divider line
+      doc.setDrawColor(220, 220, 230);
+      doc.setLineWidth(0.5);
+      doc.line(margin + 8, yPos - 2, pageWidth - margin - 8, yPos - 2);
+      yPos += 3;
       
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Naam: ${lead.name}`, margin + 5, yPos);
-      yPos += lineHeight;
+      doc.setTextColor(50, 50, 50);
+      
+      // Name with label styling
+      doc.setFont('helvetica', 'bold');
+      doc.text('Naam:', margin + 8, yPos);
+      doc.setFont('helvetica', 'normal');
+      doc.text(lead.name, margin + 30, yPos);
+      yPos += lineHeight + 2;
       
       if (lead.company_name) {
-        doc.text(`Bedrijf: ${lead.company_name}`, margin + 5, yPos);
-        yPos += lineHeight;
+        doc.setFont('helvetica', 'bold');
+        doc.text('Bedrijf:', margin + 8, yPos);
+        doc.setFont('helvetica', 'normal');
+        doc.text(lead.company_name, margin + 30, yPos);
+        yPos += lineHeight + 2;
       }
       
       if (lead.vat_number) {
         doc.setFont('helvetica', 'bold');
-        doc.text(`BTW-nummer: ${lead.vat_number}`, margin + 5, yPos);
+        doc.text('BTW-nummer:', margin + 8, yPos);
         doc.setFont('helvetica', 'normal');
-        yPos += lineHeight;
+        doc.text(lead.vat_number, margin + 30, yPos);
+        yPos += lineHeight + 2;
       }
       
       if (lead.company_address) {
-        doc.text(`Adres: ${lead.company_address}`, margin + 5, yPos);
-        yPos += lineHeight;
+        doc.setFont('helvetica', 'bold');
+        doc.text('Adres:', margin + 8, yPos);
+        doc.setFont('helvetica', 'normal');
+        doc.text(lead.company_address, margin + 30, yPos);
+        yPos += lineHeight + 2;
       }
       
       if (lead.company_postal_code || lead.company_city) {
         const postalCity = [lead.company_postal_code, lead.company_city].filter(Boolean).join(' ');
-        doc.text(`Postcode & Stad: ${postalCity}`, margin + 5, yPos);
-        yPos += lineHeight;
+        doc.setFont('helvetica', 'bold');
+        doc.text('Postcode & Stad:', margin + 8, yPos);
+        doc.setFont('helvetica', 'normal');
+        doc.text(postalCity, margin + 30, yPos);
+        yPos += lineHeight + 2;
       }
       
       if (lead.company_country) {
-        doc.text(`Land: ${lead.company_country}`, margin + 5, yPos);
-        yPos += lineHeight;
+        doc.setFont('helvetica', 'bold');
+        doc.text('Land:', margin + 8, yPos);
+        doc.setFont('helvetica', 'normal');
+        doc.text(lead.company_country, margin + 30, yPos);
+        yPos += lineHeight + 2;
       }
       
       if (lead.email) {
-        doc.text(`E-mail: ${lead.email}`, margin + 5, yPos);
-        yPos += lineHeight;
+        doc.setFont('helvetica', 'bold');
+        doc.text('E-mail:', margin + 8, yPos);
+        doc.setFont('helvetica', 'normal');
+        doc.text(lead.email, margin + 30, yPos);
+        yPos += lineHeight + 2;
       }
       
       if (lead.phone) {
-        doc.text(`Telefoon: ${lead.phone}`, margin + 5, yPos);
-        yPos += lineHeight;
+        doc.setFont('helvetica', 'bold');
+        doc.text('Telefoon:', margin + 8, yPos);
+        doc.setFont('helvetica', 'normal');
+        doc.text(lead.phone, margin + 30, yPos);
+        yPos += lineHeight + 2;
       }
       
       if (lead.company_website) {
-        doc.text(`Website: ${lead.company_website}`, margin + 5, yPos);
-        yPos += lineHeight;
+        doc.setFont('helvetica', 'bold');
+        doc.text('Website:', margin + 8, yPos);
+        doc.setFont('helvetica', 'normal');
+        doc.text(lead.company_website, margin + 30, yPos);
+        yPos += lineHeight + 2;
       }
 
-      yPos += sectionSpacing;
+      doc.setTextColor(0, 0, 0);
+      yPos += sectionSpacing + 5;
 
-      // Quote items table header
+      // Enhanced Quote items section header
       checkNewPage(30);
-      doc.setFontSize(14);
+      doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
+      doc.setTextColor(144, 103, 198);
       doc.text('Geselecteerde Items', margin, yPos);
-      yPos += 10;
+      doc.setTextColor(0, 0, 0);
+      yPos += 12;
 
-      // Table header
-      doc.setFillColor(230, 230, 230);
-      doc.rect(margin, yPos, contentWidth, 8, 'F');
-      doc.setDrawColor(200, 200, 200);
-      doc.rect(margin, yPos, contentWidth, 8, 'S');
+      // Enhanced Table header with gradient
+      doc.setFillColor(144, 103, 198);
+      doc.rect(margin, yPos, contentWidth, 10, 'F');
+      doc.setDrawColor(120, 85, 170);
+      doc.setLineWidth(0.5);
+      doc.rect(margin, yPos, contentWidth, 10, 'S');
       
-      doc.setFontSize(10);
+      doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
-      doc.text('Omschrijving', margin + 3, yPos + 6);
-      doc.text('Bedrag', pageWidth - margin - 3, yPos + 6, { align: 'right' });
-      yPos += 10;
+      doc.setTextColor(255, 255, 255);
+      doc.text('Omschrijving', margin + 5, yPos + 7);
+      doc.text('Bedrag', pageWidth - margin - 5, yPos + 7, { align: 'right' });
+      doc.setTextColor(0, 0, 0);
+      yPos += 12;
 
-      // Package row
+      // Enhanced Package row with alternating background
       checkNewPage(10);
-      doc.setDrawColor(220, 220, 220);
-      doc.rect(margin, yPos - 2, contentWidth, 8, 'S');
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      const packageName = doc.splitTextToSize(selectedPackage.name, contentWidth - 60);
-      doc.text(packageName[0], margin + 3, yPos + 5);
+      doc.setFillColor(252, 250, 255);
+      doc.setDrawColor(230, 230, 240);
+      doc.setLineWidth(0.5);
+      doc.rect(margin, yPos - 1, contentWidth, 9, 'FD');
       doc.setFont('helvetica', 'bold');
-      doc.text(`€${selectedPackage.basePrice.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 3, yPos + 5, { align: 'right' });
-      yPos += 10;
+      doc.setFontSize(10);
+      doc.setTextColor(30, 30, 30);
+      const packageName = doc.splitTextToSize(selectedPackage.name, contentWidth - 70);
+      doc.text(packageName[0], margin + 5, yPos + 6);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(144, 103, 198);
+      doc.text(`€ ${selectedPackage.basePrice.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 5, yPos + 6, { align: 'right' });
+      doc.setTextColor(0, 0, 0);
+      yPos += 11;
 
-      // Options rows
+      // Enhanced Options rows with alternating backgrounds
+      let rowIndex = 0;
       selectedOptions.forEach((option) => {
         const price = getOptionPrice(option);
         if (price > 0) {
           checkNewPage(15);
-          doc.setDrawColor(220, 220, 220);
-          doc.rect(margin, yPos - 2, contentWidth, 8, 'S');
+          const isEven = rowIndex % 2 === 0;
+          if (isEven) {
+            doc.setFillColor(255, 255, 255);
+          } else {
+            doc.setFillColor(250, 248, 255);
+          }
+          doc.setDrawColor(235, 235, 245);
+          doc.setLineWidth(0.5);
+          doc.rect(margin, yPos - 1, contentWidth, 9, 'FD');
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(10);
+          doc.setTextColor(50, 50, 50);
           
           let optionText = option.name;
           if (optionNotes[option.id]) {
             optionText += ` (${optionNotes[option.id]})`;
           }
           
-          const optionLines = doc.splitTextToSize(optionText, contentWidth - 60);
-          doc.text(optionLines[0], margin + 3, yPos + 5);
+          const optionLines = doc.splitTextToSize(optionText, contentWidth - 70);
+          doc.text(optionLines[0], margin + 5, yPos + 6);
           doc.setFont('helvetica', 'bold');
-          doc.text(`€${price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 3, yPos + 5, { align: 'right' });
+          doc.setTextColor(144, 103, 198);
+          doc.text(`€ ${price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 5, yPos + 6, { align: 'right' });
+          doc.setTextColor(0, 0, 0);
           
           // If option text wraps, add extra lines
           if (optionLines.length > 1) {
@@ -678,12 +782,13 @@ export default function QuoteBuilderPage() {
               yPos += 6;
               checkNewPage(10);
               doc.setFont('helvetica', 'normal');
-              doc.text(optionLines[i], margin + 3, yPos + 5);
+              doc.text(optionLines[i], margin + 5, yPos + 6);
             }
             yPos += 2;
           }
           
-          yPos += 10;
+          rowIndex++;
+          yPos += 11;
         }
       });
 
@@ -691,142 +796,206 @@ export default function QuoteBuilderPage() {
       if (extraPages > 0) {
         checkNewPage(10);
         const extraPagesPrice = scopeOptions.find((o) => o.id === 'extra-pages')!.price * extraPages;
-        doc.setDrawColor(220, 220, 220);
-        doc.rect(margin, yPos - 2, contentWidth, 8, 'S');
+        const isEven = rowIndex % 2 === 0;
+        if (isEven) {
+          doc.setFillColor(255, 255, 255);
+        } else {
+          doc.setFillColor(250, 248, 255);
+        }
+        doc.setDrawColor(235, 235, 245);
+        doc.setLineWidth(0.5);
+        doc.rect(margin, yPos - 1, contentWidth, 9, 'FD');
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
-        doc.text(`Extra pagina's (${extraPages}x)`, margin + 3, yPos + 5);
+        doc.setTextColor(50, 50, 50);
+        doc.text(`Extra pagina's (${extraPages}x)`, margin + 5, yPos + 6);
         doc.setFont('helvetica', 'bold');
-        doc.text(`€${extraPagesPrice.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 3, yPos + 5, { align: 'right' });
-        yPos += 10;
+        doc.setTextColor(144, 103, 198);
+        doc.text(`€ ${extraPagesPrice.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 5, yPos + 6, { align: 'right' });
+        doc.setTextColor(0, 0, 0);
+        rowIndex++;
+        yPos += 11;
       }
 
       // Content pages
       if (contentPages > 0) {
         checkNewPage(10);
         const contentPrice = growthOptions.find((o) => o.id === 'content-creation')!.price * contentPages;
-        doc.setDrawColor(220, 220, 220);
-        doc.rect(margin, yPos - 2, contentWidth, 8, 'S');
+        const isEven = rowIndex % 2 === 0;
+        if (isEven) {
+          doc.setFillColor(255, 255, 255);
+        } else {
+          doc.setFillColor(250, 248, 255);
+        }
+        doc.setDrawColor(235, 235, 245);
+        doc.setLineWidth(0.5);
+        doc.rect(margin, yPos - 1, contentWidth, 9, 'FD');
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
-        doc.text(`Content creatie (${contentPages}x pagina's)`, margin + 3, yPos + 5);
+        doc.setTextColor(50, 50, 50);
+        doc.text(`Content creatie (${contentPages}x pagina's)`, margin + 5, yPos + 6);
         doc.setFont('helvetica', 'bold');
-        doc.text(`€${contentPrice.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 3, yPos + 5, { align: 'right' });
-        yPos += 10;
+        doc.setTextColor(144, 103, 198);
+        doc.text(`€ ${contentPrice.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 5, yPos + 6, { align: 'right' });
+        doc.setTextColor(0, 0, 0);
+        rowIndex++;
+        yPos += 11;
       }
 
       // Custom line items
       if (state.customLineItems.length > 0) {
         state.customLineItems.forEach((item) => {
           checkNewPage(10);
-          doc.setDrawColor(220, 220, 220);
-          doc.rect(margin, yPos - 2, contentWidth, 8, 'S');
+          const isEven = rowIndex % 2 === 0;
+          if (isEven) {
+            doc.setFillColor(255, 255, 255);
+          } else {
+            doc.setFillColor(250, 248, 255);
+          }
+          doc.setDrawColor(235, 235, 245);
+          doc.setLineWidth(0.5);
+          doc.rect(margin, yPos - 1, contentWidth, 9, 'FD');
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(10);
-          const itemLines = doc.splitTextToSize(item.name, contentWidth - 60);
-          doc.text(itemLines[0], margin + 3, yPos + 5);
+          doc.setTextColor(50, 50, 50);
+          const itemLines = doc.splitTextToSize(item.name, contentWidth - 70);
+          doc.text(itemLines[0], margin + 5, yPos + 6);
           doc.setFont('helvetica', 'bold');
-          doc.text(`€${item.price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 3, yPos + 5, { align: 'right' });
+          doc.setTextColor(144, 103, 198);
+          doc.text(`€ ${item.price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 5, yPos + 6, { align: 'right' });
+          doc.setTextColor(0, 0, 0);
           if (itemLines.length > 1) {
             for (let i = 1; i < itemLines.length; i++) {
               yPos += 6;
               checkNewPage(10);
               doc.setFont('helvetica', 'normal');
-              doc.text(itemLines[i], margin + 3, yPos + 5);
+              doc.text(itemLines[i], margin + 5, yPos + 6);
             }
             yPos += 2;
           }
-          yPos += 10;
+          rowIndex++;
+          yPos += 11;
         });
       }
 
       // Discount
       if (state.discount.type && state.discount.value) {
         checkNewPage(10);
-        doc.setDrawColor(200, 200, 200);
-        doc.rect(margin, yPos - 2, contentWidth, 8, 'S');
+        doc.setFillColor(255, 245, 245);
+        doc.setDrawColor(240, 200, 200);
+        doc.setLineWidth(0.5);
+        doc.rect(margin, yPos - 1, contentWidth, 9, 'FD');
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
+        doc.setTextColor(50, 50, 50);
         const discountText = state.discount.type === 'percentage' 
           ? `Korting (${state.discount.value}%)`
-          : `Korting (€${state.discount.value.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
-        doc.text(discountText, margin + 3, yPos + 5);
+          : `Korting (€ ${state.discount.value.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
+        doc.text(discountText, margin + 5, yPos + 6);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(200, 0, 0);
-        doc.text(`-€${calculations.discountAmount.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 3, yPos + 5, { align: 'right' });
+        doc.text(`-€ ${calculations.discountAmount.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 5, yPos + 6, { align: 'right' });
         doc.setTextColor(0, 0, 0);
-        yPos += 10;
+        yPos += 11;
       }
 
-      yPos += 5;
-
-      // Totals section
-      checkNewPage(40);
-      doc.setDrawColor(144, 103, 198);
-      doc.setLineWidth(1);
-      doc.line(margin, yPos, pageWidth - margin, yPos);
       yPos += 8;
 
+      // Enhanced Totals section with highlight box
+      checkNewPage(50);
+      
+      // Background box for totals
+      const totalsBoxHeight = 50;
+      doc.setFillColor(252, 250, 255);
+      doc.setDrawColor(144, 103, 198);
+      doc.setLineWidth(1.5);
+      doc.rect(margin, yPos, contentWidth, totalsBoxHeight, 'FD');
+      
+      yPos += 12;
+      
       // Subtotal
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text('Subtotaal (excl. BTW)', margin, yPos);
+      doc.setTextColor(80, 80, 80);
+      doc.text('Subtotaal (excl. BTW)', margin + 8, yPos);
       doc.setFont('helvetica', 'bold');
-      doc.text(`€${calculations.subtotal.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin, yPos, { align: 'right' });
-      yPos += 8;
+      doc.setTextColor(30, 30, 30);
+      doc.text(`€ ${calculations.subtotal.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 8, yPos, { align: 'right' });
+      yPos += 10;
 
       // VAT
       doc.setFont('helvetica', 'normal');
-      doc.text('BTW (21%)', margin, yPos);
+      doc.setTextColor(80, 80, 80);
+      doc.text('BTW (21%)', margin + 8, yPos);
       doc.setFont('helvetica', 'bold');
-      doc.text(`€${calculations.vat.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin, yPos, { align: 'right' });
-      yPos += 10;
-
-      // Total
-      doc.setDrawColor(144, 103, 198);
-      doc.setLineWidth(1.5);
-      doc.line(margin, yPos, pageWidth - margin, yPos);
-      yPos += 8;
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Totaal (incl. BTW)', margin, yPos);
-      doc.text(`€${calculations.total.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin, yPos, { align: 'right' });
+      doc.setTextColor(30, 30, 30);
+      doc.text(`€ ${calculations.vat.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 8, yPos, { align: 'right' });
       yPos += 12;
 
-      // Maintenance if selected
+      // Divider line
+      doc.setDrawColor(200, 190, 220);
+      doc.setLineWidth(1);
+      doc.line(margin + 8, yPos, pageWidth - margin - 8, yPos);
+      yPos += 10;
+
+      // Total - highlighted
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(144, 103, 198);
+      doc.text('Totaal (incl. BTW)', margin + 8, yPos);
+      doc.setFontSize(18);
+      doc.text(`€ ${calculations.total.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 8, yPos, { align: 'right' });
+      doc.setTextColor(0, 0, 0);
+      yPos += 15;
+
+      // Enhanced Maintenance if selected
       if (selectedMaintenance) {
         checkNewPage(15);
-        doc.setFillColor(245, 245, 255);
-        doc.rect(margin, yPos, contentWidth, 12, 'F');
-        doc.setDrawColor(200, 200, 200);
-        doc.rect(margin, yPos, contentWidth, 12, 'S');
-        yPos += 8;
-        doc.setFontSize(10);
+        doc.setFillColor(240, 238, 250);
+        doc.setDrawColor(144, 103, 198);
+        doc.setLineWidth(1);
+        doc.rect(margin, yPos, contentWidth, 14, 'FD');
+        yPos += 10;
+        doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
-        doc.text('Onderhoud (per maand)', margin + 3, yPos);
-        doc.text(`€${selectedMaintenance.price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 3, yPos, { align: 'right' });
-        yPos += 12;
+        doc.setTextColor(144, 103, 198);
+        doc.text('Onderhoud (per maand)', margin + 8, yPos);
+        doc.setFontSize(12);
+        doc.text(`€ ${selectedMaintenance.price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 8, yPos, { align: 'right' });
+        doc.setTextColor(0, 0, 0);
+        yPos += 15;
       }
 
-      // Footer on last page
-      const footerY = pageHeight - 50;
-      doc.setDrawColor(200, 200, 200);
-      doc.setLineWidth(0.5);
-      doc.line(margin, footerY, pageWidth - margin, footerY);
+      // Enhanced Footer on last page
+      const footerY = pageHeight - 55;
+      
+      // Footer background
+      doc.setFillColor(248, 248, 252);
+      doc.rect(0, footerY - 5, pageWidth, pageHeight - footerY + 5, 'F');
+      
+      // Footer top border
+      doc.setDrawColor(144, 103, 198);
+      doc.setLineWidth(1);
+      doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(144, 103, 198);
+      doc.text('Contactgegevens', margin, footerY + 5);
+      doc.setTextColor(0, 0, 0);
       
       doc.setFontSize(9);
-      doc.setTextColor(100, 100, 100);
       doc.setFont('helvetica', 'normal');
-      doc.text('Contactgegevens', margin, footerY + 8);
-      doc.setFontSize(8);
-      doc.text(businessEmail, margin, footerY + 14);
-      doc.text(businessPhone, margin, footerY + 20);
+      doc.setTextColor(60, 60, 60);
+      doc.text(businessEmail, margin, footerY + 12);
+      doc.text(businessPhone, margin, footerY + 19);
       doc.text(businessAddress, margin, footerY + 26);
       
       doc.setFontSize(7);
-      doc.setTextColor(150, 150, 150);
+      doc.setTextColor(120, 120, 120);
+      doc.setFont('helvetica', 'italic');
       const footerText = 'Dit is een automatisch gegenereerde offerte. Voor vragen, neem contact op via bovenstaande gegevens.';
-      doc.text(footerText, margin, footerY + 34, { maxWidth: contentWidth });
+      doc.text(footerText, margin, footerY + 35, { maxWidth: contentWidth });
 
       // Generate filename
       const fileName = `Offerte_${lead.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
@@ -1896,52 +2065,195 @@ export default function QuoteBuilderPage() {
       {/* Review Modal */}
       {showReview && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-card border border-border rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-4">Offerte Overzicht</h2>
+          <div className="bg-card border border-border rounded-lg p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold mb-6">Offerte Overzicht</h2>
             
-            <div className="space-y-4 mb-6">
-              <div>
-                <h3 className="font-semibold mb-2">Klantgegevens</h3>
-                <div className="text-sm space-y-1">
-                  <p><strong>Naam:</strong> {lead.name}</p>
-                  {lead.company_name && <p><strong>Bedrijf:</strong> {lead.company_name}</p>}
-                  <p><strong>E-mail:</strong> {lead.email}</p>
-                  {lead.phone && <p><strong>Telefoon:</strong> {lead.phone}</p>}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-2">Geselecteerde Items</h3>
-                <div className="text-sm space-y-2">
-                  {selectedPackage && (
-                    <div className="p-3 bg-muted rounded">
-                      <div className="font-medium">{selectedPackage.name}</div>
-                      <div className="text-muted-foreground">€{selectedPackage.basePrice.toLocaleString('nl-BE')}</div>
+            <div className="space-y-6 mb-6">
+              {/* Klantgegevens */}
+              <div className="bg-muted/50 rounded-lg p-4">
+                <h3 className="font-semibold mb-3 text-primary">Klantgegevens</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Naam:</span>
+                    <span className="ml-2 font-medium">{lead.name}</span>
+                  </div>
+                  {lead.company_name && (
+                    <div>
+                      <span className="text-muted-foreground">Bedrijf:</span>
+                      <span className="ml-2 font-medium">{lead.company_name}</span>
                     </div>
                   )}
-                  {selectedOptions
-                    .filter((o) => o.price > 0 || (o.price === 0 && customPrices[o.id] > 0))
-                    .map((option) => (
-                      <div key={option.id} className="p-3 bg-muted rounded">
-                        <div className="font-medium">{option.name}</div>
-                        <div className="text-muted-foreground">
-                          €{getOptionPrice(option).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </div>
-                        {optionNotes[option.id] && (
-                          <div className="mt-2 text-xs text-muted-foreground italic border-t border-border pt-2">
-                            <strong>Extra info:</strong> {optionNotes[option.id]}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                  {lead.vat_number && (
+                    <div>
+                      <span className="text-muted-foreground">BTW-nummer:</span>
+                      <span className="ml-2 font-medium">{lead.vat_number}</span>
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-muted-foreground">E-mail:</span>
+                    <span className="ml-2 font-medium">{lead.email}</span>
+                  </div>
+                  {lead.phone && (
+                    <div>
+                      <span className="text-muted-foreground">Telefoon:</span>
+                      <span className="ml-2 font-medium">{lead.phone}</span>
+                    </div>
+                  )}
+                  {lead.company_address && (
+                    <div className="sm:col-span-2">
+                      <span className="text-muted-foreground">Adres:</span>
+                      <span className="ml-2 font-medium">{lead.company_address}</span>
+                      {(lead.company_postal_code || lead.company_city) && (
+                        <span className="ml-2">
+                          {[lead.company_postal_code, lead.company_city].filter(Boolean).join(' ')}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="border-t border-border pt-4">
-                <div className="flex justify-between text-xl font-bold">
-                  <span>Totaal</span>
-                  <span className="text-primary">€{total.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              {/* Geselecteerde Items */}
+              <div>
+                <h3 className="font-semibold mb-3 text-primary">Geselecteerde Items</h3>
+                <div className="space-y-2">
+                  {/* Package */}
+                  {selectedPackage && (
+                    <div className="p-3 bg-muted rounded-lg border border-border">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="font-medium">{selectedPackage.name}</div>
+                          <div className="text-xs text-muted-foreground mt-1">{selectedPackage.description}</div>
+                        </div>
+                        <div className="ml-4 font-bold text-primary">
+                          € {selectedPackage.basePrice.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Options */}
+                  {selectedOptions
+                    .filter((o) => {
+                      const price = getOptionPrice(o);
+                      return price > 0;
+                    })
+                    .map((option) => (
+                      <div key={option.id} className="p-3 bg-muted rounded-lg border border-border">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="font-medium">{option.name}</div>
+                            {option.description && (
+                              <div className="text-xs text-muted-foreground mt-1">{option.description}</div>
+                            )}
+                            {optionNotes[option.id] && (
+                              <div className="mt-2 text-xs text-muted-foreground italic border-t border-border pt-2">
+                                <strong>Extra info:</strong> {optionNotes[option.id]}
+                              </div>
+                            )}
+                          </div>
+                          <div className="ml-4 font-bold text-primary">
+                            € {getOptionPrice(option).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                  {/* Extra Pages */}
+                  {state.extraPages > 0 && (
+                    <div className="p-3 bg-muted rounded-lg border border-border">
+                      <div className="flex justify-between items-center">
+                        <div className="font-medium">Extra pagina&apos;s ({state.extraPages}x)</div>
+                        <div className="font-bold text-primary">
+                          € {(state.extraPages * 100).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Content Pages */}
+                  {state.contentPages > 0 && (
+                    <div className="p-3 bg-muted rounded-lg border border-border">
+                      <div className="flex justify-between items-center">
+                        <div className="font-medium">Content creatie ({state.contentPages}x pagina&apos;s)</div>
+                        <div className="font-bold text-primary">
+                          € {(state.contentPages * 125).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Custom Line Items */}
+                  {state.customLineItems.length > 0 && (
+                    <>
+                      {state.customLineItems.map((item) => (
+                        <div key={item.id} className="p-3 bg-muted rounded-lg border border-border">
+                          <div className="flex justify-between items-center">
+                            <div className="font-medium">{item.name}</div>
+                            <div className="font-bold text-primary">
+                              € {item.price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
                 </div>
+              </div>
+
+              {/* Totals */}
+              <div className="bg-primary/5 border-2 border-primary rounded-lg p-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Subtotaal (excl. BTW)</span>
+                  <span className="font-medium">
+                    € {(calculations.subtotal + (calculations.discountAmount || 0)).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                
+                {calculations.discountAmount && calculations.discountAmount > 0 && (
+                  <>
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span>Korting</span>
+                      <span className="font-medium">
+                        -€ {calculations.discountAmount.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Subtotaal na korting</span>
+                      <span className="font-medium">
+                        € {calculations.subtotal.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </>
+                )}
+                
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">BTW (21%)</span>
+                  <span className="font-medium">
+                    € {calculations.vat.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                
+                <div className="border-t border-primary/30 pt-2 mt-2">
+                  <div className="flex justify-between text-lg font-bold">
+                    <span>Totaal (incl. BTW)</span>
+                    <span className="text-primary">
+                      € {calculations.total.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Maintenance */}
+                {selectedMaintenance && (
+                  <div className="border-t border-primary/30 pt-2 mt-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Onderhoud (per maand)</span>
+                      <span className="font-medium text-primary">
+                        € {selectedMaintenance.price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

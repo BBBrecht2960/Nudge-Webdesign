@@ -14,7 +14,18 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
-    const body = await request.json();
+    
+    // Parse request body with error handling
+    let body;
+    try {
+      body = await request.json();
+    } catch (error) {
+      console.error('JSON parsing error:', error);
+      return NextResponse.json(
+        { error: 'Ongeldige data ontvangen. Controleer het formulier en probeer opnieuw.' },
+        { status: 400 }
+      );
+    }
 
     const {
       name,
@@ -40,6 +51,15 @@ export async function POST(request: NextRequest) {
     if (!name || !email || !gdpr_consent) {
       return NextResponse.json(
         { error: 'Naam, e-mail en GDPR toestemming zijn verplicht' },
+        { status: 400 }
+      );
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: 'Ongeldig e-mailadres formaat' },
         { status: 400 }
       );
     }
@@ -71,8 +91,25 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Database error:', error);
+      
+      // Provide more specific error messages based on error code
+      let errorMessage = 'Er is iets misgegaan bij het opslaan van uw aanvraag';
+      
+      if (error.code === '23505') {
+        // Unique constraint violation (duplicate email)
+        errorMessage = 'Dit e-mailadres is al geregistreerd. Probeer een ander e-mailadres.';
+      } else if (error.code === '23503') {
+        // Foreign key violation
+        errorMessage = 'Ongeldige data ontvangen. Controleer het formulier en probeer opnieuw.';
+      } else if (error.code === '42P01') {
+        // Table doesn't exist
+        errorMessage = 'Database tabel niet gevonden. Neem contact op met de beheerder.';
+      } else if (error.message) {
+        errorMessage = `Database fout: ${error.message}`;
+      }
+      
       return NextResponse.json(
-        { error: 'Er is iets misgegaan bij het opslaan van uw aanvraag' },
+        { error: errorMessage },
         { status: 500 }
       );
     }
@@ -86,8 +123,24 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error('API error:', error);
+    
+    // Provide more specific error messages
+    let errorMessage = 'Er is iets misgegaan';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+      });
+    }
+    
+    // Check if it's a JSON parsing error
+    if (error instanceof SyntaxError || (error as { name?: string }).name === 'SyntaxError') {
+      errorMessage = 'Ongeldige data ontvangen';
+    }
+    
     return NextResponse.json(
-      { error: 'Er is iets misgegaan' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Button } from '../components/Button';
 import { LogOut, LayoutDashboard, Users, BarChart3 } from 'lucide-react';
@@ -62,7 +63,15 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex">
-              <div className="flex-shrink-0 flex items-center">
+              <div className="flex-shrink-0 flex items-center gap-3">
+                <Image
+                  src="/Nudge websdesign & marketing Hasselt logo.png"
+                  alt="Nudge Webdesign"
+                  width={40}
+                  height={40}
+                  className="object-contain"
+                  style={{ background: 'transparent' }}
+                />
                 <h1 className="text-xl font-bold">Admin Dashboard</h1>
               </div>
               <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
