@@ -1,0 +1,16 @@
+# Project Rules
+
+## Security (HARD RULES — ALWAYS APPLY)
+
+You must follow the project security rules in SECURITY_RULES.md for all code in this project and in the future. Summarized:
+
+1. **No custom auth/session/JWT** unless explicitly requested. Use established auth providers.
+2. **All data access server-side** with **authorization checks** on every access.
+3. **Strict request validation** (e.g. Zod). Reject unknown fields. Use `.strict()` or equivalent.
+4. **Never put secrets in client code; never log secrets.**
+5. **Parameterized queries / ORM only.** No string-concatenated SQL.
+6. **Rate limiting** on public endpoints (login, signup, contact, leads, etc.).
+7. **Authorization tests:** at least 3 per protected route (unauthenticated, wrong user/role, correct user/role).
+8. **If unsure:** stop and propose the safest default. Prefer deny over allow.
+
+For full wording and context, read SECURITY_RULES.md.

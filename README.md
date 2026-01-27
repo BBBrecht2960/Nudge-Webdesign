@@ -1,36 +1,202 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Nudge Webdesign
 
-## Getting Started
+Website van Nudge Webdesign, een webdesign agentschap. Gebouwd met Next.js App Router.
 
-First, run the development server:
+## Features
+
+- **Marketing Site**: Conversion-optimized landing page with lead generation
+- **Admin Dashboard**: Lead management system with analytics
+- **PostHog Analytics**: Event tracking and user behavior analysis
+- **Lead Forms**: GDPR-compliant lead capture with UTM tracking
+- **Responsive Design**: Mobile-first design with sticky CTA bar
+
+## Tech Stack
+
+- **Framework**: Next.js 16+ (App Router)
+- **Styling**: Tailwind CSS
+- **UI Components**: Radix UI + custom components
+- **Database**: Supabase (PostgreSQL)
+- **Analytics**: PostHog
+- **Forms**: React Hook Form + Zod validation
+- **Authentication**: NextAuth.js (for admin dashboard)
+
+## Setup Instructions
+
+### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+### 2. Database Setup
+
+#### Option A: Supabase (Recommended)
+
+1. Create a Supabase project at [supabase.com](https://supabase.com)
+2. Go to SQL Editor and run `supabase-schema.sql`
+3. Get your project URL and anon key from Settings > API
+
+#### Option B: Neon
+
+1. Create a Neon project at [neon.tech](https://neon.tech)
+2. Run `supabase-schema.sql` in the SQL editor
+3. Get your connection string
+
+### 3. Environment Variables
+
+Create a `.env.local` file in the root directory:
+
+```env
+# Database (Supabase)
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# PostHog Analytics
+NEXT_PUBLIC_POSTHOG_KEY=your_posthog_project_api_key
+NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
+
+# Authentication
+NEXTAUTH_SECRET=your_random_secret_key_here
+NEXTAUTH_URL=http://localhost:3000
+
+# Admin user (initial setup)
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD_HASH=your_bcrypt_hashed_password
+```
+
+### 4. PostHog Setup
+
+1. Create a PostHog account at [posthog.com](https://posthog.com)
+2. Create a new project
+3. Copy your Project API Key
+4. Add it to `.env.local`
+
+### 5. Run Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+/app
+  /components          # Reusable React components
+  /api                # API routes
+  /admin              # Admin dashboard (protected)
+  /pakketten          # Packages page
+  /over-ons           # About page
+  /diensten           # Services page
+  /proces             # Process page
+  /contact            # Contact page
+  /privacy            # Privacy policy
+  /cookie-beleid      # Cookie policy
+  /thanks             # Thank you page
+/lib
+  /db.ts              # Database client
+  /posthog.ts         # PostHog client
+  /utils.ts           # Utility functions
+```
 
-## Learn More
+## Admin Dashboard
 
-To learn more about Next.js, take a look at the following resources:
+Access the admin dashboard at `/admin` (requires authentication).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Features:
+- View all leads in a table
+- Filter and search leads
+- View lead details with status pipeline
+- Add notes to leads
+- Track lead status changes
+- View analytics dashboard
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deployment
 
-## Deploy on Vercel
+### Vercel (Recommended)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Push your code to GitHub
+2. Import project in Vercel
+3. Add environment variables in Vercel dashboard
+4. Deploy
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Environment Variables for Production
+
+Make sure to set all environment variables in your hosting platform:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_POSTHOG_KEY`
+- `NEXT_PUBLIC_POSTHOG_HOST`
+- `NEXTAUTH_SECRET`
+- `NEXTAUTH_URL` (your production URL)
+
+## Customization
+
+### Colors
+
+Edit `app/globals.css` to change the color scheme. The current theme uses a soft blue/gray palette.
+
+### Content
+
+- Landing page content: `app/page.tsx` and components in `app/components/`
+- Package details: `app/pakketten/page.tsx`
+- FAQ: `app/components/FAQ.tsx`
+
+### Business Information
+
+Update the following files with your business details:
+- `app/layout.tsx` - Metadata
+- `app/components/StickyMobileCTA.tsx` - Phone number
+- Create JSON-LD structured data for LocalBusiness (see SEO section)
+
+## SEO
+
+### Metadata
+
+Each page has its own metadata. Update in the page files.
+
+### JSON-LD Structured Data
+
+Add LocalBusiness structured data to the homepage for better local SEO. Example:
+
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  "name": "Nudge Webdesign",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "Your Street",
+    "addressLocality": "Hasselt",
+    "postalCode": "3500",
+    "addressCountry": "BE"
+  },
+  "telephone": "+32XXXXXXXXX"
+}
+```
+
+## Analytics (PostHog)
+
+PostHog is alleen actief als `NEXT_PUBLIC_POSTHOG_KEY` in `.env.local` staat. Zie **[docs/POSTHOG.md](./docs/POSTHOG.md)** voor connectie en wat er getracked wordt.
+
+Events o.a.: `page_view`, `page_leave`, autocapture (clicks/forms), `scroll_depth` (25/50/75/100%), session recordings, `cta_click`, `form_started`, `form_submitted`, `package_card_click`, `faq_expanded`, `sticky_cta_click`, `phone_click`, `thank_you_page_view`.
+
+## Security
+
+**Hard rules** for this project are defined in **[SECURITY_RULES.md](./SECURITY_RULES.md)**. They apply to all code and future work. Summary:
+
+- No custom auth/session/JWT unless explicitly requested; use established providers.
+- All data access server-side with authorization checks.
+- Strict request validation (reject unknown fields).
+- No secrets in client code; never log secrets.
+- Parameterized queries / ORM only.
+- Rate limiting on public endpoints.
+- At least 3 authorization tests per protected route.
+- When unsure: stop and propose the safest default.
+
+[Cursor](https://cursor.com) users: these rules are also enforced via `.cursorrules` in the project root.
+
+## License
+
+Private - All rights reserved
