@@ -89,6 +89,7 @@ export function LeadForm() {
           email: data.email,
           phone: data.phone,
           message: data.message || null,
+          gdpr_consent: data.gdpr_consent,
           ...utmData,
         }),
       });
