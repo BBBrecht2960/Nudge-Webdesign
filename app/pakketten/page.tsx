@@ -54,7 +54,7 @@ export default function PakkettenPage() {
               </div>
               <h3 className="text-xl font-bold mb-1">Mini Website</h3>
               <p className="text-2xl font-bold text-primary mb-4">
-                <span className="text-sm font-medium text-muted-foreground">Vanaf </span>€300
+                <span className="text-sm font-medium text-muted-foreground">Vanaf </span>€399
               </p>
               <p className="text-muted-foreground text-sm mb-4">
                 Perfect voor starters of een eenvoudige online aanwezigheid.
@@ -76,15 +76,15 @@ export default function PakkettenPage() {
               <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center mb-4 shrink-0">
                 <Building2 className="w-5 h-5 text-primary" />
               </div>
-              <h3 className="text-xl font-bold mb-1">Standard Business</h3>
+              <h3 className="text-xl font-bold mb-1">Standard Website</h3>
               <p className="text-2xl font-bold text-primary mb-4">
-                <span className="text-sm font-medium text-muted-foreground">Vanaf </span>€500
+                <span className="text-sm font-medium text-muted-foreground">Vanaf </span>€699
               </p>
               <p className="text-muted-foreground text-sm mb-4">
-                Ideaal voor KMO&apos;s die een professionele site met meerdere pagina&apos;s nodig hebben.
+                4–6 pagina&apos;s, standaard structuur, veelgevraagd.
               </p>
               <ul className="space-y-2 mb-6 text-sm text-muted-foreground flex-1">
-                {['5–10 pagina\'s (Home, Over ons, Diensten, Contact, …)', 'Responsive design', 'Contactformulier + Google Maps', 'SEO-optimalisatie', 'Blog mogelijkheid', 'Social media integratie', '1 maand gratis onderhoud'].map((item, i) => (
+                {['4-6 pagina\'s (Home, Over ons, Diensten, Contact)', 'Responsive design', 'Contactformulier + Google Maps', 'SEO-optimalisatie', 'Blog mogelijkheid', 'Social media integratie', '1 maand gratis onderhoud'].map((item, i) => (
                   <li key={i} className="flex items-start gap-2">
                     <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" /> <span>{item}</span>
                   </li>
@@ -97,12 +97,12 @@ export default function PakkettenPage() {
               <div className="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center mb-4 shrink-0">
                 <Rocket className="w-5 h-5 text-secondary" />
               </div>
-              <h3 className="text-xl font-bold mb-1">Extended KMO</h3>
+              <h3 className="text-xl font-bold mb-1">Extended Website</h3>
               <p className="text-2xl font-bold text-primary mb-4">
-                <span className="text-sm font-medium text-muted-foreground">Vanaf </span>€3.000
+                <span className="text-sm font-medium text-muted-foreground">Vanaf </span>€2.499
               </p>
               <p className="text-muted-foreground text-sm mb-4">
-                Uitgebreide site voor grotere KMO&apos;s met specifieke wensen en integraties.
+                Op maat voor KMO&apos;s, multi-language, CRM, blog inbegrepen.
               </p>
               <ul className="space-y-2 mb-6 text-sm text-muted-foreground flex-1">
                 {['Onbeperkt pagina\'s', 'Custom design op maat', 'Meerdere formulieren', 'Geavanceerde SEO', 'Blog met categorieën', 'Integraties (CRM, boekingssysteem, AI)', 'Multi-language (NL/FR/EN)', '2 maanden gratis onderhoud'].map((item, i) => (
@@ -129,9 +129,27 @@ export default function PakkettenPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
             {[
-              { name: 'Basic Webshop', price: '€2.000', icon: Package, items: ['Tot 50 producten', 'Betalingsintegratie', 'Verzendopties', 'Productcategorieën'] },
-              { name: 'Standard Webshop', price: '€5.000', icon: ShoppingCart, items: ['Onbeperkt producten', 'Geavanceerde filters', 'Klantaccounts', 'Bestelhistorie'] },
-              { name: 'Enterprise Webshop', price: '€10.000', icon: Building2, items: ['Custom features', 'Multi-channel', 'Geavanceerde logistiek', 'Volledige customisatie'] },
+              { 
+                name: 'Basic Webshop', 
+                price: '€1.499', 
+                icon: Package, 
+                description: 'Tot 50 producten, Mollie, WooCommerce/Shopify Light.',
+                items: ['Tot 50 producten', 'Betalingsintegratie (Mollie)', 'Verzendopties', 'Productcategorieën', 'Basis productbeheer'] 
+              },
+              { 
+                name: 'Pro Webshop', 
+                price: '€3.499', 
+                icon: ShoppingCart, 
+                description: 'Onbeperkt producten, filters, accounts, meertaligheid.',
+                items: ['Onbeperkt producten', 'Geavanceerde filters', 'Klantaccounts', 'Bestelhistorie', 'Multi-language', 'Geavanceerde logistiek'] 
+              },
+              { 
+                name: 'Enterprise Webshop', 
+                price: '€6.999', 
+                icon: Building2, 
+                description: 'Custom features, schaalbaar, koppelingen, logistiek.',
+                items: ['Custom features', 'Multi-channel', 'Geavanceerde logistiek', 'Volledige customisatie', 'Schaalbaarheid', 'API-koppelingen'] 
+              },
             ].map((pkg, i) => {
               const Icon = pkg.icon;
               return (
@@ -140,9 +158,12 @@ export default function PakkettenPage() {
                   <Icon className="w-5 h-5 text-primary" />
                 </div>
                 <h3 className="text-xl font-bold mb-1">{pkg.name}</h3>
-                <p className="text-2xl font-bold text-primary mb-4">
+                <p className="text-2xl font-bold text-primary mb-2">
                   <span className="text-sm font-medium text-muted-foreground">Vanaf </span>{pkg.price}
                 </p>
+                {pkg.description && (
+                  <p className="text-muted-foreground text-sm mb-4">{pkg.description}</p>
+                )}
                 <ul className="space-y-2 text-sm text-muted-foreground flex-1">
                   {pkg.items.map((item, j) => (
                     <li key={j} className="flex items-start gap-2">
@@ -168,7 +189,7 @@ export default function PakkettenPage() {
           </div>
           <div className="bg-gradient-to-br from-primary/10 via-secondary/5 to-muted border-2 border-primary/20 rounded-2xl p-6 sm:p-8 lg:p-10 shadow-xl max-w-3xl">
             <h3 className="text-xl sm:text-2xl font-bold mb-2">Custom Webapplicaties</h3>
-            <p className="text-2xl font-bold text-primary mb-4">Vanaf €5.000</p>
+            <p className="text-2xl font-bold text-primary mb-4">Vanaf €4.999</p>
             <p className="text-muted-foreground mb-4">
               Custom webapplicaties voor specifieke bedrijfsprocessen. Intake gesprek vereist voor offerte op maat.
             </p>

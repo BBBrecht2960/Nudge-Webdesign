@@ -32,6 +32,13 @@ export interface Lead {
   utm_content?: string;
   referrer?: string;
   landing_path?: string;
+  // Business/company information fields
+  vat_number?: string;
+  company_address?: string;
+  company_postal_code?: string;
+  company_city?: string;
+  company_country?: string;
+  company_website?: string;
   created_at: string;
   updated_at: string;
 }

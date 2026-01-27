@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { MetricCard } from '@/app/components/analytics/MetricCard';
 import { EventChart } from '@/app/components/analytics/EventChart';
-import { MousePointerClick, FileText, ShoppingCart, TrendingUp, Eye, Users } from 'lucide-react';
+import { LeadChart } from '@/app/components/analytics/LeadChart';
+import { MousePointerClick, FileText, ShoppingCart, TrendingUp, Eye, Users, BarChart3, Calendar } from 'lucide-react';
 
 interface AnalyticsData {
   events: {
@@ -16,11 +17,45 @@ interface AnalyticsData {
   leads: { count: number; trend: number };
 }
 
+interface LeadAnalyticsData {
+  total: number;
+  trend: number;
+  timeline: Array<{
+    date: string;
+    total: number;
+    byStatus: Record<string, number>;
+    bySource: Record<string, number>;
+    byMedium: Record<string, number>;
+    byCampaign: Record<string, number>;
+  }>;
+  statusBreakdown: Record<string, number>;
+  sourceBreakdown: Record<string, number>;
+  mediumBreakdown: Record<string, number>;
+  dateRange: {
+    start: string;
+    end: string;
+    groupBy: string;
+  };
+}
+
 export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
+  const [leadData, setLeadData] = useState<LeadAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [leadLoading, setLeadLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState(30);
+  const [leadDays, setLeadDays] = useState(30);
+  const [leadGroupBy, setLeadGroupBy] = useState<'day' | 'week' | 'month'>('day');
+  const [customDateRange, setCustomDateRange] = useState(false);
+  const [startDate, setStartDate] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 30);
+    return date.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(() => {
+    return new Date().toISOString().split('T')[0];
+  });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -33,9 +68,10 @@ export default function AnalyticsPage() {
         const result = await response.json();
         setData(result);
         setError(null);
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Fout bij ophalen analytics';
         console.error('Error fetching analytics:', err);
-        setError(err.message || 'Fout bij ophalen analytics');
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -43,6 +79,37 @@ export default function AnalyticsPage() {
 
     fetchData();
   }, [days]);
+
+  useEffect(() => {
+    const fetchLeadData = async () => {
+      try {
+        setLeadLoading(true);
+        let url = '';
+        
+        if (customDateRange && startDate && endDate) {
+          url = `/api/analytics/leads?startDate=${startDate}&endDate=${endDate}&groupBy=${leadGroupBy}`;
+        } else {
+          const end = new Date();
+          const start = new Date();
+          start.setDate(start.getDate() - leadDays);
+          url = `/api/analytics/leads?startDate=${start.toISOString().split('T')[0]}&endDate=${end.toISOString().split('T')[0]}&groupBy=${leadGroupBy}`;
+        }
+
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error('Failed to fetch lead analytics');
+        }
+        const result = await response.json();
+        setLeadData(result);
+      } catch (err: unknown) {
+        console.error('Error fetching lead analytics:', err);
+      } finally {
+        setLeadLoading(false);
+      }
+    };
+
+    fetchLeadData();
+  }, [leadDays, leadGroupBy, customDateRange, startDate, endDate]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
@@ -137,6 +204,246 @@ export default function AnalyticsPage() {
               eventName="scroll_depth"
               days={days}
             />
+          </div>
+
+          {/* Lead Analytics Section */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
+                  <Users className="w-6 h-6 text-primary" />
+                  Lead Analytics
+                </h2>
+                <p className="text-muted-foreground">
+                  Gedetailleerde statistieken over gegenereerde leads
+                </p>
+              </div>
+            </div>
+
+            {/* Lead Date Range Selector */}
+            <div className="bg-card border border-border rounded-lg p-4 mb-6">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="customRange"
+                    checked={customDateRange}
+                    onChange={(e) => setCustomDateRange(e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  <label htmlFor="customRange" className="text-sm font-medium">
+                    Aangepast datumbereik
+                  </label>
+                </div>
+
+                {customDateRange ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-muted-foreground" />
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="px-3 py-2 border border-border rounded-md bg-card text-sm"
+                      />
+                      <span className="text-muted-foreground">tot</span>
+                      <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="px-3 py-2 border border-border rounded-md bg-card text-sm"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium">Periode:</label>
+                      <select
+                        value={leadDays}
+                        onChange={(e) => setLeadDays(parseInt(e.target.value))}
+                        className="px-3 py-2 border border-border rounded-md bg-card text-sm"
+                      >
+                        <option value="7">Laatste 7 dagen</option>
+                        <option value="14">Laatste 14 dagen</option>
+                        <option value="30">Laatste 30 dagen</option>
+                        <option value="60">Laatste 60 dagen</option>
+                        <option value="90">Laatste 90 dagen</option>
+                        <option value="180">Laatste 6 maanden</option>
+                        <option value="365">Laatste jaar</option>
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium">Groeperen op:</label>
+                  <select
+                    value={leadGroupBy}
+                    onChange={(e) => setLeadGroupBy(e.target.value as 'day' | 'week' | 'month')}
+                    className="px-3 py-2 border border-border rounded-md bg-card text-sm"
+                  >
+                    <option value="day">Dag</option>
+                    <option value="week">Week</option>
+                    <option value="month">Maand</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Lead Metrics */}
+            {leadLoading ? (
+              <div className="text-center py-12">
+                <div className="text-muted-foreground">Laden...</div>
+              </div>
+            ) : leadData ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                  <MetricCard
+                    title="Totaal Leads"
+                    value={leadData.total}
+                    trend={leadData.trend}
+                    icon={<Users className="w-5 h-5" />}
+                  />
+                  <MetricCard
+                    title="Nieuw"
+                    value={leadData.statusBreakdown.new || 0}
+                    icon={<FileText className="w-5 h-5" />}
+                  />
+                  <MetricCard
+                    title="Gekwalificeerd"
+                    value={leadData.statusBreakdown.qualified || 0}
+                    icon={<TrendingUp className="w-5 h-5" />}
+                  />
+                  <MetricCard
+                    title="Geconverteerd"
+                    value={leadData.statusBreakdown.converted || 0}
+                    icon={<ShoppingCart className="w-5 h-5" />}
+                  />
+                </div>
+
+                {/* Lead Timeline Chart */}
+                <div className="mb-6">
+                  <LeadChart
+                    title="Leads Over Tijd"
+                    startDate={leadData.dateRange.start}
+                    endDate={leadData.dateRange.end}
+                    groupBy={leadGroupBy}
+                  />
+                </div>
+
+                {/* Breakdowns */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                  {/* Status Breakdown */}
+                  <div className="bg-card border border-border rounded-lg p-6">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5 text-primary" />
+                      Per Status
+                    </h3>
+                    <div className="space-y-3">
+                      {Object.entries(leadData.statusBreakdown)
+                        .sort(([, a], [, b]) => b - a)
+                        .map(([status, count]) => {
+                          const percentage = (count / leadData.total) * 100;
+                          const statusLabels: Record<string, string> = {
+                            new: 'Nieuw',
+                            contacted: 'Gecontacteerd',
+                            qualified: 'Gekwalificeerd',
+                            converted: 'Geconverteerd',
+                            lost: 'Verloren',
+                          };
+                          return (
+                            <div key={status}>
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="text-sm font-medium">
+                                  {statusLabels[status] || status}
+                                </span>
+                                <span className="text-sm text-muted-foreground">
+                                  {count} ({percentage.toFixed(1)}%)
+                                </span>
+                              </div>
+                              <div className="w-full bg-muted rounded-full h-2">
+                                <div
+                                  className="bg-primary h-2 rounded-full transition-all"
+                                  style={{ width: `${percentage}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+
+                  {/* Source Breakdown */}
+                  <div className="bg-card border border-border rounded-lg p-6">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5 text-primary" />
+                      Per Bron
+                    </h3>
+                    <div className="space-y-3">
+                      {Object.entries(leadData.sourceBreakdown)
+                        .sort(([, a], [, b]) => b - a)
+                        .slice(0, 10)
+                        .map(([source, count]) => {
+                          const percentage = (count / leadData.total) * 100;
+                          return (
+                            <div key={source}>
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="text-sm font-medium truncate">
+                                  {source === 'direct' ? 'Direct' : source}
+                                </span>
+                                <span className="text-sm text-muted-foreground">
+                                  {count} ({percentage.toFixed(1)}%)
+                                </span>
+                              </div>
+                              <div className="w-full bg-muted rounded-full h-2">
+                                <div
+                                  className="bg-secondary h-2 rounded-full transition-all"
+                                  style={{ width: `${percentage}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+
+                  {/* Medium Breakdown */}
+                  <div className="bg-card border border-border rounded-lg p-6">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5 text-primary" />
+                      Per Medium
+                    </h3>
+                    <div className="space-y-3">
+                      {Object.entries(leadData.mediumBreakdown)
+                        .sort(([, a], [, b]) => b - a)
+                        .slice(0, 10)
+                        .map(([medium, count]) => {
+                          const percentage = (count / leadData.total) * 100;
+                          return (
+                            <div key={medium}>
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="text-sm font-medium truncate">
+                                  {medium === 'none' ? 'Geen' : medium}
+                                </span>
+                                <span className="text-sm text-muted-foreground">
+                                  {count} ({percentage.toFixed(1)}%)
+                                </span>
+                              </div>
+                              <div className="w-full bg-muted rounded-full h-2">
+                                <div
+                                  className="bg-accent h-2 rounded-full transition-all"
+                                  style={{ width: `${percentage}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : null}
           </div>
 
           {/* Conversion Metrics */}

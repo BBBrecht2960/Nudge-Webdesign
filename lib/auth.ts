@@ -20,7 +20,10 @@ function getAdminClient() {
 export async function authenticateAdmin(email: string, password: string): Promise<boolean> {
   try {
     const supabase = getAdminClient();
-    if (!supabase) return false;
+    if (!supabase) {
+      console.error('[Auth] Supabase client niet beschikbaar');
+      return false;
+    }
 
     const { data, error } = await supabase
       .from('admin_users')
@@ -28,13 +31,23 @@ export async function authenticateAdmin(email: string, password: string): Promis
       .eq('email', email)
       .single();
 
-    if (error || !data) {
+    if (error) {
+      console.error('[Auth] Database error:', error.message, error.code);
       return false;
     }
 
-    return verifyPassword(password, data.password_hash);
+    if (!data || !data.password_hash) {
+      console.error('[Auth] Geen data of password_hash gevonden voor:', email);
+      return false;
+    }
+
+    const isValid = await verifyPassword(password, data.password_hash);
+    if (!isValid) {
+      console.error('[Auth] Wachtwoord verificatie mislukt voor:', email);
+    }
+    return isValid;
   } catch (error) {
-    console.error('Authentication error:', error);
+    console.error('[Auth] Authentication error:', error);
     return false;
   }
 }

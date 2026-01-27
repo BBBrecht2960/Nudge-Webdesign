@@ -29,12 +29,13 @@ export async function GET(
       .order('created_at', { ascending: false });
 
     if (error) {
+      const supabaseError = error as { code?: string; message?: string };
       // Check if table doesn't exist
       if (
-        error.code === '42P01' ||
-        error.message?.includes('does not exist') ||
-        error.message?.includes('schema cache') ||
-        error.message?.includes('lead_attachments')
+        supabaseError.code === '42P01' ||
+        supabaseError.message?.includes('does not exist') ||
+        supabaseError.message?.includes('schema cache') ||
+        supabaseError.message?.includes('lead_attachments')
       ) {
         return NextResponse.json(
           {
@@ -48,14 +49,15 @@ export async function GET(
     }
 
     return NextResponse.json({ attachments: data || [] });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const supabaseError = error as { code?: string; message?: string };
     console.error('Error fetching attachments:', {
       error,
-      code: error?.code,
-      message: error?.message,
+      code: supabaseError.code,
+      message: supabaseError.message,
     });
     return NextResponse.json(
-      { error: error?.message || 'Fout bij ophalen bijlagen', attachments: [] },
+      { error: supabaseError.message || 'Fout bij ophalen bijlagen', attachments: [] },
       { status: 500 }
     );
   }
@@ -123,12 +125,13 @@ export async function POST(
       .single();
 
     if (error) {
+      const supabaseError = error as { code?: string; message?: string };
       // Check if table doesn't exist
       if (
-        error.code === '42P01' ||
-        error.message?.includes('does not exist') ||
-        error.message?.includes('schema cache') ||
-        error.message?.includes('lead_attachments')
+        supabaseError.code === '42P01' ||
+        supabaseError.message?.includes('does not exist') ||
+        supabaseError.message?.includes('schema cache') ||
+        supabaseError.message?.includes('lead_attachments')
       ) {
         return NextResponse.json(
           {
@@ -141,14 +144,15 @@ export async function POST(
     }
 
     return NextResponse.json({ attachment: data });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const supabaseError = error as { code?: string; message?: string };
     console.error('Error creating attachment:', {
       error,
-      code: error?.code,
-      message: error?.message,
+      code: supabaseError.code,
+      message: supabaseError.message,
     });
     return NextResponse.json(
-      { error: error?.message || 'Fout bij aanmaken bijlage' },
+      { error: supabaseError.message || 'Fout bij aanmaken bijlage' },
       { status: 500 }
     );
   }

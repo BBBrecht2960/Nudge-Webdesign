@@ -131,6 +131,16 @@ export default function LeadDetailPage() {
   const [assignedTo, setAssignedTo] = useState('');
   const [deletingAttachmentId, setDeletingAttachmentId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  
+  // Company information form state
+  const [showCompanyForm, setShowCompanyForm] = useState(false);
+  const [vatNumber, setVatNumber] = useState('');
+  const [companyAddress, setCompanyAddress] = useState('');
+  const [companyPostalCode, setCompanyPostalCode] = useState('');
+  const [companyCity, setCompanyCity] = useState('');
+  const [companyCountry, setCompanyCountry] = useState('België');
+  const [companyWebsite, setCompanyWebsite] = useState('');
+  const [isSavingCompany, setIsSavingCompany] = useState(false);
 
   useEffect(() => {
     if (leadId) {
@@ -170,7 +180,15 @@ export default function LeadDetailPage() {
       }
 
       setLead(leadData);
-      setAssignedTo((leadData as any).assigned_to || '');
+      setAssignedTo((leadData as Lead & { assigned_to?: string }).assigned_to || '');
+      
+      // Set company information form fields
+      setVatNumber(leadData.vat_number || '');
+      setCompanyAddress(leadData.company_address || '');
+      setCompanyPostalCode(leadData.company_postal_code || '');
+      setCompanyCity(leadData.company_city || '');
+      setCompanyCountry(leadData.company_country || 'België');
+      setCompanyWebsite(leadData.company_website || '');
 
       // Load activities (non-blocking)
       try {
@@ -201,21 +219,24 @@ export default function LeadDetailPage() {
         console.warn('Error loading attachments:', err);
         // Don't throw - attachments are optional
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Enhanced error logging
+      const errorObj = error instanceof Error ? error : new Error(String(error));
       const errorDetails = {
-        message: error?.message || error?.toString() || 'Unknown error',
-        name: error?.name,
-        stack: error?.stack,
+        message: errorObj.message || 'Unknown error',
+        name: errorObj.name,
+        stack: errorObj.stack,
         leadId,
         errorObject: error,
       };
       console.error('Error loading lead data:', errorDetails);
       
       // Set error state so user can see something went wrong
-      if (error?.message?.includes('not found') || 
-          error?.code === 'PGRST116' || 
-          error?.message?.includes('No rows')) {
+      const errorMessage = errorObj.message || '';
+      const errorCode = (error as { code?: string })?.code;
+      if (errorMessage.includes('not found') || 
+          errorCode === 'PGRST116' || 
+          errorMessage.includes('No rows')) {
         // Lead doesn't exist
         setLead(null);
       }
@@ -366,15 +387,15 @@ export default function LeadDetailPage() {
       
       // Reload activities
       await loadLeadData();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Fout bij het toevoegen van activiteit';
       console.error('Error adding activity:', {
         error,
-        message: error?.message,
+        message: errorMessage,
         leadId,
         activityType,
         title: activityTitle,
       });
-      const errorMessage = error?.message || 'Fout bij het toevoegen van activiteit';
       alert(errorMessage);
     } finally {
       setIsSaving(false);
@@ -436,15 +457,15 @@ export default function LeadDetailPage() {
 
       await loadLeadData();
       alert('Bestand succesvol geüpload');
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Fout bij het uploaden van bestand';
       console.error('Error uploading file:', {
         error,
-        message: error?.message,
+        message: errorMessage,
         leadId,
         fileName: file.name,
         fileSize: file.size,
       });
-      const errorMessage = error?.message || 'Fout bij het uploaden van bestand';
       alert(errorMessage);
     } finally {
       setUploadingFile(false);
@@ -479,16 +500,66 @@ export default function LeadDetailPage() {
       // Reload attachments
       await loadLeadData();
       setShowDeleteConfirm(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Fout bij verwijderen van bijlage';
       console.error('Error deleting attachment:', {
         error,
-        message: error?.message,
+        message: errorMessage,
         attachmentId,
         leadId,
       });
-      alert(error?.message || 'Fout bij verwijderen van bijlage');
+      alert(errorMessage);
     } finally {
       setDeletingAttachmentId(null);
+    }
+  };
+
+  const handleSaveCompanyInfo = async () => {
+    if (!lead || !leadId) return;
+
+    try {
+      setIsSavingCompany(true);
+      
+      const { error } = await supabase
+        .from('leads')
+        .update({
+          vat_number: vatNumber.trim() || null,
+          company_address: companyAddress.trim() || null,
+          company_postal_code: companyPostalCode.trim() || null,
+          company_city: companyCity.trim() || null,
+          company_country: companyCountry.trim() || null,
+          company_website: companyWebsite.trim() || null,
+        })
+        .eq('id', leadId);
+
+      if (error) {
+        // Check if columns don't exist
+        if (error.message?.includes('schema cache') || error.message?.includes('column')) {
+          alert('De bedrijfsgegevens kolommen bestaan nog niet. Voer het SQL script uit: add-company-fields.sql');
+          return;
+        }
+        throw error;
+      }
+
+      // Update local state
+      setLead({
+        ...lead,
+        vat_number: vatNumber.trim() || undefined,
+        company_address: companyAddress.trim() || undefined,
+        company_postal_code: companyPostalCode.trim() || undefined,
+        company_city: companyCity.trim() || undefined,
+        company_country: companyCountry.trim() || undefined,
+        company_website: companyWebsite.trim() || undefined,
+      });
+
+      setShowCompanyForm(false);
+      alert('Bedrijfsgegevens opgeslagen');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Error saving company info:', error);
+      alert(`Fout bij opslaan: ${errorMessage}`);
+    } finally {
+      setIsSavingCompany(false);
     }
   };
 
@@ -523,13 +594,14 @@ export default function LeadDetailPage() {
       if (lead) {
         setLead({ ...lead, assigned_to: email || undefined } as Lead);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('Error updating assignment:', error);
-      if (error.message?.includes('assigned_to') || error.message?.includes('schema cache')) {
+      if (errorMessage.includes('assigned_to') || errorMessage.includes('schema cache')) {
         const sql = 'ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_to VARCHAR(255);';
         alert(`De assigned_to kolom bestaat nog niet.\n\nVoer deze SQL uit:\n\n${sql}`);
       } else {
-        alert(error.message || 'Fout bij het bijwerken van toewijzing');
+        alert(errorMessage || 'Fout bij het bijwerken van toewijzing');
       }
     } finally {
       setIsSaving(false);
@@ -705,6 +777,156 @@ export default function LeadDetailPage() {
                 <p className="text-muted-foreground whitespace-pre-wrap">{lead.message}</p>
               </div>
             )}
+
+            {/* Company Information Section */}
+            <div className="bg-card border border-border rounded-lg p-6 mt-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold">Bedrijfsgegevens</h2>
+                <Button
+                  onClick={() => setShowCompanyForm(!showCompanyForm)}
+                  size="sm"
+                  variant="outline"
+                >
+                  {showCompanyForm ? 'Annuleren' : lead.vat_number ? 'Bewerken' : 'Toevoegen'}
+                </Button>
+              </div>
+
+              {!showCompanyForm && (
+                <div className="space-y-2 text-sm">
+                  {lead.vat_number && (
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">BTW-nummer:</span>
+                      <span>{lead.vat_number}</span>
+                    </div>
+                  )}
+                  {lead.company_address && (
+                    <div className="flex items-start gap-2">
+                      <span className="font-medium">Adres:</span>
+                      <span>{lead.company_address}</span>
+                    </div>
+                  )}
+                  {(lead.company_postal_code || lead.company_city) && (
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Postcode & Stad:</span>
+                      <span>{[lead.company_postal_code, lead.company_city].filter(Boolean).join(' ')}</span>
+                    </div>
+                  )}
+                  {lead.company_country && (
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Land:</span>
+                      <span>{lead.company_country}</span>
+                    </div>
+                  )}
+                  {lead.company_website && (
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Website:</span>
+                      <a href={lead.company_website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                        {lead.company_website}
+                      </a>
+                    </div>
+                  )}
+                  {!lead.vat_number && !lead.company_address && !lead.company_postal_code && !lead.company_city && (
+                    <p className="text-muted-foreground italic">Geen bedrijfsgegevens ingevuld</p>
+                  )}
+                </div>
+              )}
+
+              {showCompanyForm && (
+                <div className="space-y-4 mt-4">
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">BTW-nummer *</label>
+                      <input
+                        type="text"
+                        value={vatNumber}
+                        onChange={(e) => setVatNumber(e.target.value)}
+                        placeholder="BE0123456789"
+                        className="w-full px-3 py-2 border border-border rounded-md"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Website</label>
+                      <input
+                        type="url"
+                        value={companyWebsite}
+                        onChange={(e) => setCompanyWebsite(e.target.value)}
+                        placeholder="https://www.example.com"
+                        className="w-full px-3 py-2 border border-border rounded-md"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Adres</label>
+                    <input
+                      type="text"
+                      value={companyAddress}
+                      onChange={(e) => setCompanyAddress(e.target.value)}
+                      placeholder="Straat en nummer"
+                      className="w-full px-3 py-2 border border-border rounded-md"
+                    />
+                  </div>
+                  <div className="grid sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Postcode</label>
+                      <input
+                        type="text"
+                        value={companyPostalCode}
+                        onChange={(e) => setCompanyPostalCode(e.target.value)}
+                        placeholder="3500"
+                        className="w-full px-3 py-2 border border-border rounded-md"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Stad</label>
+                      <input
+                        type="text"
+                        value={companyCity}
+                        onChange={(e) => setCompanyCity(e.target.value)}
+                        placeholder="Hasselt"
+                        className="w-full px-3 py-2 border border-border rounded-md"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Land</label>
+                      <input
+                        type="text"
+                        value={companyCountry}
+                        onChange={(e) => setCompanyCountry(e.target.value)}
+                        placeholder="België"
+                        className="w-full px-3 py-2 border border-border rounded-md"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      onClick={handleSaveCompanyInfo}
+                      disabled={isSavingCompany || !vatNumber.trim()}
+                      size="sm"
+                    >
+                      {isSavingCompany ? 'Opslaan...' : 'Opslaan'}
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setShowCompanyForm(false);
+                        // Reset to current values
+                        if (lead) {
+                          setVatNumber(lead.vat_number || '');
+                          setCompanyAddress(lead.company_address || '');
+                          setCompanyPostalCode(lead.company_postal_code || '');
+                          setCompanyCity(lead.company_city || '');
+                          setCompanyCountry(lead.company_country || 'België');
+                          setCompanyWebsite(lead.company_website || '');
+                        }
+                      }}
+                      variant="outline"
+                      size="sm"
+                    >
+                      Annuleren
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Activity Timeline */}
@@ -980,9 +1202,9 @@ export default function LeadDetailPage() {
                   </option>
                 ))}
               </select>
-              {(lead as any).assigned_to && (
+              {(lead as Lead & { assigned_to?: string }).assigned_to && (
                 <p className="text-sm text-muted-foreground">
-                  Huidig: <span className="font-medium">{(lead as any).assigned_to}</span>
+                  Huidig: <span className="font-medium">{(lead as Lead & { assigned_to?: string }).assigned_to}</span>
                 </p>
               )}
             </div>

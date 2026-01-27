@@ -42,12 +42,13 @@ export async function GET(
         return NextResponse.json({ quote: null });
       }
 
+      const supabaseError = error as { code?: string; message?: string };
       // Check if table doesn't exist
       if (
-        error.code === '42P01' ||
-        error.message?.includes('does not exist') ||
-        error.message?.includes('schema cache') ||
-        error.message?.includes('lead_quotes')
+        supabaseError.code === '42P01' ||
+        supabaseError.message?.includes('does not exist') ||
+        supabaseError.message?.includes('schema cache') ||
+        supabaseError.message?.includes('lead_quotes')
       ) {
         return NextResponse.json(
           {
@@ -62,16 +63,17 @@ export async function GET(
     }
 
     return NextResponse.json({ quote: data || null });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const supabaseError = error as { code?: string; message?: string; details?: string; hint?: string };
     console.error('Error fetching quote:', {
       error,
-      code: error?.code,
-      message: error?.message,
-      details: error?.details,
-      hint: error?.hint,
+      code: supabaseError.code,
+      message: supabaseError.message,
+      details: supabaseError.details,
+      hint: supabaseError.hint,
     });
     return NextResponse.json(
-      { error: error?.message || 'Fout bij ophalen offerte', quote: null },
+      { error: supabaseError.message || 'Fout bij ophalen offerte', quote: null },
       { status: 500 }
     );
   }
@@ -180,21 +182,22 @@ export async function POST(
     }
 
     return NextResponse.json({ quote: result });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const supabaseError = error as { code?: string; message?: string; details?: string; hint?: string };
     console.error('Error saving quote:', {
       error,
-      code: error?.code,
-      message: error?.message,
-      details: error?.details,
-      hint: error?.hint,
+      code: supabaseError.code,
+      message: supabaseError.message,
+      details: supabaseError.details,
+      hint: supabaseError.hint,
     });
 
     // Check if table doesn't exist
     if (
-      error?.code === '42P01' ||
-      error?.message?.includes('does not exist') ||
-      error?.message?.includes('schema cache') ||
-      error?.message?.includes('lead_quotes')
+      supabaseError.code === '42P01' ||
+      supabaseError.message?.includes('does not exist') ||
+      supabaseError.message?.includes('schema cache') ||
+      supabaseError.message?.includes('lead_quotes')
     ) {
       return NextResponse.json(
         {
@@ -205,7 +208,7 @@ export async function POST(
     }
 
     return NextResponse.json(
-      { error: error?.message || 'Fout bij opslaan offerte' },
+      { error: supabaseError.message || 'Fout bij opslaan offerte' },
       { status: 500 }
     );
   }

@@ -11,7 +11,7 @@ import { StickyMobileCTA } from './components/StickyMobileCTA';
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-muted w-full min-w-0 overflow-x-hidden pb-24 md:pb-0">
+    <main className="h-screen overflow-y-scroll snap-y snap-mandatory scroll-smooth bg-muted w-full min-w-0 overflow-x-hidden">
       <Hero />
       <ProblemSolution />
       <PackagesPreview />
@@ -19,7 +19,7 @@ export default function Home() {
       <Maintenance />
       <Proof />
       <FAQ />
-      <div className="py-14 sm:py-20 px-5 sm:px-6 lg:px-8 bg-white w-full min-w-0 overflow-hidden">
+      <div className="snap-start py-14 sm:py-20 px-5 sm:px-6 lg:px-8 bg-white w-full min-w-0 overflow-hidden min-h-[70vh] flex items-center">
         <div className="max-w-4xl mx-auto w-full min-w-0">
           <LeadForm />
         </div>

@@ -19,7 +19,7 @@ export function Proof() {
   ];
 
   return (
-    <section className="py-14 sm:py-20 md:py-28 px-5 sm:px-6 lg:px-8 bg-gradient-to-b from-white via-muted to-white relative overflow-hidden w-full min-w-0">
+    <section className="snap-start min-h-[70vh] flex items-center py-14 sm:py-20 md:py-24 px-5 sm:px-6 lg:px-8 bg-gradient-to-b from-white via-muted to-white relative overflow-hidden w-full min-w-0">
       {/* Decoratieve elementen */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-secondary/5 rounded-full blur-3xl" />
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />

@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Button } from '../components/Button';
 import { LogOut, LayoutDashboard, Users, BarChart3 } from 'lucide-react';
@@ -76,7 +77,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                   <LayoutDashboard className="w-4 h-4 mr-2" />
                   Dashboard
                 </a>
-                <a
+                <Link
                   href="/admin/leads"
                   className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
                     pathname === '/admin/leads'
@@ -86,7 +87,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                 >
                   <Users className="w-4 h-4 mr-2" />
                   Leads
-                </a>
+                </Link>
                 <a
                   href="/admin/analytics"
                   className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${

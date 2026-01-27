@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { supabase } from '@/lib/db';
 import { hashPassword } from '@/lib/auth';
 
@@ -8,9 +9,54 @@ import { hashPassword } from '@/lib/auth';
  * POST /api/admin/create-user
  * Body: { email: string, password: string }
  * 
- * Let op: In productie moet je deze route beveiligen!
+ * SECURITY: 
+ * - Uitgeschakeld in productie
+ * - Vereist geldige admin sessie (alleen ingelogde admins kunnen nieuwe admins aanmaken)
+ * 
+ * LET OP: In productie moeten admin accounts handmatig worden aangemaakt via scripts of database
  */
 export async function POST(request: NextRequest) {
+  // SECURITY: Deze route is uitgeschakeld voor productie
+  // Admin accounts moeten handmatig worden aangemaakt via scripts of database
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json(
+      { error: 'Deze functionaliteit is niet beschikbaar in productie' },
+      { status: 403 }
+    );
+  }
+
+  // Check authentication - alleen ingelogde admins kunnen nieuwe admins aanmaken
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get('admin_session');
+  
+  if (!sessionCookie) {
+    return NextResponse.json(
+      { error: 'Niet geautoriseerd. Alleen ingelogde admins kunnen nieuwe admins aanmaken.' },
+      { status: 401 }
+    );
+  }
+
+  // Verify session is valid
+  try {
+    const sessionResponse = await fetch(`${request.nextUrl.origin}/api/auth/session`, {
+      headers: {
+        Cookie: `admin_session=${sessionCookie.value}`,
+      },
+    });
+
+    if (!sessionResponse.ok) {
+      return NextResponse.json(
+        { error: 'Ongeldige sessie' },
+        { status: 401 }
+      );
+    }
+  } catch {
+    return NextResponse.json(
+      { error: 'Sessie verificatie mislukt' },
+      { status: 401 }
+    );
+  }
+
   try {
     const { email, password } = await request.json();
 

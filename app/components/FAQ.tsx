@@ -12,7 +12,7 @@ const faqs = [
   },
   {
     question: 'Wat kost een website?',
-    answer: 'Vanaf €300 voor een one-pager, €500 voor een standaard website, en €3.000 voor een uitgebreide KMO-website. Webshops vanaf €2.000, webapps vanaf €5.000.',
+    answer: 'Vanaf €399 voor een Mini Website, €699 voor een Standard Website, en €2.499 voor een Extended Website. Webshops vanaf €1.499, webapps vanaf €4.999.',
   },
   {
     question: 'Moet ik een onderhoudsplan afnemen?',
@@ -55,7 +55,7 @@ export function FAQ() {
   };
 
   return (
-    <section className="py-14 sm:py-16 px-5 sm:px-6 lg:px-8 bg-muted w-full min-w-0 overflow-hidden">
+    <section className="snap-start min-h-[70vh] flex items-center py-14 sm:py-16 px-5 sm:px-6 lg:px-8 bg-muted w-full min-w-0 overflow-hidden">
       <div className="max-w-3xl mx-auto min-w-0">
         <div className="mb-6 sm:mb-8">
           <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 break-words px-0.5">

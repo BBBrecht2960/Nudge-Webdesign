@@ -43,7 +43,8 @@ export default function LeadsPage() {
     return (
       lead.name.toLowerCase().includes(searchLower) ||
       lead.email.toLowerCase().includes(searchLower) ||
-      (lead.company_name && lead.company_name.toLowerCase().includes(searchLower))
+      (lead.company_name && lead.company_name.toLowerCase().includes(searchLower)) ||
+      (lead.vat_number && lead.vat_number.toLowerCase().includes(searchLower))
     );
   });
 
@@ -82,7 +83,7 @@ export default function LeadsPage() {
           <div className="flex-1">
             <input
               type="text"
-              placeholder="Zoek op naam, e-mail of bedrijf..."
+              placeholder="Zoek op naam, e-mail, bedrijf of BTW-nummer..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full px-4 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"

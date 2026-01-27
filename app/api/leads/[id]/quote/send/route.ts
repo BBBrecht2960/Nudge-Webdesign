@@ -34,7 +34,18 @@ export async function POST(
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
     const { id } = await params;
     const leadId = id;
-    const body = await request.json();
+    
+    // Try to parse body, but don't require it
+    let body = null;
+    try {
+      const bodyText = await request.text();
+      if (bodyText) {
+        body = JSON.parse(bodyText);
+      }
+    } catch {
+      // Body is optional for this endpoint
+      body = null;
+    }
 
     // Get lead information
     const { data: lead, error: leadError } = await supabase
@@ -134,7 +145,7 @@ export async function POST(
       <div style="margin-bottom: 15px;">
         <strong>Extra Opties:</strong>
         <ul style="margin: 10px 0; padding-left: 20px;">
-          ${quoteData.selectedOptions.map((opt: any) => {
+          ${quoteData.selectedOptions.map((opt: { id: string; name: string; price: number }) => {
             const note = quoteData.optionNotes && quoteData.optionNotes[opt.id] ? quoteData.optionNotes[opt.id] : null;
             return `
             <li style="margin-bottom: ${note ? '8px' : '4px'};">
@@ -236,12 +247,21 @@ export async function POST(
     if (!resendResponse.ok) {
       let errorMessage = 'Fout bij verzenden e-mail';
       try {
-        const errorData = await resendResponse.json().catch(() => ({}));
-        errorMessage = errorData.message || errorData.error || errorMessage;
+        const responseText = await resendResponse.text();
+        if (responseText) {
+          try {
+            const errorData = JSON.parse(responseText);
+            errorMessage = errorData.message || errorData.error || errorMessage;
+          } catch {
+            errorMessage = responseText || `HTTP ${resendResponse.status}: ${resendResponse.statusText}`;
+          }
+        } else {
+          errorMessage = `HTTP ${resendResponse.status}: ${resendResponse.statusText}`;
+        }
         console.error('Resend API error:', {
           status: resendResponse.status,
           statusText: resendResponse.statusText,
-          error: errorData,
+          error: errorMessage,
         });
       } catch (parseError) {
         errorMessage = `HTTP ${resendResponse.status}: ${resendResponse.statusText}`;
@@ -255,7 +275,13 @@ export async function POST(
 
     let emailData;
     try {
-      emailData = await resendResponse.json();
+      const responseText = await resendResponse.text();
+      if (responseText) {
+        emailData = JSON.parse(responseText);
+      } else {
+        // Empty response but status is OK - assume success
+        emailData = { id: 'unknown' };
+      }
     } catch (parseError) {
       console.error('Error parsing successful Resend response:', parseError);
       // Continue anyway - email might have been sent
@@ -296,20 +322,22 @@ export async function POST(
       message: 'Offerte succesvol verzonden',
       emailId: emailData.id,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorObj = error instanceof Error ? error : new Error(String(error));
     console.error('Error sending quote email:', {
       error,
-      message: error?.message,
-      code: error?.code,
-      stack: error?.stack,
+      message: errorObj.message,
+      code: (error as { code?: string })?.code,
+      stack: errorObj.stack,
     });
 
     // Check if table doesn't exist
+    const supabaseError = error as { code?: string; message?: string };
     if (
-      error?.code === '42P01' ||
-      error?.message?.includes('does not exist') ||
-      error?.message?.includes('schema cache') ||
-      error?.message?.includes('lead_quotes')
+      supabaseError.code === '42P01' ||
+      supabaseError.message?.includes('does not exist') ||
+      supabaseError.message?.includes('schema cache') ||
+      supabaseError.message?.includes('lead_quotes')
     ) {
       return NextResponse.json(
         {
@@ -320,7 +348,7 @@ export async function POST(
     }
 
     return NextResponse.json(
-      { error: error?.message || 'Fout bij verzenden offerte' },
+      { error: errorObj.message || 'Fout bij verzenden offerte' },
       { status: 500 }
     );
   }

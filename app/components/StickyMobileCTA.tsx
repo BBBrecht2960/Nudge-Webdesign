@@ -65,12 +65,18 @@ export function StickyMobileCTA() {
       }
     };
 
-    // Initial check
-    checkVisibility();
+    // Initial check (defer to avoid synchronous setState)
+    window.requestAnimationFrame(() => {
+      checkVisibility();
+    });
     
     // Listen to scroll events
     window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('resize', checkVisibility, { passive: true });
+    window.addEventListener('resize', () => {
+      window.requestAnimationFrame(() => {
+        checkVisibility();
+      });
+    }, { passive: true });
     
     return () => {
       window.removeEventListener('scroll', handleScroll);
@@ -102,7 +108,7 @@ export function StickyMobileCTA() {
   const phoneNumber = process.env.NEXT_PUBLIC_BUSINESS_PHONE || '';
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t-2 border-border shadow-[0_-4px_20px_rgba(0,0,0,0.08)] md:hidden w-full min-w-0 max-w-[100vw] overflow-hidden">
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t-2 border-border shadow-[0_-4px_20px_rgba(0,0,0,0.08)] w-full min-w-0 max-w-[100vw] overflow-hidden">
       <div className="flex items-center gap-3 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] min-w-0">
         <Button
           onClick={handleCTAClick}

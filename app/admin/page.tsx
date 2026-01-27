@@ -4,8 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '../components/Button';
 
-const isTestLoginEnabled = process.env.NEXT_PUBLIC_ENABLE_TEST_LOGIN === 'true';
-
 export default function AdminLoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -14,7 +12,6 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isTestLoggingIn, setIsTestLoggingIn] = useState(false);
 
   useEffect(() => {
     fetch('/api/auth/session')
@@ -59,29 +56,6 @@ export default function AdminLoginPage() {
     }
   };
 
-  const handleTestLogin = async () => {
-    setError('');
-    setIsTestLoggingIn(true);
-    try {
-      const response = await fetch('/api/auth/test-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: '{}',
-      });
-      const data = await response.json();
-      if (isDebug) console.log('[Admin Login] test-login', response.status, data);
-      if (!response.ok) {
-        setError(data.error || 'Test-inloggen mislukt');
-        return;
-      }
-      if (isDebug) console.log('[Admin Login] test-login ok -> redirect /admin/dashboard');
-      router.replace('/admin/dashboard');
-    } catch {
-      setError('Er is iets misgegaan. Probeer het opnieuw.');
-    } finally {
-      setIsTestLoggingIn(false);
-    }
-  };
 
   return (
     <main className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-muted via-white to-muted">
@@ -140,23 +114,10 @@ export default function AdminLoginPage() {
           <Button
             type="submit"
             className="w-full py-3 text-base font-semibold"
-            disabled={isLoading || isTestLoggingIn}
+            disabled={isLoading}
           >
             {isLoading ? 'Inloggen...' : 'Inloggen'}
           </Button>
-
-          {isTestLoginEnabled && (
-            <p className="text-center mt-4">
-              <button
-                type="button"
-                onClick={handleTestLogin}
-                disabled={isLoading || isTestLoggingIn}
-                className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
-              >
-                {isTestLoggingIn ? 'Bezig...' : 'Inloggen als test admin'}
-              </button>
-            </p>
-          )}
         </form>
       </div>
     </main>

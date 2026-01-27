@@ -184,21 +184,22 @@ export async function POST(
       attachment: attachmentData,
       message: 'Bestand succesvol geüpload',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const supabaseError = error as { code?: string; message?: string; details?: string; hint?: string };
     console.error('Error uploading file:', {
       error,
-      message: error?.message,
-      code: error?.code,
-      details: error?.details,
-      hint: error?.hint,
+      message: supabaseError.message,
+      code: supabaseError.code,
+      details: supabaseError.details,
+      hint: supabaseError.hint,
     });
 
     // Check for table not found error
     if (
-      error?.code === '42P01' ||
-      error?.message?.includes('does not exist') ||
-      error?.message?.includes('schema cache') ||
-      error?.message?.includes('lead_attachments')
+      supabaseError.code === '42P01' ||
+      supabaseError.message?.includes('does not exist') ||
+      supabaseError.message?.includes('schema cache') ||
+      supabaseError.message?.includes('lead_attachments')
     ) {
       return NextResponse.json(
         {
@@ -209,7 +210,7 @@ export async function POST(
     }
 
     return NextResponse.json(
-      { error: error?.message || 'Fout bij uploaden bestand' },
+      { error: supabaseError.message || 'Fout bij uploaden bestand' },
       { status: 500 }
     );
   }

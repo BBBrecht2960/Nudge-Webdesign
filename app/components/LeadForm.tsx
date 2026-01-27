@@ -78,10 +78,13 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 const painPointOptions = [
-  'Geen tijd of kennis voor marketing',
-  'Verouderde WordPress/Shopify site',
-  'Geen idee hoe SEO/leads te genereren',
-  'Website kost geld maar brengt niets op',
+  'Mijn website trekt geen nieuwe klanten aan',
+  'Ik verlies klanten aan concurrenten met betere websites',
+  'Mijn website is traag, verouderd of werkt niet goed op mobiel',
+  'Ik krijg geen leads of boekingen via mijn website',
+  'Ik heb geen tijd om mijn website te onderhouden of te updaten',
+  'Ik weet niet hoe ik online gevonden kan worden (SEO)',
+  'Mijn website kost geld maar levert niets op',
   'Andere',
 ];
 
@@ -328,11 +331,13 @@ export function LeadForm() {
             className="w-full min-w-0 px-3 sm:px-4 py-3 min-h-[48px] sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-base"
           >
             <option value="">Selecteer...</option>
-            <option value="Mini Website">Mini Website (vanaf €300)</option>
-            <option value="Standard Business">Standard Business (vanaf €500)</option>
-            <option value="Extended KMO">Extended KMO (vanaf €3.000)</option>
-            <option value="Webshop">Webshop (vanaf €2.000)</option>
-            <option value="Webapp">Webapp (vanaf €5.000)</option>
+            <option value="Mini Website">Mini Website (vanaf €399)</option>
+            <option value="Standard Website">Standard Website (vanaf €699)</option>
+            <option value="Extended Website">Extended Website (vanaf €2.499)</option>
+            <option value="Basic Webshop">Basic Webshop (vanaf €1.499)</option>
+            <option value="Pro Webshop">Pro Webshop (vanaf €3.499)</option>
+            <option value="Enterprise Webshop">Enterprise Webshop (vanaf €6.999)</option>
+            <option value="Webapp">Webapp (vanaf €4.999)</option>
             <option value="Andere">Andere / Nog niet zeker</option>
           </select>
         </div>

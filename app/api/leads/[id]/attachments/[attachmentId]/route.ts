@@ -97,14 +97,16 @@ export async function DELETE(
     return NextResponse.json({
       message: 'Bijlage succesvol verwijderd',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorCode = (error as { code?: string })?.code;
     console.error('Error deleting attachment:', {
       error,
-      message: error?.message,
-      code: error?.code,
+      message: errorMessage,
+      code: errorCode,
     });
     return NextResponse.json(
-      { error: error?.message || 'Fout bij verwijderen bijlage' },
+      { error: errorMessage || 'Fout bij verwijderen bijlage' },
       { status: 500 }
     );
   }

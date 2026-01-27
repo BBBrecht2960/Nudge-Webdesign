@@ -29,7 +29,7 @@ export function PackagesPreview() {
   };
 
   return (
-    <section id="packages" className="py-14 sm:py-20 md:py-24 px-5 sm:px-6 lg:px-8 bg-gradient-to-b from-muted to-white relative overflow-hidden w-full min-w-0">
+    <section id="packages" className="snap-start min-h-[70vh] flex items-center py-14 sm:py-20 md:py-24 px-5 sm:px-6 lg:px-8 bg-gradient-to-b from-muted to-white relative overflow-visible w-full min-w-0">
       {/* Decoratieve achtergrond */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -mr-48 -mt-48" />
       
@@ -44,9 +44,9 @@ export function PackagesPreview() {
         </div>
 
         {/* Variatie in card hoogtes met foto's */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6 md:gap-8 mb-8 sm:mb-10 md:mb-12">
-          <div className="bg-white border-2 border-border rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all group min-w-0">
-            <div className="relative h-48 w-full hidden md:block">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6 md:gap-8 mb-8 sm:mb-10 md:mb-12 items-stretch">
+          <div className="bg-white border-2 border-border rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all group min-w-0 flex flex-col">
+            <div className="relative h-40 w-full hidden md:block">
               <Image
                 src="/Design Nudge Webdesign Hasselt.jpg"
                 alt="Mini website – één pagina, helder en simpel"
@@ -59,14 +59,35 @@ export function PackagesPreview() {
                 <FileText className="w-5 h-5 text-white" />
               </div>
             </div>
-            <div className="p-5 sm:p-6 md:p-8 min-w-0">
+            <div className="p-5 sm:p-6 md:p-8 min-w-0 flex flex-col flex-1 overflow-visible">
               <h3 className="text-lg sm:text-xl font-bold mb-2 break-words">Mini Website</h3>
-              <p className="text-xl sm:text-2xl font-bold text-primary mb-4">Vanaf €300</p>
-              <ul className="space-y-2 mb-6 text-sm text-muted-foreground break-words">
-                <li>• 1 pagina met alle essentiële info</li>
-                <li>• Responsive (mobiel & desktop)</li>
-                <li>• Contactformulier</li>
-                <li>• Basis SEO</li>
+              <p className="text-sm text-muted-foreground mb-2 break-words">Onepager – supersnel leverbaar, ideaal voor starters.</p>
+              <p className="text-xl sm:text-2xl font-bold text-primary mb-4">Vanaf €399</p>
+              <ul className="space-y-2 mb-6 text-sm text-muted-foreground break-words flex-1">
+                <li className="flex items-start gap-2">
+                  <span className="text-primary shrink-0">✓</span>
+                  <span>1 pagina met essentiële info</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-primary shrink-0">✓</span>
+                  <span>Responsive (mobiel & desktop)</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-primary shrink-0">✓</span>
+                  <span>Contactformulier</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-primary shrink-0">✓</span>
+                  <span>Basis SEO</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-primary shrink-0">✓</span>
+                  <span>SSL-certificaat</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-primary shrink-0">✓</span>
+                  <span>1 maand gratis onderhoud</span>
+                </li>
               </ul>
               <Button
                 onClick={() => handlePackageClick('Mini Website')}
@@ -78,11 +99,11 @@ export function PackagesPreview() {
             </div>
           </div>
 
-          <div className="bg-white border-2 border-primary rounded-2xl overflow-hidden shadow-2xl hover:shadow-2xl transition-all group relative md:-mt-6 min-w-0 order-first md:order-none">
+          <div className="bg-white border-2 border-primary rounded-2xl overflow-visible shadow-2xl hover:shadow-2xl transition-all group relative md:-mt-6 min-w-0 order-first md:order-none flex flex-col h-full">
             <div className="absolute top-3 right-3 bg-primary text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg z-10">
               Populair
             </div>
-            <div className="relative h-56 w-full hidden md:block">
+            <div className="relative h-40 w-full hidden md:block shrink-0">
               <Image
                 src="/Business foto Nudge Webdesign & Marketing.jpg"
                 alt="Standard business website – professionele uitstraling"
@@ -95,18 +116,42 @@ export function PackagesPreview() {
                 <Building2 className="w-6 h-6 text-white" />
               </div>
             </div>
-            <div className="p-5 sm:p-6 md:p-8 min-w-0">
-              <h3 className="text-lg sm:text-xl font-bold mb-2 break-words">Standard Business</h3>
-              <p className="text-xl sm:text-2xl font-bold text-primary mb-4">Vanaf €500</p>
-              <ul className="space-y-2 mb-6 text-sm text-muted-foreground break-words">
-                <li>• 5-10 pagina's</li>
-                <li>• Responsive design</li>
-                <li>• Contactformulier + Google Maps</li>
-                <li>• SEO-optimalisatie</li>
-                <li>• Blog mogelijkheid</li>
+            <div className="p-5 sm:p-6 md:p-8 min-w-0 flex flex-col flex-1 overflow-visible">
+              <h3 className="text-lg sm:text-xl font-bold mb-2 break-words">Standard Website</h3>
+              <p className="text-sm text-muted-foreground mb-2 break-words">4–6 pagina&apos;s, standaard structuur, veelgevraagd.</p>
+              <p className="text-xl sm:text-2xl font-bold text-primary mb-4">Vanaf €699</p>
+              <ul className="space-y-2 mb-6 text-sm text-muted-foreground break-words flex-1">
+                <li className="flex items-start gap-2">
+                  <span className="text-primary shrink-0">✓</span>
+                  <span>4-6 pagina&apos;s (Home, Over ons, Diensten, Contact)</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-primary shrink-0">✓</span>
+                  <span>Responsive design</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-primary shrink-0">✓</span>
+                  <span>Contactformulier + Google Maps</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-primary shrink-0">✓</span>
+                  <span>SEO-optimalisatie</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-primary shrink-0">✓</span>
+                  <span>Blog mogelijkheid</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-primary shrink-0">✓</span>
+                  <span>Social media integratie</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-primary shrink-0">✓</span>
+                  <span>1 maand gratis onderhoud</span>
+                </li>
               </ul>
               <Button
-                onClick={() => handlePackageClick('Standard Business')}
+                onClick={() => handlePackageClick('Standard Website')}
                 className="w-full"
               >
                 Meer info
@@ -114,8 +159,8 @@ export function PackagesPreview() {
             </div>
           </div>
 
-          <div className="bg-white border-2 border-border rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all group min-w-0">
-            <div className="relative h-48 w-full hidden md:block">
+          <div className="bg-white border-2 border-border rounded-2xl overflow-visible shadow-lg hover:shadow-2xl transition-all group min-w-0 flex flex-col h-full">
+            <div className="relative h-40 w-full hidden md:block shrink-0">
               <Image
                 src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80"
                 alt="Extended KMO – custom website op maat"
@@ -128,18 +173,46 @@ export function PackagesPreview() {
                 <Rocket className="w-5 h-5 text-white" />
               </div>
             </div>
-            <div className="p-5 sm:p-6 md:p-8 min-w-0">
-              <h3 className="text-lg sm:text-xl font-bold mb-2 break-words">Extended KMO</h3>
-              <p className="text-xl sm:text-2xl font-bold text-primary mb-4">Vanaf €3.000</p>
-              <ul className="space-y-2 mb-6 text-sm text-muted-foreground break-words">
-                <li>• Onbeperkt aantal pagina's</li>
-                <li>• Custom design op maat</li>
-                <li>• Geavanceerde SEO</li>
-                <li>• Integraties (CRM, boekingssysteem, AI)</li>
-                <li>• Multi-language optie</li>
+            <div className="p-5 sm:p-6 md:p-8 min-w-0 flex flex-col flex-1 overflow-visible">
+              <h3 className="text-lg sm:text-xl font-bold mb-2 break-words">Extended Website</h3>
+              <p className="text-sm text-muted-foreground mb-2 break-words">Op maat voor KMO&apos;s, multi-language, CRM, blog inbegrepen.</p>
+              <p className="text-xl sm:text-2xl font-bold text-primary mb-4">Vanaf €2.499</p>
+              <ul className="space-y-2 mb-6 text-sm text-muted-foreground break-words flex-1">
+                <li className="flex items-start gap-2">
+                  <span className="text-primary shrink-0">✓</span>
+                  <span>Onbeperkt pagina&apos;s</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-primary shrink-0">✓</span>
+                  <span>Custom design op maat</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-primary shrink-0">✓</span>
+                  <span>Meerdere formulieren</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-primary shrink-0">✓</span>
+                  <span>Geavanceerde SEO</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-primary shrink-0">✓</span>
+                  <span>Blog met categorieën</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-primary shrink-0">✓</span>
+                  <span>Multi-language (NL/FR/EN)</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-primary shrink-0">✓</span>
+                  <span>CRM-integratie</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-primary shrink-0">✓</span>
+                  <span>2 maanden gratis onderhoud</span>
+                </li>
               </ul>
               <Button
-                onClick={() => handlePackageClick('Extended KMO')}
+                onClick={() => handlePackageClick('Extended Website')}
                 className="w-full"
                 variant="outline"
               >
@@ -151,7 +224,7 @@ export function PackagesPreview() {
 
         <div className="bg-muted p-5 sm:p-6 rounded-xl border border-border text-center min-w-0 overflow-hidden">
           <p className="text-sm sm:text-base mb-4 break-words px-1">
-            <strong className="text-foreground">Webshops</strong> vanaf €2.000 • <strong className="text-foreground">Webapps</strong> vanaf €5.000 (intake gesprek)
+            <strong className="text-foreground">Webshops</strong> vanaf €1.499 • <strong className="text-foreground">Webapps</strong> vanaf €4.999 (intake gesprek)
           </p>
           <Button onClick={handleViewAll} variant="outline" size="sm" className="w-full sm:w-auto">
             Vergelijk alle pakketten →

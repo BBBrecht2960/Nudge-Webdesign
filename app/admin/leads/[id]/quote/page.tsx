@@ -21,6 +21,10 @@ import {
   TrendingUp,
   Wrench,
   Download,
+  AlertTriangle,
+  Trash2,
+  Percent,
+  Euro,
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import {
@@ -32,6 +36,10 @@ import {
   type PricingPackage,
   type PricingOption,
 } from '@/lib/pricing';
+import { useOfferBuilder } from '@/lib/hooks/useOfferBuilder';
+import { OfferSummary } from '@/app/components/OfferSummary';
+import { presets, applyPreset } from '@/lib/presets';
+import { exportQuoteAsJSON, downloadQuoteAsJSON } from '@/lib/quoteExport';
 
 export default function QuoteBuilderPage() {
   const params = useParams();
@@ -40,24 +48,34 @@ export default function QuoteBuilderPage() {
 
   const [lead, setLead] = useState<Lead | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedPackage, setSelectedPackage] = useState<PricingPackage | null>(null);
-  const [selectedOptions, setSelectedOptions] = useState<PricingOption[]>([]);
-  const [customPrices, setCustomPrices] = useState<Record<string, number>>({}); // Store custom prices for "op offerte" items
-  const [optionNotes, setOptionNotes] = useState<Record<string, string>>({}); // Store extra notes/info per option
-  const [selectedMaintenance, setSelectedMaintenance] = useState<PricingOption | null>(null);
-  const [extraPages, setExtraPages] = useState(0);
-  const [contentPages, setContentPages] = useState(0);
   const [showReview, setShowReview] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [showCustomLineItemModal, setShowCustomLineItemModal] = useState(false);
+  const [customLineItemName, setCustomLineItemName] = useState('');
+  const [customLineItemPrice, setCustomLineItemPrice] = useState('');
+  
+  // Use the offer builder hook for state management
+  const {
+    state,
+    actions,
+    calculations,
+    isValid,
+  } = useOfferBuilder();
+  
+  // Destructure for easier access (backward compatibility)
+  const selectedPackage = state.selectedPackage;
+  const selectedOptions = state.selectedOptions;
+  const customPrices = state.customPrices;
+  const optionNotes = state.optionNotes;
+  const selectedMaintenance = state.selectedMaintenance;
+  const extraPages = state.extraPages;
+  const contentPages = state.contentPages;
   
   // UI State
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['packages']));
   const [packageCategory, setPackageCategory] = useState<'website' | 'webshop' | 'webapp'>('website');
-  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
-  const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
-  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     if (leadId) {
@@ -65,24 +83,18 @@ export default function QuoteBuilderPage() {
       loadSavedQuote();
     }
     
-    // Cleanup timeout on unmount
-    return () => {
-      if (hoverTimeout) {
-        clearTimeout(hoverTimeout);
-      }
-    };
   }, [leadId]);
 
   // Auto-save quote when selections change (debounced)
   useEffect(() => {
-    if (!selectedPackage || !lead) return;
+    if (!state.selectedPackage || !lead) return;
 
     const saveTimeout = setTimeout(() => {
       saveQuoteDraft();
     }, 2000); // Save 2 seconds after last change
 
     return () => clearTimeout(saveTimeout);
-  }, [selectedPackage, selectedOptions, customPrices, selectedMaintenance, extraPages, contentPages]);
+  }, [state, lead]);
 
   const loadLead = async () => {
     try {
@@ -109,16 +121,19 @@ export default function QuoteBuilderPage() {
         if (quote && quote.quote_data) {
           const data = quote.quote_data;
           
+          // Restore state using hook
+          const restoredState: Partial<typeof state> = {};
+          
           // Restore package
           if (data.selectedPackage) {
             const pkg = packages.find(p => p.id === data.selectedPackage.id);
-            if (pkg) setSelectedPackage(pkg);
+            if (pkg) restoredState.selectedPackage = pkg;
           }
           
           // Restore options - need to find full option objects from pricing config
           if (data.selectedOptions && Array.isArray(data.selectedOptions)) {
             const restoredOptions: PricingOption[] = [];
-            data.selectedOptions.forEach((savedOpt: any) => {
+            data.selectedOptions.forEach((savedOpt: { id: string; name?: string; price?: number }) => {
               // Try to find in all option arrays
               const allOptions = [...scopeOptions, ...complexityOptions, ...growthOptions, ...maintenanceOptions];
               const found = allOptions.find(opt => opt.id === savedOpt.id);
@@ -126,28 +141,30 @@ export default function QuoteBuilderPage() {
                 restoredOptions.push(found);
               }
             });
-            setSelectedOptions(restoredOptions);
+            restoredState.selectedOptions = restoredOptions;
           }
           
           // Restore custom prices
           if (data.customPrices) {
-            setCustomPrices(data.customPrices);
+            restoredState.customPrices = data.customPrices;
           }
           
           // Restore option notes
           if (data.optionNotes) {
-            setOptionNotes(data.optionNotes);
+            restoredState.optionNotes = data.optionNotes;
           }
           
           // Restore maintenance
           if (data.selectedMaintenance) {
             const maint = maintenanceOptions.find(m => m.id === data.selectedMaintenance.id);
-            if (maint) setSelectedMaintenance(maint);
+            if (maint) restoredState.selectedMaintenance = maint;
           }
           
           // Restore counters
-          if (data.extraPages) setExtraPages(data.extraPages);
-          if (data.contentPages) setContentPages(data.contentPages);
+          if (data.extraPages !== undefined) restoredState.extraPages = data.extraPages;
+          if (data.contentPages !== undefined) restoredState.contentPages = data.contentPages;
+          
+          actions.loadState(restoredState);
           
           if (quote.updated_at) {
             setLastSaved(new Date(quote.updated_at));
@@ -161,31 +178,35 @@ export default function QuoteBuilderPage() {
   };
 
   const saveQuoteDraft = async () => {
-    if (!selectedPackage || !lead || isSaving) return;
+    if (!state.selectedPackage || !lead || isSaving) return;
 
     try {
       setIsSaving(true);
       
+      if (!state.selectedPackage) return;
+      
       const quoteData = {
         selectedPackage: {
-          id: selectedPackage.id,
-          name: selectedPackage.name,
-          basePrice: selectedPackage.basePrice,
+          id: state.selectedPackage.id,
+          name: state.selectedPackage.name,
+          basePrice: state.selectedPackage.basePrice,
         },
-        selectedOptions: selectedOptions.map(opt => ({
+        selectedOptions: state.selectedOptions.map(opt => ({
           id: opt.id,
           name: opt.name,
           price: getOptionPrice(opt),
         })),
-        customPrices,
-        optionNotes,
-        selectedMaintenance: selectedMaintenance ? {
-          id: selectedMaintenance.id,
-          name: selectedMaintenance.name,
-          price: selectedMaintenance.price,
+        customPrices: state.customPrices,
+        optionNotes: state.optionNotes,
+        selectedMaintenance: state.selectedMaintenance ? {
+          id: state.selectedMaintenance.id,
+          name: state.selectedMaintenance.name,
+          price: state.selectedMaintenance.price,
         } : null,
-        extraPages,
-        contentPages,
+        extraPages: state.extraPages,
+        contentPages: state.contentPages,
+        customLineItems: state.customLineItems,
+        discount: state.discount,
       };
 
       const response = await fetch(`/api/leads/${leadId}/quote`, {
@@ -220,114 +241,225 @@ export default function QuoteBuilderPage() {
   };
 
   const toggleOption = (option: PricingOption) => {
-    const isSelected = selectedOptions.some((o) => o.id === option.id);
-    if (isSelected) {
-      setSelectedOptions(selectedOptions.filter((o) => o.id !== option.id));
-      // Remove custom price if it exists
-      if (customPrices[option.id]) {
-        const newCustomPrices = { ...customPrices };
-        delete newCustomPrices[option.id];
-        setCustomPrices(newCustomPrices);
-      }
-      // Remove notes if they exist
-      if (optionNotes[option.id]) {
-        const newNotes = { ...optionNotes };
-        delete newNotes[option.id];
-        setOptionNotes(newNotes);
-      }
-    } else {
-      setSelectedOptions([...selectedOptions, option]);
-      // If price is 0, initialize custom price as empty (user will fill it)
-      if (option.price === 0 && !customPrices[option.id]) {
-        setCustomPrices({ ...customPrices, [option.id]: 0 });
-      }
-    }
+    actions.toggleOption(option);
   };
 
   const updateCustomPrice = (optionId: string, price: number) => {
-    setCustomPrices({ ...customPrices, [optionId]: price });
+    actions.setCustomPrice(optionId, price);
   };
-
-  const handleMouseEnter = (itemId: string, event: React.MouseEvent) => {
-    // Clear any existing timeout
-    if (hoverTimeout) {
-      clearTimeout(hoverTimeout);
+  
+  const handleExportJSON = () => {
+    if (!isValid) {
+      alert('Selecteer eerst een basispakket voordat je de offerte exporteert.');
+      return;
     }
-    // Store mouse position
-    setTooltipPosition({ x: event.clientX, y: event.clientY });
-    // Show tooltip after 1.5 seconds
-    const timeout = setTimeout(() => {
-      setHoveredItem(itemId);
-    }, 1500);
-    setHoverTimeout(timeout);
-  };
-
-  const handleMouseMove = (event: React.MouseEvent) => {
-    // Check if mouse is still over the element
-    const target = event.currentTarget as HTMLElement;
-    const rect = target.getBoundingClientRect();
-    const mouseX = event.clientX;
-    const mouseY = event.clientY;
     
-    const isOverElement = (
-      mouseX >= rect.left &&
-      mouseX <= rect.right &&
-      mouseY >= rect.top &&
-      mouseY <= rect.bottom
+    const exportData = exportQuoteAsJSON(
+      state,
+      calculations,
+      lead,
+      undefined // quoteId can be added later if needed
     );
+    
+    downloadQuoteAsJSON(exportData);
+  };
+  
+  const handleApplyPreset = (presetId: string) => {
+    const preset = presets.find(p => p.id === presetId);
+    if (!preset) return;
+    
+    // Apply preset using the hook actions
+    applyPreset(
+      preset,
+      actions.setSelectedPackage,
+      (optionId: string) => {
+        const allOptions = [...scopeOptions, ...complexityOptions, ...growthOptions];
+        const option = allOptions.find(opt => opt.id === optionId);
+        if (option) {
+          actions.toggleOption(option);
+        }
+      }
+    );
+  };
 
-    if (isOverElement) {
-      // Update tooltip position as mouse moves
-      if (hoveredItem) {
-        setTooltipPosition({ x: mouseX, y: mouseY });
-      } else {
-        // Store position for when tooltip appears
-        setTooltipPosition({ x: mouseX, y: mouseY });
-      }
-    } else {
-      // Mouse moved away from element - hide tooltip
-      if (hoverTimeout) {
-        clearTimeout(hoverTimeout);
-        setHoverTimeout(null);
-      }
-      setHoveredItem(null);
-      setTooltipPosition(null);
+  // Helper function to get detailed explanation for options
+  const getDetailedExplanation = (optionId: string) => {
+    switch (optionId) {
+      case 'extra-pages':
+        return {
+          title: 'Extra pagina\'s',
+          description: 'Nieuwe pagina\'s toevoegen aan je website met standaard layout en content plaatsing.',
+          examples: [
+            'Portfolio pagina',
+            'Team pagina',
+            'FAQ pagina',
+            'Cases/Referenties',
+            'Diensten detail pagina\'s',
+          ],
+        };
+      case 'blog-module':
+        return {
+          title: 'Blog module',
+          description: 'Volledige blog functionaliteit voor regelmatig content publiceren.',
+          examples: [
+            'Blog editor met rich text',
+            'Categorieën en tags',
+            'Zoekfunctie',
+            'RSS feed',
+            'Social media sharing',
+          ],
+        };
+      case 'multi-language':
+        return {
+          title: 'Multi-language (NL/FR/EN)',
+          description: 'Website beschikbaar in meerdere talen met taalwisselaar.',
+          examples: [
+            'Nederlandse versie',
+            'Franse versie',
+            'Engelse versie',
+            'Automatische taal detectie',
+            'Vertaalde content',
+          ],
+        };
+      case 'custom-integrations':
+        return {
+          title: 'Custom integraties',
+          description: 'Koppelingen met externe systemen en custom functionaliteiten.',
+          examples: [
+            'CRM koppeling (HubSpot, Salesforce)',
+            'Boekhoudsoftware integratie',
+            'API koppelingen',
+            'Payment providers',
+            'Andere externe systemen',
+          ],
+        };
+      case 'e-commerce':
+        return {
+          title: 'E-commerce functionaliteit',
+          description: 'Volledige webshop functionaliteit voor online verkoop.',
+          examples: [
+            'Winkelwagen en checkout',
+            'Betalingsintegratie (Stripe, Mollie)',
+            'Productbeheer',
+            'Voorraadbeheer',
+            'Orderbeheer en tracking',
+          ],
+        };
+      case 'booking-system':
+        return {
+          title: 'Boekingssysteem',
+          description: 'Online systeem voor afspraken en reserveringen.',
+          examples: [
+            'Kalender met beschikbaarheid',
+            'Online boeking door klanten',
+            'Bevestigingsemails',
+            'Herinneringen',
+            'Annulering en wijziging',
+          ],
+        };
+      case 'crm-integration':
+        return {
+          title: 'CRM-integratie',
+          description: 'Automatische synchronisatie tussen website en CRM systeem.',
+          examples: [
+            'Lead synchronisatie',
+            'Contact gegevens sync',
+            'Formulier data naar CRM',
+            'Automatische follow-ups',
+            'Data analyse in CRM',
+          ],
+        };
+      case 'ai-integrations':
+        return {
+          title: 'AI-integraties',
+          description: 'AI-functionaliteiten voor geavanceerde features.',
+          examples: [
+            'AI chatbot',
+            'Automatische content generatie',
+            'Personalisatie',
+            'Zoekfunctie met AI',
+            'Andere AI features',
+          ],
+        };
+      case 'member-portal':
+        return {
+          title: 'Ledenportaal',
+          description: 'Beveiligde omgeving voor leden met exclusieve content.',
+          examples: [
+            'Gebruikersaccounts en login',
+            'Profiel beheer',
+            'Exclusieve content',
+            'Leden directory',
+            'Community features',
+          ],
+        };
+      case 'custom-apis':
+        return {
+          title: 'Custom API\'s',
+          description: 'API ontwikkeling voor data uitwisseling en integraties.',
+          examples: [
+            'REST API ontwikkeling',
+            'Data uitwisseling',
+            'Mobiele app koppeling',
+            'Externe systemen integratie',
+            'Custom endpoints',
+          ],
+        };
+      case 'seo-package':
+        return {
+          title: 'SEO-pakket (eenmalig)',
+          description: 'Eenmalige SEO-optimalisatie voor betere zoekresultaten.',
+          examples: [
+            'Meta tags optimalisatie',
+            'Sitemap generatie',
+            'Structured data (JSON-LD)',
+            'Technische SEO audit',
+            'Page speed optimalisatie',
+          ],
+        };
+      case 'social-media-setup':
+        return {
+          title: 'Social media setup',
+          description: 'Koppeling en integratie met social media platforms.',
+          examples: [
+            'Facebook integratie',
+            'Instagram koppeling',
+            'LinkedIn integratie',
+            'Automatische content sharing',
+            'Social media widgets',
+          ],
+        };
+      case 'google-ads-setup':
+        return {
+          title: 'Google Ads setup',
+          description: 'Volledige Google Ads configuratie en campagne opzet.',
+          examples: [
+            'Account setup en configuratie',
+            'Keywords onderzoek',
+            'Advertenties maken',
+            'Conversie tracking',
+            'Campagne optimalisatie',
+          ],
+        };
+      case 'analytics-reporting':
+        return {
+          title: 'Analytics & rapportage',
+          description: 'Analytics setup en maandelijkse rapportage van prestaties.',
+          examples: [
+            'Google Analytics configuratie',
+            'Doelen en events instellen',
+            'Conversie tracking',
+            'Maandelijkse rapportage',
+            'Data analyse en advies',
+          ],
+        };
+      default:
+        return null;
     }
   };
 
-  const handleMouseLeave = () => {
-    if (hoverTimeout) {
-      clearTimeout(hoverTimeout);
-      setHoverTimeout(null);
-    }
-    setHoveredItem(null);
-    setTooltipPosition(null);
-  };
-
-  const getTotal = () => {
-    let total = selectedPackage?.basePrice || 0;
-
-    selectedOptions.forEach((option) => {
-      if (option.price > 0) {
-        total += option.price;
-      } else if (option.price === 0 && customPrices[option.id]) {
-        // Use custom price for "op offerte" items
-        total += customPrices[option.id] || 0;
-      }
-    });
-
-    const extraPagesOption = scopeOptions.find((o) => o.id === 'extra-pages');
-    if (extraPagesOption && extraPages > 0) {
-      total += extraPagesOption.price * extraPages;
-    }
-
-    const contentOption = growthOptions.find((o) => o.id === 'content-creation');
-    if (contentOption && contentPages > 0) {
-      total += contentOption.price * contentPages;
-    }
-
-    return total;
-  };
+  // Use calculations from hook instead
+  const getTotal = () => calculations.total;
 
   const getOptionPrice = (option: PricingOption): number => {
     if (option.price > 0) return option.price;
@@ -342,174 +474,359 @@ export default function QuoteBuilderPage() {
 
     try {
       const doc = new jsPDF();
-      const businessName = 'Almost 3000 BV';
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 20;
+      const contentWidth = pageWidth - (margin * 2);
+      const lineHeight = 7;
+      const sectionSpacing = 12;
+      
+      let yPos = margin;
+      const businessName = 'Nudge Webdesign';
       const businessEmail = 'brecht.leap@gmail.com';
       const businessPhone = '+32494299633';
       const businessAddress = 'Herkenrodesingel 19C/4.2, 3500 Hasselt, België';
-      
-      let yPos = 20;
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const margin = 20;
-      const maxWidth = pageWidth - (margin * 2);
 
-      // Header
-      doc.setFillColor(36, 32, 56); // Midnight Violet
-      doc.rect(0, 0, pageWidth, 50, 'F');
+      // Helper function to check if new page is needed
+      const checkNewPage = (requiredSpace: number) => {
+        if (yPos + requiredSpace > pageHeight - 40) {
+          doc.addPage();
+          yPos = margin;
+          return true;
+        }
+        return false;
+      };
+
+      // Helper function to add text with proper wrapping
+      const addText = (text: string, x: number, y: number, maxWidth: number, fontSize: number = 11, fontStyle: 'normal' | 'bold' = 'normal') => {
+        doc.setFontSize(fontSize);
+        doc.setFont('helvetica', fontStyle);
+        const lines = doc.splitTextToSize(text, maxWidth);
+        lines.forEach((line: string) => {
+          if (y > pageHeight - 40) {
+            doc.addPage();
+            return margin;
+          }
+          doc.text(line, x, y);
+          y += lineHeight;
+        });
+        return y;
+      };
+
+      // Header with logo space
+      doc.setFillColor(144, 103, 198); // Primary purple
+      doc.rect(0, 0, pageWidth, 60, 'F');
+      
+      // Logo placeholder (40x40px space at top right)
+      // TODO: Replace this placeholder with actual logo image
+      // To add logo: doc.addImage(logoData, 'PNG', pageWidth - margin - 40, margin, 40, 40)
+      // Logo should be placed at: public/nudge-logo.png (or .jpg)
+      doc.setFillColor(255, 255, 255);
+      doc.rect(pageWidth - margin - 40, margin, 40, 40, 'F');
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.5);
+      doc.rect(pageWidth - margin - 40, margin, 40, 40, 'S');
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text('LOGO', pageWidth - margin - 20, margin + 20, { align: 'center' });
+      
+      // Company name and title
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(24);
+      doc.setFontSize(20);
       doc.setFont('helvetica', 'bold');
-      doc.text(businessName, margin, 30);
+      doc.text(businessName, margin, margin + 15);
       doc.setFontSize(12);
       doc.setFont('helvetica', 'normal');
-      doc.text('Offerte', margin, 40);
+      doc.text('Offerte', margin, margin + 25);
+      
+      // Date
+      const today = new Date();
+      const dateStr = today.toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      doc.setFontSize(10);
+      doc.text(`Datum: ${dateStr}`, pageWidth - margin, margin + 15, { align: 'right' });
 
-      // Reset text color
+      // Reset for content
       doc.setTextColor(0, 0, 0);
-      yPos = 60;
+      yPos = 75;
 
-      // Client info
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Voor:', margin, yPos);
+      // Client information section
+      let clientInfoHeight = 35;
+      let clientInfoLines = 4; // Base: naam, email, phone, company
+      if (lead.company_name) clientInfoLines++;
+      if (lead.vat_number) clientInfoLines++;
+      if (lead.company_address) clientInfoLines++;
+      if (lead.company_postal_code || lead.company_city) clientInfoLines++;
+      if (lead.company_country) clientInfoLines++;
+      if (lead.company_website) clientInfoLines++;
+      clientInfoHeight = Math.max(35, 8 + (clientInfoLines * lineHeight) + 5);
+      
+      doc.setFillColor(240, 240, 240);
+      doc.rect(margin, yPos, contentWidth, clientInfoHeight, 'F');
+      doc.setDrawColor(200, 200, 200);
+      doc.rect(margin, yPos, contentWidth, clientInfoHeight, 'S');
+      
       yPos += 8;
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Klantgegevens', margin + 5, yPos);
+      yPos += 8;
+      
+      doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(11);
-      doc.text(lead.name, margin, yPos);
-      yPos += 6;
+      doc.text(`Naam: ${lead.name}`, margin + 5, yPos);
+      yPos += lineHeight;
+      
       if (lead.company_name) {
-        doc.text(lead.company_name, margin, yPos);
-        yPos += 6;
+        doc.text(`Bedrijf: ${lead.company_name}`, margin + 5, yPos);
+        yPos += lineHeight;
       }
+      
+      if (lead.vat_number) {
+        doc.setFont('helvetica', 'bold');
+        doc.text(`BTW-nummer: ${lead.vat_number}`, margin + 5, yPos);
+        doc.setFont('helvetica', 'normal');
+        yPos += lineHeight;
+      }
+      
+      if (lead.company_address) {
+        doc.text(`Adres: ${lead.company_address}`, margin + 5, yPos);
+        yPos += lineHeight;
+      }
+      
+      if (lead.company_postal_code || lead.company_city) {
+        const postalCity = [lead.company_postal_code, lead.company_city].filter(Boolean).join(' ');
+        doc.text(`Postcode & Stad: ${postalCity}`, margin + 5, yPos);
+        yPos += lineHeight;
+      }
+      
+      if (lead.company_country) {
+        doc.text(`Land: ${lead.company_country}`, margin + 5, yPos);
+        yPos += lineHeight;
+      }
+      
       if (lead.email) {
-        doc.text(lead.email, margin, yPos);
-        yPos += 6;
+        doc.text(`E-mail: ${lead.email}`, margin + 5, yPos);
+        yPos += lineHeight;
       }
+      
       if (lead.phone) {
-        doc.text(lead.phone, margin, yPos);
-        yPos += 6;
+        doc.text(`Telefoon: ${lead.phone}`, margin + 5, yPos);
+        yPos += lineHeight;
+      }
+      
+      if (lead.company_website) {
+        doc.text(`Website: ${lead.company_website}`, margin + 5, yPos);
+        yPos += lineHeight;
       }
 
-      yPos += 10;
+      yPos += sectionSpacing;
 
-      // Quote details
+      // Quote items table header
+      checkNewPage(30);
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text('Offerte Details', margin, yPos);
+      doc.text('Geselecteerde Items', margin, yPos);
       yPos += 10;
 
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(11);
-
-      // Package
+      // Table header
+      doc.setFillColor(230, 230, 230);
+      doc.rect(margin, yPos, contentWidth, 8, 'F');
+      doc.setDrawColor(200, 200, 200);
+      doc.rect(margin, yPos, contentWidth, 8, 'S');
+      
+      doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
-      doc.text('Basis Pakket:', margin, yPos);
-      doc.setFont('helvetica', 'normal');
-      const packageText = `${selectedPackage.name} - €${selectedPackage.basePrice.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-      doc.text(packageText, margin + 50, yPos);
-      yPos += 8;
+      doc.text('Omschrijving', margin + 3, yPos + 6);
+      doc.text('Bedrag', pageWidth - margin - 3, yPos + 6, { align: 'right' });
+      yPos += 10;
 
-      // Options
-      if (selectedOptions.length > 0) {
-        doc.setFont('helvetica', 'bold');
-        doc.text('Extra Opties:', margin, yPos);
-        yPos += 6;
-        doc.setFont('helvetica', 'normal');
-        selectedOptions.forEach((option) => {
-          const price = getOptionPrice(option);
-          if (price > 0) {
-            const optionText = `• ${option.name} - €${price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            const lines = doc.splitTextToSize(optionText, maxWidth - 50);
-            lines.forEach((line: string) => {
-              if (yPos > 250) {
-                doc.addPage();
-                yPos = 20;
-              }
-              doc.text(line, margin + 10, yPos);
-              yPos += 6;
-            });
-            
-            // Add note if exists
-            if (optionNotes[option.id]) {
-              doc.setFontSize(9);
-              doc.setTextColor(100, 100, 100);
-              const noteText = `  ℹ️ ${optionNotes[option.id]}`;
-              const noteLines = doc.splitTextToSize(noteText, maxWidth - 60);
-              noteLines.forEach((line: string) => {
-                if (yPos > 250) {
-                  doc.addPage();
-                  yPos = 20;
-                }
-                doc.text(line, margin + 20, yPos);
-                yPos += 5;
-              });
-              doc.setFontSize(11);
-              doc.setTextColor(0, 0, 0);
-              yPos += 2;
-            }
+      // Package row
+      checkNewPage(10);
+      doc.setDrawColor(220, 220, 220);
+      doc.rect(margin, yPos - 2, contentWidth, 8, 'S');
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      const packageName = doc.splitTextToSize(selectedPackage.name, contentWidth - 60);
+      doc.text(packageName[0], margin + 3, yPos + 5);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`€${selectedPackage.basePrice.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 3, yPos + 5, { align: 'right' });
+      yPos += 10;
+
+      // Options rows
+      selectedOptions.forEach((option) => {
+        const price = getOptionPrice(option);
+        if (price > 0) {
+          checkNewPage(15);
+          doc.setDrawColor(220, 220, 220);
+          doc.rect(margin, yPos - 2, contentWidth, 8, 'S');
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(10);
+          
+          let optionText = option.name;
+          if (optionNotes[option.id]) {
+            optionText += ` (${optionNotes[option.id]})`;
           }
-        });
-        yPos += 4;
-      }
+          
+          const optionLines = doc.splitTextToSize(optionText, contentWidth - 60);
+          doc.text(optionLines[0], margin + 3, yPos + 5);
+          doc.setFont('helvetica', 'bold');
+          doc.text(`€${price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 3, yPos + 5, { align: 'right' });
+          
+          // If option text wraps, add extra lines
+          if (optionLines.length > 1) {
+            for (let i = 1; i < optionLines.length; i++) {
+              yPos += 6;
+              checkNewPage(10);
+              doc.setFont('helvetica', 'normal');
+              doc.text(optionLines[i], margin + 3, yPos + 5);
+            }
+            yPos += 2;
+          }
+          
+          yPos += 10;
+        }
+      });
 
       // Extra pages
       if (extraPages > 0) {
+        checkNewPage(10);
         const extraPagesPrice = scopeOptions.find((o) => o.id === 'extra-pages')!.price * extraPages;
-        doc.text(`Extra pagina's (${extraPages}x) - €${extraPagesPrice.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, margin, yPos);
-        yPos += 6;
+        doc.setDrawColor(220, 220, 220);
+        doc.rect(margin, yPos - 2, contentWidth, 8, 'S');
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.text(`Extra pagina's (${extraPages}x)`, margin + 3, yPos + 5);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`€${extraPagesPrice.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 3, yPos + 5, { align: 'right' });
+        yPos += 10;
       }
 
       // Content pages
       if (contentPages > 0) {
+        checkNewPage(10);
         const contentPrice = growthOptions.find((o) => o.id === 'content-creation')!.price * contentPages;
-        doc.text(`Content creatie (${contentPages}x) - €${contentPrice.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, margin, yPos);
-        yPos += 6;
-      }
-
-      // Maintenance
-      if (selectedMaintenance) {
-        yPos += 4;
+        doc.setDrawColor(220, 220, 220);
+        doc.rect(margin, yPos - 2, contentWidth, 8, 'S');
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.text(`Content creatie (${contentPages}x pagina's)`, margin + 3, yPos + 5);
         doc.setFont('helvetica', 'bold');
-        doc.text('Onderhoud:', margin, yPos);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`€${selectedMaintenance.price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} per maand`, margin + 50, yPos);
-        yPos += 8;
-      }
-
-      // Total
-      yPos += 6;
-      doc.setDrawColor(144, 103, 198); // Lavender Purple
-      doc.setLineWidth(0.5);
-      doc.line(margin, yPos, pageWidth - margin, yPos);
-      yPos += 8;
-
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      const totalText = `Totaal (eenmalig): €${getTotal().toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-      doc.text(totalText, margin, yPos);
-      yPos += 10;
-
-      if (selectedMaintenance) {
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Onderhoud: €${selectedMaintenance.price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} per maand`, margin, yPos);
+        doc.text(`€${contentPrice.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 3, yPos + 5, { align: 'right' });
         yPos += 10;
       }
 
-      // Footer
-      yPos = doc.internal.pageSize.getHeight() - 60;
+      // Custom line items
+      if (state.customLineItems.length > 0) {
+        state.customLineItems.forEach((item) => {
+          checkNewPage(10);
+          doc.setDrawColor(220, 220, 220);
+          doc.rect(margin, yPos - 2, contentWidth, 8, 'S');
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(10);
+          const itemLines = doc.splitTextToSize(item.name, contentWidth - 60);
+          doc.text(itemLines[0], margin + 3, yPos + 5);
+          doc.setFont('helvetica', 'bold');
+          doc.text(`€${item.price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 3, yPos + 5, { align: 'right' });
+          if (itemLines.length > 1) {
+            for (let i = 1; i < itemLines.length; i++) {
+              yPos += 6;
+              checkNewPage(10);
+              doc.setFont('helvetica', 'normal');
+              doc.text(itemLines[i], margin + 3, yPos + 5);
+            }
+            yPos += 2;
+          }
+          yPos += 10;
+        });
+      }
+
+      // Discount
+      if (state.discount.type && state.discount.value) {
+        checkNewPage(10);
+        doc.setDrawColor(200, 200, 200);
+        doc.rect(margin, yPos - 2, contentWidth, 8, 'S');
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        const discountText = state.discount.type === 'percentage' 
+          ? `Korting (${state.discount.value}%)`
+          : `Korting (€${state.discount.value.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
+        doc.text(discountText, margin + 3, yPos + 5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(200, 0, 0);
+        doc.text(`-€${calculations.discountAmount.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 3, yPos + 5, { align: 'right' });
+        doc.setTextColor(0, 0, 0);
+        yPos += 10;
+      }
+
+      yPos += 5;
+
+      // Totals section
+      checkNewPage(40);
+      doc.setDrawColor(144, 103, 198);
+      doc.setLineWidth(1);
+      doc.line(margin, yPos, pageWidth - margin, yPos);
+      yPos += 8;
+
+      // Subtotal
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Subtotaal (excl. BTW)', margin, yPos);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`€${calculations.subtotal.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin, yPos, { align: 'right' });
+      yPos += 8;
+
+      // VAT
+      doc.setFont('helvetica', 'normal');
+      doc.text('BTW (21%)', margin, yPos);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`€${calculations.vat.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin, yPos, { align: 'right' });
+      yPos += 10;
+
+      // Total
+      doc.setDrawColor(144, 103, 198);
+      doc.setLineWidth(1.5);
+      doc.line(margin, yPos, pageWidth - margin, yPos);
+      yPos += 8;
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Totaal (incl. BTW)', margin, yPos);
+      doc.text(`€${calculations.total.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin, yPos, { align: 'right' });
+      yPos += 12;
+
+      // Maintenance if selected
+      if (selectedMaintenance) {
+        checkNewPage(15);
+        doc.setFillColor(245, 245, 255);
+        doc.rect(margin, yPos, contentWidth, 12, 'F');
+        doc.setDrawColor(200, 200, 200);
+        doc.rect(margin, yPos, contentWidth, 12, 'S');
+        yPos += 8;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Onderhoud (per maand)', margin + 3, yPos);
+        doc.text(`€${selectedMaintenance.price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 3, yPos, { align: 'right' });
+        yPos += 12;
+      }
+
+      // Footer on last page
+      const footerY = pageHeight - 50;
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.5);
+      doc.line(margin, footerY, pageWidth - margin, footerY);
+      
       doc.setFontSize(9);
       doc.setTextColor(100, 100, 100);
-      doc.text('Contactgegevens:', margin, yPos);
-      yPos += 5;
-      doc.text(`E-mail: ${businessEmail}`, margin, yPos);
-      yPos += 5;
-      doc.text(`Telefoon: ${businessPhone}`, margin, yPos);
-      yPos += 5;
-      doc.text(businessAddress, margin, yPos);
-      yPos += 8;
+      doc.setFont('helvetica', 'normal');
+      doc.text('Contactgegevens', margin, footerY + 8);
       doc.setFontSize(8);
+      doc.text(businessEmail, margin, footerY + 14);
+      doc.text(businessPhone, margin, footerY + 20);
+      doc.text(businessAddress, margin, footerY + 26);
+      
+      doc.setFontSize(7);
       doc.setTextColor(150, 150, 150);
-      doc.text('Dit is een automatisch gegenereerde offerte. Voor vragen, neem contact op via bovenstaande gegevens.', margin, yPos, { maxWidth: maxWidth });
+      const footerText = 'Dit is een automatisch gegenereerde offerte. Voor vragen, neem contact op via bovenstaande gegevens.';
+      doc.text(footerText, margin, footerY + 34, { maxWidth: contentWidth });
 
       // Generate filename
       const fileName = `Offerte_${lead.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
@@ -590,28 +907,52 @@ export default function QuoteBuilderPage() {
       if (!sendResponse.ok) {
         let errorMessage = 'Fout bij verzenden offerte';
         try {
-          const errorData = await sendResponse.json();
-          errorMessage = errorData.error || errorMessage;
+          const responseText = await sendResponse.text();
+          if (responseText) {
+            try {
+              const errorData = JSON.parse(responseText);
+              errorMessage = errorData.error || errorMessage;
+            } catch {
+              errorMessage = responseText || `HTTP ${sendResponse.status}: ${sendResponse.statusText}`;
+            }
+          } else {
+            errorMessage = `HTTP ${sendResponse.status}: ${sendResponse.statusText}`;
+          }
         } catch (parseError) {
           errorMessage = `HTTP ${sendResponse.status}: ${sendResponse.statusText}`;
         }
         throw new Error(errorMessage);
       }
 
-      const result = await sendResponse.json();
+      // Parse response safely
+      let result;
+      try {
+        const responseText = await sendResponse.text();
+        if (responseText) {
+          result = JSON.parse(responseText);
+        } else {
+          // Empty response but status is OK - assume success
+          result = { success: true, message: 'Offerte verzonden' };
+        }
+      } catch (parseError) {
+        // If parsing fails but status is OK, assume success
+        console.warn('Could not parse response, but status is OK:', parseError);
+        result = { success: true, message: 'Offerte verzonden' };
+      }
       
       setLastSaved(new Date());
       setShowReview(false);
       alert('Offerte succesvol verzonden via e-mail!');
       router.push(`/admin/leads/${leadId}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Onbekende fout';
       console.error('Error sending quote:', {
         error,
-        message: error?.message,
+        message: errorMessage,
         leadId,
         leadEmail: lead?.email,
       });
-      alert(`Fout bij verzenden offerte: ${error?.message || 'Onbekende fout'}`);
+      alert(`Fout bij verzenden offerte: ${errorMessage}`);
     } finally {
       setIsSending(false);
     }
@@ -688,9 +1029,10 @@ export default function QuoteBuilderPage() {
       
       // Optionally redirect back to lead detail
       // router.push(`/admin/leads/${leadId}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Onbekende fout';
       console.error('Error saving quote:', error);
-      alert(`Fout bij opslaan offerte: ${error.message || 'Onbekende fout'}`);
+      alert(`Fout bij opslaan offerte: ${errorMessage}`);
     } finally {
       setIsSaving(false);
     }
@@ -738,324 +1080,6 @@ export default function QuoteBuilderPage() {
 
   return (
     <>
-      {/* Tooltips - rendered outside of sections to prevent layout shifts */}
-      {hoveredItem && tooltipPosition && (
-        <div
-          className="fixed z-[9999] w-80 max-w-[calc(100vw-2rem)] bg-card border-2 border-primary shadow-2xl rounded-lg p-4 pointer-events-none"
-          style={{
-            left: `${Math.min(tooltipPosition.x + 15, typeof window !== 'undefined' ? window.innerWidth - 340 : 0)}px`,
-            top: `${Math.min(tooltipPosition.y + 15, typeof window !== 'undefined' ? window.innerHeight - 200 : 0)}px`,
-          }}
-        >
-          {hoveredItem.startsWith('package-') && (() => {
-            const pkg = filteredPackages.find(p => hoveredItem === `package-${p.id}`);
-            if (!pkg) return null;
-            return (
-              <>
-                <h4 className="font-bold text-lg mb-2">{pkg.name}</h4>
-                <p className="text-sm text-muted-foreground mb-3">{pkg.description}</p>
-                <div className="space-y-1">
-                  <div className="text-xs font-semibold text-muted-foreground mb-2">Inbegrepen:</div>
-                  {pkg.features.map((feature, idx) => (
-                    <div key={idx} className="text-sm flex items-start gap-2">
-                      <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                      <span>{feature}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            );
-          })()}
-          
-          {hoveredItem.startsWith('option-') && (() => {
-            const allOptions = [...scopeOptions, ...complexityOptions, ...growthOptions];
-            const option = allOptions.find(o => hoveredItem === `option-${o.id}`);
-            if (!option) return null;
-            
-            // Get detailed explanation based on option type
-            const getDetailedExplanation = () => {
-              switch (option.id) {
-                case 'extra-pages':
-                  return {
-                    title: 'Extra pagina\'s',
-                    description: 'Nieuwe pagina\'s toevoegen aan je website met standaard layout en content plaatsing.',
-                    examples: [
-                      'Portfolio pagina',
-                      'Team pagina',
-                      'FAQ pagina',
-                      'Cases/Referenties',
-                      'Diensten detail pagina\'s',
-                    ],
-                  };
-                case 'blog-module':
-                  return {
-                    title: 'Blog module',
-                    description: 'Volledige blog functionaliteit voor regelmatig content publiceren.',
-                    examples: [
-                      'Blog editor met rich text',
-                      'Categorieën en tags',
-                      'Zoekfunctie',
-                      'RSS feed',
-                      'Social media sharing',
-                    ],
-                  };
-                case 'multi-language':
-                  return {
-                    title: 'Multi-language (NL/FR/EN)',
-                    description: 'Website beschikbaar in meerdere talen met taalwisselaar.',
-                    examples: [
-                      'Nederlandse versie',
-                      'Franse versie',
-                      'Engelse versie',
-                      'Automatische taal detectie',
-                      'Vertaalde content',
-                    ],
-                  };
-                case 'custom-integrations':
-                  return {
-                    title: 'Custom integraties',
-                    description: 'Koppelingen met externe systemen en custom functionaliteiten.',
-                    examples: [
-                      'CRM koppeling (HubSpot, Salesforce)',
-                      'Boekhoudsoftware integratie',
-                      'API koppelingen',
-                      'Payment providers',
-                      'Andere externe systemen',
-                    ],
-                  };
-                case 'e-commerce':
-                  return {
-                    title: 'E-commerce functionaliteit',
-                    description: 'Volledige webshop functionaliteit voor online verkoop.',
-                    examples: [
-                      'Winkelwagen en checkout',
-                      'Betalingsintegratie (Stripe, Mollie)',
-                      'Productbeheer',
-                      'Voorraadbeheer',
-                      'Orderbeheer en tracking',
-                    ],
-                  };
-                case 'booking-system':
-                  return {
-                    title: 'Boekingssysteem',
-                    description: 'Online systeem voor afspraken en reserveringen.',
-                    examples: [
-                      'Kalender met beschikbaarheid',
-                      'Online boeking door klanten',
-                      'Bevestigingsemails',
-                      'Herinneringen',
-                      'Annulering en wijziging',
-                    ],
-                  };
-                case 'crm-integration':
-                  return {
-                    title: 'CRM-integratie',
-                    description: 'Automatische synchronisatie tussen website en CRM systeem.',
-                    examples: [
-                      'Lead synchronisatie',
-                      'Contact gegevens sync',
-                      'Formulier data naar CRM',
-                      'Automatische follow-ups',
-                      'Data analyse in CRM',
-                    ],
-                  };
-                case 'ai-integrations':
-                  return {
-                    title: 'AI-integraties',
-                    description: 'AI-functionaliteiten voor geavanceerde features.',
-                    examples: [
-                      'AI chatbot',
-                      'Automatische content generatie',
-                      'Personalisatie',
-                      'Zoekfunctie met AI',
-                      'Andere AI features',
-                    ],
-                  };
-                case 'member-portal':
-                  return {
-                    title: 'Ledenportaal',
-                    description: 'Beveiligde omgeving voor leden met exclusieve content.',
-                    examples: [
-                      'Gebruikersaccounts en login',
-                      'Profiel beheer',
-                      'Exclusieve content',
-                      'Leden directory',
-                      'Community features',
-                    ],
-                  };
-                case 'custom-apis':
-                  return {
-                    title: 'Custom API\'s',
-                    description: 'API ontwikkeling voor data uitwisseling en integraties.',
-                    examples: [
-                      'REST API ontwikkeling',
-                      'Data uitwisseling',
-                      'Mobiele app koppeling',
-                      'Externe systemen integratie',
-                      'Custom endpoints',
-                    ],
-                  };
-                case 'seo-package':
-                  return {
-                    title: 'SEO-pakket (eenmalig)',
-                    description: 'Eenmalige SEO-optimalisatie voor betere zoekresultaten.',
-                    examples: [
-                      'Meta tags optimalisatie',
-                      'Sitemap generatie',
-                      'Structured data (JSON-LD)',
-                      'Technische SEO audit',
-                      'Page speed optimalisatie',
-                    ],
-                  };
-                case 'social-media-setup':
-                  return {
-                    title: 'Social media setup',
-                    description: 'Koppeling en integratie met social media platforms.',
-                    examples: [
-                      'Facebook integratie',
-                      'Instagram koppeling',
-                      'LinkedIn integratie',
-                      'Automatische content sharing',
-                      'Social media widgets',
-                    ],
-                  };
-                case 'google-ads-setup':
-                  return {
-                    title: 'Google Ads setup',
-                    description: 'Volledige Google Ads configuratie en campagne opzet.',
-                    examples: [
-                      'Account setup en configuratie',
-                      'Keywords onderzoek',
-                      'Advertenties maken',
-                      'Conversie tracking',
-                      'Campagne optimalisatie',
-                    ],
-                  };
-                case 'analytics-reporting':
-                  return {
-                    title: 'Analytics & rapportage',
-                    description: 'Analytics setup en maandelijkse rapportage van prestaties.',
-                    examples: [
-                      'Google Analytics configuratie',
-                      'Doelen en events instellen',
-                      'Conversie tracking',
-                      'Maandelijkse rapportage',
-                      'Data analyse en advies',
-                    ],
-                  };
-                default:
-                  return null;
-              }
-            };
-            
-            const detailed = getDetailedExplanation();
-            
-            return (
-              <>
-                <h4 className="font-bold text-lg mb-2">{option.name}</h4>
-                {detailed ? (
-                  <>
-                    <p className="text-sm text-muted-foreground mb-3">{detailed.description}</p>
-                    {detailed.examples && detailed.examples.length > 0 && (
-                      <div className="space-y-1">
-                        <div className="text-xs font-semibold text-muted-foreground mb-2">Inbegrepen:</div>
-                        {detailed.examples.map((example, idx) => (
-                          <div key={idx} className="text-sm flex items-start gap-2">
-                            <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                            <span>{example}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  option.description && (
-                    <p className="text-sm text-muted-foreground">{option.description}</p>
-                  )
-                )}
-              </>
-            );
-          })()}
-          
-          {hoveredItem.startsWith('maintenance-') && (() => {
-            const option = maintenanceOptions.find(o => hoveredItem === `maintenance-${o.id}`);
-            if (!option) return null;
-            
-            const getMaintenanceDetails = () => {
-              switch (option.id) {
-                case 'maintenance-starter':
-                  return {
-                    description: 'Basis onderhoudspakket voor kleine websites.',
-                    features: [
-                      'Maandelijkse updates (plugins, themes, core)',
-                      'Automatische dagelijkse backups',
-                      'SSL certificaat beheer',
-                      'Basis firewall beveiliging',
-                      'Email support (binnen 48u)',
-                    ],
-                  };
-                case 'maintenance-business':
-                  return {
-                    description: 'Professioneel onderhoudspakket voor KMO websites.',
-                    features: [
-                      'Wekelijkse updates',
-                      'Real-time backups (bij elke wijziging)',
-                      'Geavanceerde beveiliging',
-                      'Prioriteit support (binnen 24u)',
-                      'Uptime monitoring',
-                      'Performance optimalisatie',
-                    ],
-                  };
-                case 'maintenance-growth':
-                  return {
-                    description: 'Premium onderhoudspakket voor groeiende bedrijven.',
-                    features: [
-                      'Dagelijkse updates',
-                      'Onbeperkte backups',
-                      'Premium beveiliging (malware scanning)',
-                      'Telefonische support (binnen 4u)',
-                      'Performance optimalisatie',
-                      'Maandelijkse rapportage',
-                      'Proactieve monitoring',
-                    ],
-                  };
-                default:
-                  return null;
-              }
-            };
-            
-            const details = getMaintenanceDetails();
-            
-            return (
-              <>
-                <h4 className="font-bold text-lg mb-2">{option.name}</h4>
-                {details ? (
-                  <>
-                    <p className="text-sm text-muted-foreground mb-3">{details.description}</p>
-                    {details.features && details.features.length > 0 && (
-                      <div className="space-y-1">
-                        <div className="text-xs font-semibold text-muted-foreground mb-2">Inbegrepen:</div>
-                        {details.features.map((feature, idx) => (
-                          <div key={idx} className="text-sm flex items-start gap-2">
-                            <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                            <span>{feature}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  option.description && (
-                    <p className="text-sm text-muted-foreground">{option.description}</p>
-                  )
-                )}
-              </>
-            );
-          })()}
-          
-        </div>
-      )}
-      
       <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto relative">
       <Button
         onClick={() => router.push(`/admin/leads/${leadId}`)}
@@ -1146,13 +1170,10 @@ export default function QuoteBuilderPage() {
                     <div
                       key={pkg.id}
                       className="relative"
-                      onMouseEnter={(e) => handleMouseEnter(`package-${pkg.id}`, e)}
-                      onMouseMove={handleMouseMove}
-                      onMouseLeave={handleMouseLeave}
                     >
                       <button
                         onClick={() => {
-                          setSelectedPackage(pkg);
+                          actions.setSelectedPackage(pkg);
                           setExpandedSections(new Set(['packages', 'options']));
                         }}
                         className={`w-full h-full min-h-[214px] p-5 border-2 rounded-lg text-left transition-all flex flex-col ${
@@ -1168,7 +1189,7 @@ export default function QuoteBuilderPage() {
                               €{pkg.basePrice.toLocaleString('nl-BE')}
                             </p>
                           </div>
-                          {selectedPackage?.id === pkg.id && (
+                          {state.selectedPackage?.id === pkg.id && (
                             <Check className="w-6 h-6 text-primary shrink-0" />
                           )}
                         </div>
@@ -1197,7 +1218,7 @@ export default function QuoteBuilderPage() {
                   <div className="flex items-center gap-3">
                     <Settings className="w-5 h-5 text-primary" />
                     <h2 className="text-xl font-bold">Scope Uitbreidingen</h2>
-                    {selectedOptions.filter((o) => o.category === 'scope').length > 0 && (
+                      {state.selectedOptions.filter((o) => o.category === 'scope').length > 0 && (
                       <span className="text-sm bg-primary/10 text-primary px-2 py-1 rounded">
                         {selectedOptions.filter((o) => o.category === 'scope').length} geselecteerd
                       </span>
@@ -1215,44 +1236,42 @@ export default function QuoteBuilderPage() {
                     {/* Extra Pages Counter */}
                     <div className="flex items-center justify-between p-4 border-2 border-border rounded-lg bg-muted/30">
                       <div>
-                        <div className="font-semibold mb-1">Extra pagina's</div>
+                        <div className="font-semibold mb-1">Extra pagina&apos;s</div>
                         <div className="text-sm text-muted-foreground">€100 per pagina</div>
                       </div>
                       <div className="flex items-center gap-3">
                         <button
-                          onClick={() => setExtraPages(Math.max(0, extraPages - 1))}
+                          onClick={() => actions.setExtraPages(state.extraPages - 1)}
                           disabled={extraPages === 0}
                           className="w-10 h-10 rounded-lg border-2 border-border hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                         >
                           <Minus className="w-4 h-4" />
                         </button>
-                        <span className="w-16 text-center font-bold text-lg">{extraPages}</span>
+                        <span className="w-16 text-center font-bold text-lg">{state.extraPages}</span>
                         <button
-                          onClick={() => setExtraPages(extraPages + 1)}
+                          onClick={() => actions.setExtraPages(state.extraPages + 1)}
                           className="w-10 h-10 rounded-lg border-2 border-primary bg-primary text-white hover:bg-primary/90 flex items-center justify-center"
                         >
                           <Plus className="w-4 h-4" />
                         </button>
-                        {extraPages > 0 && (
+                        {state.extraPages > 0 && (
                           <span className="ml-2 font-semibold text-primary">
-                            €{(extraPages * 100).toLocaleString('nl-BE')}
+                            €{(state.extraPages * 100).toLocaleString('nl-BE')}
                           </span>
                         )}
                       </div>
                     </div>
 
                     {scopeOptions.filter((o) => o.id !== 'extra-pages').map((option) => {
-                      const isSelected = selectedOptions.some((o) => o.id === option.id);
+                      const isSelected = state.selectedOptions.some((o) => o.id === option.id);
                       return (
                         <div
                           key={option.id}
                           className="relative"
-                          onMouseEnter={(e) => handleMouseEnter(`option-${option.id}`, e)}
-                          onMouseMove={handleMouseMove}
-                          onMouseLeave={handleMouseLeave}
                         >
                           <div
-                            className={`w-full p-4 border-2 rounded-lg transition-all ${
+                            onClick={() => toggleOption(option)}
+                            className={`w-full p-4 border-2 rounded-lg transition-all cursor-pointer hover:border-primary/50 ${
                               isSelected
                                 ? 'border-primary bg-primary/5'
                                 : 'border-border'
@@ -1275,7 +1294,7 @@ export default function QuoteBuilderPage() {
                                     <span className="text-xs text-muted-foreground">€</span>
                                     <input
                                       type="number"
-                                      value={customPrices[option.id] || ''}
+                                      value={state.customPrices[option.id] || ''}
                                       onChange={(e) => updateCustomPrice(option.id, parseFloat(e.target.value) || 0)}
                                       onClick={(e) => e.stopPropagation()}
                                       placeholder="0"
@@ -1288,8 +1307,11 @@ export default function QuoteBuilderPage() {
                                   <span className="text-sm text-muted-foreground italic">Op offerte</span>
                                 )}
                                 <button
-                                  onClick={() => toggleOption(option)}
-                                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleOption(option);
+                                  }}
+                                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 ${
                                     isSelected
                                       ? 'bg-primary border-primary text-white'
                                       : 'border-border hover:border-primary'
@@ -1300,23 +1322,48 @@ export default function QuoteBuilderPage() {
                               </div>
                             </div>
                             {isSelected && (
-                              <div className="mt-3 pt-3 border-t border-border">
-                                <label className="block text-xs font-medium text-muted-foreground mb-1">
-                                  Extra info / Toelichting
-                                </label>
-                                <textarea
-                                  value={optionNotes[option.id] || ''}
-                                  onChange={(e) => {
-                                    setOptionNotes(prev => ({
-                                      ...prev,
-                                      [option.id]: e.target.value
-                                    }));
-                                  }}
-                                  onClick={(e) => e.stopPropagation()}
-                                  placeholder="Voeg extra informatie toe over deze optie (bijv. specifieke wensen, details, etc.)"
-                                  rows={2}
-                                  className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-                                />
+                              <div className="mt-3 pt-3 border-t border-border space-y-3">
+                                {/* Detailed Information */}
+                                {(() => {
+                                  const detailed = getDetailedExplanation(option.id);
+                                  if (detailed) {
+                                    return (
+                                      <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-2">
+                                        <p className="text-sm text-foreground font-medium">{detailed.description}</p>
+                                        {detailed.examples && detailed.examples.length > 0 && (
+                                          <div className="space-y-1">
+                                            <div className="text-xs font-semibold text-muted-foreground">Inbegrepen:</div>
+                                            {detailed.examples.map((example, idx) => (
+                                              <div key={idx} className="text-sm flex items-start gap-2">
+                                                <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                                                <span>{example}</span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })()}
+                                
+                                {/* Extra info textarea */}
+                                <div>
+                                  <label className="block text-xs font-medium text-muted-foreground mb-1">
+                                    Extra info / Toelichting
+                                  </label>
+                                  <textarea
+                                    value={state.optionNotes[option.id] || ''}
+                                    onChange={(e) => {
+                                      actions.setOptionNote(option.id, e.target.value);
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onFocus={(e) => e.stopPropagation()}
+                                    placeholder="Voeg extra informatie toe over deze optie (bijv. specifieke wensen, details, etc.)"
+                                    rows={2}
+                                    className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                                  />
+                                </div>
                               </div>
                             )}
                           </div>
@@ -1337,7 +1384,7 @@ export default function QuoteBuilderPage() {
                   <div className="flex items-center gap-3">
                     <Rocket className="w-5 h-5 text-primary" />
                     <h2 className="text-xl font-bold">Complexiteit</h2>
-                    {selectedOptions.filter((o) => o.category === 'complexity').length > 0 && (
+                    {state.selectedOptions.filter((o) => o.category === 'complexity').length > 0 && (
                       <span className="text-sm bg-primary/10 text-primary px-2 py-1 rounded">
                         {selectedOptions.filter((o) => o.category === 'complexity').length} geselecteerd
                       </span>
@@ -1353,17 +1400,15 @@ export default function QuoteBuilderPage() {
                 {expandedSections.has('complexity') && (
                   <div className="px-6 pb-6 space-y-3">
                     {complexityOptions.map((option) => {
-                      const isSelected = selectedOptions.some((o) => o.id === option.id);
+                      const isSelected = state.selectedOptions.some((o) => o.id === option.id);
                       return (
                         <div
                           key={option.id}
                           className="relative"
-                          onMouseEnter={(e) => handleMouseEnter(`option-${option.id}`, e)}
-                          onMouseMove={handleMouseMove}
-                          onMouseLeave={handleMouseLeave}
                         >
                           <div
-                            className={`w-full p-4 border-2 rounded-lg transition-all ${
+                            onClick={() => toggleOption(option)}
+                            className={`w-full p-4 border-2 rounded-lg transition-all cursor-pointer hover:border-primary/50 ${
                               isSelected
                                 ? 'border-primary bg-primary/5'
                                 : 'border-border'
@@ -1386,7 +1431,7 @@ export default function QuoteBuilderPage() {
                                     <span className="text-xs text-muted-foreground">€</span>
                                     <input
                                       type="number"
-                                      value={customPrices[option.id] || ''}
+                                      value={state.customPrices[option.id] || ''}
                                       onChange={(e) => updateCustomPrice(option.id, parseFloat(e.target.value) || 0)}
                                       onClick={(e) => e.stopPropagation()}
                                       placeholder="0"
@@ -1399,8 +1444,11 @@ export default function QuoteBuilderPage() {
                                   <span className="text-sm text-muted-foreground italic">Op offerte</span>
                                 )}
                                 <button
-                                  onClick={() => toggleOption(option)}
-                                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleOption(option);
+                                  }}
+                                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 ${
                                     isSelected
                                       ? 'bg-primary border-primary text-white'
                                       : 'border-border hover:border-primary'
@@ -1411,23 +1459,48 @@ export default function QuoteBuilderPage() {
                               </div>
                             </div>
                             {isSelected && (
-                              <div className="mt-3 pt-3 border-t border-border">
-                                <label className="block text-xs font-medium text-muted-foreground mb-1">
-                                  Extra info / Toelichting
-                                </label>
-                                <textarea
-                                  value={optionNotes[option.id] || ''}
-                                  onChange={(e) => {
-                                    setOptionNotes(prev => ({
-                                      ...prev,
-                                      [option.id]: e.target.value
-                                    }));
-                                  }}
-                                  onClick={(e) => e.stopPropagation()}
-                                  placeholder="Voeg extra informatie toe over deze optie (bijv. specifieke wensen, details, etc.)"
-                                  rows={2}
-                                  className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-                                />
+                              <div className="mt-3 pt-3 border-t border-border space-y-3">
+                                {/* Detailed Information */}
+                                {(() => {
+                                  const detailed = getDetailedExplanation(option.id);
+                                  if (detailed) {
+                                    return (
+                                      <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-2">
+                                        <p className="text-sm text-foreground font-medium">{detailed.description}</p>
+                                        {detailed.examples && detailed.examples.length > 0 && (
+                                          <div className="space-y-1">
+                                            <div className="text-xs font-semibold text-muted-foreground">Inbegrepen:</div>
+                                            {detailed.examples.map((example, idx) => (
+                                              <div key={idx} className="text-sm flex items-start gap-2">
+                                                <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                                                <span>{example}</span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })()}
+                                
+                                {/* Extra info textarea */}
+                                <div>
+                                  <label className="block text-xs font-medium text-muted-foreground mb-1">
+                                    Extra info / Toelichting
+                                  </label>
+                                  <textarea
+                                    value={state.optionNotes[option.id] || ''}
+                                    onChange={(e) => {
+                                      actions.setOptionNote(option.id, e.target.value);
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onFocus={(e) => e.stopPropagation()}
+                                    placeholder="Voeg extra informatie toe over deze optie (bijv. specifieke wensen, details, etc.)"
+                                    rows={2}
+                                    className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                                  />
+                                </div>
                               </div>
                             )}
                           </div>
@@ -1448,7 +1521,7 @@ export default function QuoteBuilderPage() {
                   <div className="flex items-center gap-3">
                     <TrendingUp className="w-5 h-5 text-primary" />
                     <h2 className="text-xl font-bold">Growth & Marketing</h2>
-                    {selectedOptions.filter((o) => o.category === 'growth').length > 0 && (
+                    {state.selectedOptions.filter((o) => o.category === 'growth').length > 0 && (
                       <span className="text-sm bg-primary/10 text-primary px-2 py-1 rounded">
                         {selectedOptions.filter((o) => o.category === 'growth').length} geselecteerd
                       </span>
@@ -1466,52 +1539,47 @@ export default function QuoteBuilderPage() {
                     {/* Content Creation Counter */}
                     <div 
                       className="relative flex items-center justify-between p-4 border-2 border-border rounded-lg bg-muted/30"
-                      onMouseEnter={(e) => handleMouseEnter('option-content-creation', e)}
-                      onMouseMove={handleMouseMove}
-                      onMouseLeave={handleMouseLeave}
                     >
                       <div>
                         <div className="font-semibold mb-1">Content creatie</div>
                         <div className="text-sm text-muted-foreground">€125 per pagina</div>
                         <div className="text-xs text-muted-foreground/80 mt-1">
-                          Professionele tekst schrijven voor pagina's of blog posts
+                          Professionele tekst schrijven voor pagina&apos;s of blog posts
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
                         <button
-                          onClick={() => setContentPages(Math.max(0, contentPages - 1))}
+                          onClick={() => actions.setContentPages(state.contentPages - 1)}
                           disabled={contentPages === 0}
                           className="w-10 h-10 rounded-lg border-2 border-border hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                         >
                           <Minus className="w-4 h-4" />
                         </button>
-                        <span className="w-16 text-center font-bold text-lg">{contentPages}</span>
+                        <span className="w-16 text-center font-bold text-lg">{state.contentPages}</span>
                         <button
-                          onClick={() => setContentPages(contentPages + 1)}
+                          onClick={() => actions.setContentPages(state.contentPages + 1)}
                           className="w-10 h-10 rounded-lg border-2 border-primary bg-primary text-white hover:bg-primary/90 flex items-center justify-center"
                         >
                           <Plus className="w-4 h-4" />
                         </button>
-                        {contentPages > 0 && (
+                        {state.contentPages > 0 && (
                           <span className="ml-2 font-semibold text-primary">
-                            €{(contentPages * 125).toLocaleString('nl-BE')}
+                            €{(state.contentPages * 125).toLocaleString('nl-BE')}
                           </span>
                         )}
                       </div>
                     </div>
 
                     {growthOptions.filter((o) => o.id !== 'content-creation').map((option) => {
-                      const isSelected = selectedOptions.some((o) => o.id === option.id);
+                      const isSelected = state.selectedOptions.some((o) => o.id === option.id);
                       return (
                         <div
                           key={option.id}
                           className="relative"
-                          onMouseEnter={(e) => handleMouseEnter(`option-${option.id}`, e)}
-                          onMouseMove={handleMouseMove}
-                          onMouseLeave={handleMouseLeave}
                         >
                           <div
-                            className={`w-full p-4 border-2 rounded-lg transition-all ${
+                            onClick={() => toggleOption(option)}
+                            className={`w-full p-4 border-2 rounded-lg transition-all cursor-pointer hover:border-primary/50 ${
                               isSelected
                                 ? 'border-primary bg-primary/5'
                                 : 'border-border'
@@ -1534,7 +1602,7 @@ export default function QuoteBuilderPage() {
                                     <span className="text-xs text-muted-foreground">€</span>
                                     <input
                                       type="number"
-                                      value={customPrices[option.id] || ''}
+                                      value={state.customPrices[option.id] || ''}
                                       onChange={(e) => updateCustomPrice(option.id, parseFloat(e.target.value) || 0)}
                                       onClick={(e) => e.stopPropagation()}
                                       placeholder="0"
@@ -1547,8 +1615,11 @@ export default function QuoteBuilderPage() {
                                   <span className="text-sm text-muted-foreground italic">Op offerte</span>
                                 )}
                                 <button
-                                  onClick={() => toggleOption(option)}
-                                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleOption(option);
+                                  }}
+                                  className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 ${
                                     isSelected
                                       ? 'bg-primary border-primary text-white'
                                       : 'border-border hover:border-primary'
@@ -1559,23 +1630,48 @@ export default function QuoteBuilderPage() {
                               </div>
                             </div>
                             {isSelected && (
-                              <div className="mt-3 pt-3 border-t border-border">
-                                <label className="block text-xs font-medium text-muted-foreground mb-1">
-                                  Extra info / Toelichting
-                                </label>
-                                <textarea
-                                  value={optionNotes[option.id] || ''}
-                                  onChange={(e) => {
-                                    setOptionNotes(prev => ({
-                                      ...prev,
-                                      [option.id]: e.target.value
-                                    }));
-                                  }}
-                                  onClick={(e) => e.stopPropagation()}
-                                  placeholder="Voeg extra informatie toe over deze optie (bijv. specifieke wensen, details, etc.)"
-                                  rows={2}
-                                  className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-                                />
+                              <div className="mt-3 pt-3 border-t border-border space-y-3">
+                                {/* Detailed Information */}
+                                {(() => {
+                                  const detailed = getDetailedExplanation(option.id);
+                                  if (detailed) {
+                                    return (
+                                      <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-2">
+                                        <p className="text-sm text-foreground font-medium">{detailed.description}</p>
+                                        {detailed.examples && detailed.examples.length > 0 && (
+                                          <div className="space-y-1">
+                                            <div className="text-xs font-semibold text-muted-foreground">Inbegrepen:</div>
+                                            {detailed.examples.map((example, idx) => (
+                                              <div key={idx} className="text-sm flex items-start gap-2">
+                                                <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                                                <span>{example}</span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })()}
+                                
+                                {/* Extra info textarea */}
+                                <div>
+                                  <label className="block text-xs font-medium text-muted-foreground mb-1">
+                                    Extra info / Toelichting
+                                  </label>
+                                  <textarea
+                                    value={state.optionNotes[option.id] || ''}
+                                    onChange={(e) => {
+                                      actions.setOptionNote(option.id, e.target.value);
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    onFocus={(e) => e.stopPropagation()}
+                                    placeholder="Voeg extra informatie toe over deze optie (bijv. specifieke wensen, details, etc.)"
+                                    rows={2}
+                                    className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                                  />
+                                </div>
                               </div>
                             )}
                           </div>
@@ -1617,12 +1713,9 @@ export default function QuoteBuilderPage() {
                         <div
                           key={option.id}
                           className="relative"
-                          onMouseEnter={(e) => handleMouseEnter(`maintenance-${option.id}`, e)}
-                          onMouseMove={handleMouseMove}
-                          onMouseLeave={handleMouseLeave}
                         >
                           <button
-                            onClick={() => setSelectedMaintenance(option)}
+                            onClick={() => actions.setSelectedMaintenance(option)}
                             className={`w-full p-4 border-2 rounded-lg text-left transition-all ${
                               isSelected
                                 ? 'border-primary bg-primary/5'
@@ -1650,14 +1743,6 @@ export default function QuoteBuilderPage() {
                           </button>
                           
                           {/* Tooltip */}
-                          {hoveredItem === `maintenance-${option.id}` && (
-                            <div className="absolute z-50 left-0 right-0 top-full mt-2 bg-card border-2 border-primary shadow-2xl rounded-lg p-4">
-                              <h4 className="font-bold text-lg mb-2">{option.name}</h4>
-                              {option.description && (
-                                <p className="text-sm text-muted-foreground">{option.description}</p>
-                              )}
-                            </div>
-                          )}
                         </div>
                       );
                     })}
@@ -1668,93 +1753,114 @@ export default function QuoteBuilderPage() {
           )}
         </div>
 
-        {/* Sidebar - Total */}
+        {/* Sidebar - Summary */}
         <div className="space-y-6">
-          <div className="bg-card border-2 border-primary/20 rounded-lg p-6 sticky top-6 shadow-lg">
-            <div className="flex items-center gap-2 mb-6">
-              <Calculator className="w-6 h-6 text-primary" />
-              <h2 className="text-xl font-bold">Totaal</h2>
-            </div>
-
-            <div className="space-y-3 mb-6">
-              {selectedPackage ? (
-                <>
-                  <div className="pb-3 border-b border-border">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="font-semibold">{selectedPackage.name}</span>
-                      <span className="font-bold text-lg text-primary">
-                        €{selectedPackage.basePrice.toLocaleString('nl-BE')}
-                      </span>
+          <div className="sticky top-6 space-y-6">
+            {/* Custom Line Items Section - Above Summary */}
+            <div className="bg-white border-2 border-border rounded-lg p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Extra Kosten</h3>
+                <Button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowCustomLineItemModal(true);
+                    setCustomLineItemName('');
+                    setCustomLineItemPrice('');
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                >
+                  <Plus className="w-3 h-3 mr-1" />
+                  Toevoegen
+                </Button>
+              </div>
+              
+              {state.customLineItems.length > 0 ? (
+                <div className="space-y-2">
+                  {state.customLineItems.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between p-2 bg-muted rounded text-sm">
+                      <span className="flex-1 truncate">{item.name}</span>
+                      <span className="font-medium mr-2">€{item.price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          actions.removeCustomLineItem(item.id);
+                        }}
+                        className="text-red-600 hover:text-red-700 p-1 shrink-0"
+                        title="Verwijderen"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
-                  </div>
-
-                  {(extraPages > 0 || contentPages > 0 || selectedOptions.filter((o) => o.price > 0).length > 0) && (
-                    <div className="space-y-2 text-sm">
-                      {extraPages > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Extra pagina's ({extraPages}x)</span>
-                          <span className="font-medium">
-                            €{(scopeOptions.find((o) => o.id === 'extra-pages')!.price * extraPages).toLocaleString('nl-BE')}
-                          </span>
-                        </div>
-                      )}
-
-                      {contentPages > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Content creatie ({contentPages}x)</span>
-                          <span className="font-medium">
-                            €{(growthOptions.find((o) => o.id === 'content-creation')!.price * contentPages).toLocaleString('nl-BE')}
-                          </span>
-                        </div>
-                      )}
-
-                      {selectedOptions
-                        .filter((o) => o.price > 0 || (o.price === 0 && customPrices[o.id] > 0))
-                        .map((option) => (
-                          <div key={option.id} className="flex justify-between">
-                            <span className="text-muted-foreground">{option.name}</span>
-                            <span className="font-medium">
-                              €{getOptionPrice(option).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </span>
-                          </div>
-                        ))}
-                    </div>
-                  )}
-
-                  <div className="border-t-2 border-primary pt-4 mt-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg font-bold">Totaal (eenmalig)</span>
-                      <span className="text-2xl font-bold text-primary">
-                        €{total.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                  </div>
-
-                  {selectedMaintenance && (
-                    <div className="mt-4 pt-4 border-t border-border">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Onderhoud</span>
-                        <span className="font-semibold text-primary">
-                          €{selectedMaintenance.price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/maand
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedOptions.some((o) => o.price === 0 && (!customPrices[o.id] || customPrices[o.id] === 0)) && (
-                    <div className="mt-3 text-xs text-muted-foreground italic bg-yellow-50 p-2 rounded border border-yellow-200">
-                      * Vul een prijs in voor items "op offerte"
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>Selecteer eerst een basis pakket</p>
+                  ))}
                 </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">Geen extra kosten toegevoegd</p>
               )}
             </div>
 
-            <div className="space-y-2">
+            {/* Discount Section - Above Summary */}
+            <div className="bg-white border-2 border-border rounded-lg p-4 space-y-3">
+              <h3 className="text-sm font-semibold">Korting</h3>
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <select
+                    value={state.discount.type || ''}
+                    onChange={(e) => {
+                      const type = e.target.value as 'percentage' | 'fixed' | '';
+                      actions.setDiscount(type === '' ? null : type, state.discount.value);
+                    }}
+                    className="flex-1 px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">Geen korting</option>
+                    <option value="percentage">Percentage</option>
+                    <option value="fixed">Vast bedrag</option>
+                  </select>
+                </div>
+                
+                {state.discount.type && (
+                  <div className="flex gap-2 items-center">
+                    {state.discount.type === 'percentage' ? (
+                      <Percent className="w-4 h-4 text-muted-foreground shrink-0" />
+                    ) : (
+                      <Euro className="w-4 h-4 text-muted-foreground shrink-0" />
+                    )}
+                    <input
+                      type="number"
+                      value={state.discount.value || ''}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value) || 0;
+                        actions.setDiscount(state.discount.type!, value);
+                      }}
+                      placeholder={state.discount.type === 'percentage' ? '10' : '100'}
+                      min="0"
+                      max={state.discount.type === 'percentage' ? 100 : undefined}
+                      className="flex-1 px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    {state.discount.type === 'percentage' && (
+                      <span className="text-sm text-muted-foreground shrink-0">%</span>
+                    )}
+                    {state.discount.type === 'fixed' && (
+                      <span className="text-sm text-muted-foreground shrink-0">€</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Offer Summary - Below Extra Costs and Discount */}
+            <OfferSummary
+              subtotal={calculations.subtotal}
+              vat={calculations.vat}
+              total={calculations.total}
+              discountAmount={calculations.discountAmount}
+              customLineItems={state.customLineItems}
+            />
+
+            <div className="space-y-2 mt-6">
               <Button
                 onClick={() => setShowReview(true)}
                 disabled={!selectedPackage}
@@ -1875,6 +1981,116 @@ export default function QuoteBuilderPage() {
         </div>
       )}
       </div>
+
+      {/* Custom Line Item Modal */}
+      {showCustomLineItemModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowCustomLineItemModal(false);
+              setCustomLineItemName('');
+              setCustomLineItemPrice('');
+            }
+          }}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold">Extra Kost Toevoegen</h3>
+            
+            <div className="space-y-2">
+              <label className="block text-sm font-medium">
+                Naam van de extra kost
+              </label>
+              <input
+                type="text"
+                value={customLineItemName}
+                onChange={(e) => setCustomLineItemName(e.target.value)}
+                placeholder="Bijv. Extra ontwikkeling, Setup kosten, etc."
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setShowCustomLineItemModal(false);
+                    setCustomLineItemName('');
+                    setCustomLineItemPrice('');
+                  }
+                }}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium">
+                Bedrag (excl. BTW)
+              </label>
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">€</span>
+                <input
+                  type="number"
+                  value={customLineItemPrice}
+                  onChange={(e) => setCustomLineItemPrice(e.target.value)}
+                  placeholder="0.00"
+                  min="0"
+                  step="0.01"
+                  className="flex-1 px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && customLineItemName.trim() && customLineItemPrice) {
+                      const price = parseFloat(customLineItemPrice.replace(',', '.')) || 0;
+                      if (price > 0) {
+                        actions.addCustomLineItem(customLineItemName.trim(), price);
+                        setShowCustomLineItemModal(false);
+                        setCustomLineItemName('');
+                        setCustomLineItemPrice('');
+                      }
+                    }
+                    if (e.key === 'Escape') {
+                      setShowCustomLineItemModal(false);
+                      setCustomLineItemName('');
+                      setCustomLineItemPrice('');
+                    }
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                onClick={() => {
+                  setShowCustomLineItemModal(false);
+                  setCustomLineItemName('');
+                  setCustomLineItemPrice('');
+                }}
+                variant="outline"
+                className="flex-1"
+              >
+                Annuleren
+              </Button>
+              <Button
+                onClick={() => {
+                  if (!customLineItemName.trim()) {
+                    alert('Voer een naam in voor de extra kost');
+                    return;
+                  }
+                  const price = parseFloat(customLineItemPrice.replace(',', '.')) || 0;
+                  if (price <= 0) {
+                    alert('Voer een geldig bedrag in (groter dan 0)');
+                    return;
+                  }
+                  actions.addCustomLineItem(customLineItemName.trim(), price);
+                  setShowCustomLineItemModal(false);
+                  setCustomLineItemName('');
+                  setCustomLineItemPrice('');
+                }}
+                className="flex-1"
+              >
+                Toevoegen
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

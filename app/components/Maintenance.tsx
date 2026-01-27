@@ -42,7 +42,7 @@ export function Maintenance() {
   ];
 
   return (
-    <section className="py-14 sm:py-20 md:py-28 px-5 sm:px-6 lg:px-8 bg-gradient-to-b from-muted to-white relative overflow-hidden w-full min-w-0">
+    <section className="snap-start min-h-[70vh] flex items-center py-14 sm:py-20 md:py-24 px-5 sm:px-6 lg:px-8 bg-gradient-to-b from-muted to-white relative overflow-hidden w-full min-w-0">
       {/* Decoratieve achtergrond */}
       <div className="absolute top-1/2 left-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -ml-48" />
       <div className="absolute top-1/2 right-0 w-96 h-96 bg-secondary/5 rounded-full blur-3xl -mr-48" />

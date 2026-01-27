@@ -18,7 +18,7 @@ export function FinalCTA() {
   };
 
   return (
-    <section id="final-cta" className="py-14 sm:py-16 md:py-20 px-5 sm:px-6 lg:px-8 bg-primary text-white w-full min-w-0 overflow-hidden">
+    <section id="final-cta" className="snap-start min-h-[70vh] flex items-center py-14 sm:py-16 md:py-20 px-5 sm:px-6 lg:px-8 bg-primary text-white w-full min-w-0 overflow-hidden">
       <div className="max-w-3xl mx-auto text-center min-w-0">
         <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-5 sm:mb-6 leading-tight break-words px-1">
           Klaar om te starten?

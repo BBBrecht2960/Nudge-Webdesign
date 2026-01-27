@@ -32,10 +32,11 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
 
     return NextResponse.json({ users: data || [] });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Fout bij ophalen gebruikers';
     console.error('Error fetching admin users:', error);
     return NextResponse.json(
-      { error: error.message || 'Fout bij ophalen gebruikers' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

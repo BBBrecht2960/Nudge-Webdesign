@@ -32,7 +32,7 @@ export function Hero() {
   };
 
   return (
-    <section className="relative min-h-[85vh] sm:min-h-[90vh] flex items-center overflow-hidden">
+    <section className="snap-start relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Achtergrond foto */}
       <div className="absolute inset-0 z-0">
         <Image
@@ -48,35 +48,35 @@ export function Hero() {
         <div className="absolute inset-0 bg-gradient-to-br from-foreground/30 via-foreground/20 to-primary/40" />
       </div>
 
-      {/* Content - niet perfect gecentreerd */}
-      <div className="relative z-10 w-full max-w-6xl mx-auto px-5 sm:px-6 lg:px-8 py-16 sm:py-20 md:py-32 min-w-0">
-        <div className="max-w-3xl min-w-0">
+      {/* Content - links uitgelijnd, verticaal gecentreerd en compacter */}
+      <div className="relative z-10 w-full max-w-5xl mx-auto px-5 sm:px-6 lg:px-8 min-w-0">
+        <div className="max-w-2xl min-w-0">
           {/* Badge */}
-          <div className="inline-flex flex-wrap items-center justify-center sm:justify-start gap-x-2 gap-y-1 px-3 sm:px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full mb-6 sm:mb-8 text-xs sm:text-sm font-medium text-white border border-white/30 shadow-lg max-w-full">
+          <div className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-full mb-4 sm:mb-5 text-xs font-medium text-white border border-white/30 shadow-lg">
             <span>📍 Hasselt, België</span>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-[1.15] tracking-tight drop-shadow-lg break-words min-w-0">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 sm:mb-5 leading-[1.2] tracking-tight drop-shadow-lg break-words min-w-0">
             Je website kost geld, maar brengt niets op.
-            <span className="block mt-3 w-fit max-w-full text-primary-foreground bg-primary/90 px-3 sm:px-4 py-2 rounded-lg break-words">Wij maken dat anders.</span>
+            <span className="block mt-2 sm:mt-3 text-primary-foreground bg-primary/90 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg break-words w-fit">Wij maken dat anders.</span>
           </h1>
           
-          <p className="text-base sm:text-lg md:text-xl text-white/95 mb-8 sm:mb-10 leading-relaxed max-w-2xl drop-shadow-md min-w-0 break-words">
+          <p className="text-sm sm:text-base md:text-lg text-white/95 mb-6 sm:mb-7 leading-relaxed max-w-xl drop-shadow-md min-w-0 break-words">
             Moderne websites die leads genereren. Binnen 2 weken tot 2 maanden online.
           </p>
 
           {/* Concrete cijfers */}
-          <div className="flex flex-wrap gap-3 sm:gap-6 mb-8 sm:mb-10 text-sm min-w-0">
-            <div className="bg-white/20 backdrop-blur-sm px-3 sm:px-4 py-2 rounded-lg border border-white/30 shrink-0">
-              <span className="font-bold text-white text-sm sm:text-base">Vanaf €300</span>
+          <div className="flex flex-wrap items-center gap-3 mb-6 sm:mb-7 text-sm min-w-0">
+            <div className="bg-white/20 backdrop-blur-sm px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border border-white/30 shrink-0">
+              <span className="font-bold text-white text-xs sm:text-sm">Vanaf €399</span>
             </div>
-            <div className="bg-white/20 backdrop-blur-sm px-3 sm:px-4 py-2 rounded-lg border border-white/30 shrink-0">
-              <span className="font-bold text-white text-sm sm:text-base">2-8 weken</span>
-              <span className="text-white/90 ml-1">oplevering</span>
+            <div className="bg-white/20 backdrop-blur-sm px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border border-white/30 shrink-0">
+              <span className="font-bold text-white text-xs sm:text-sm">2-8 weken</span>
+              <span className="text-white/90 ml-1 text-xs sm:text-sm">oplevering</span>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto min-w-0">
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto min-w-0">
             <Button
               onClick={handlePrimaryCTA}
               size="lg"

@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, message: 'Kolom bestaat of is toegevoegd' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error setting up assigned_to column:', error);
     return NextResponse.json(
       {

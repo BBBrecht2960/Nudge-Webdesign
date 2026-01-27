@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get pageviews
-    let pageviews = { count: 0, trend: 0 };
+    const pageviews = { count: 0, trend: 0 };
     try {
       const response = await fetch(
         `${posthogHost}/api/projects/${projectId}/query/`,
@@ -109,10 +109,11 @@ export async function GET(request: NextRequest) {
       pageviews,
       leads: { count: 0, trend: 0 }, // Would need to fetch from database
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Fout bij ophalen analytics';
     console.error('Error fetching analytics:', error);
     return NextResponse.json(
-      { error: error.message || 'Fout bij ophalen analytics' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

@@ -31,10 +31,11 @@ export async function GET(
     if (error) throw error;
 
     return NextResponse.json({ activities: data || [] });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Fout bij ophalen activiteiten';
     console.error('Error fetching activities:', error);
     return NextResponse.json(
-      { error: error.message || 'Fout bij ophalen activiteiten' },
+      { error: errorMessage },
       { status: 500 }
     );
   }
@@ -143,12 +144,13 @@ export async function POST(
       .single();
 
     if (error) {
+      const supabaseError = error as { code?: string; message?: string; details?: string; hint?: string };
       console.error('Supabase error creating activity:', {
         error,
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
+        code: supabaseError.code,
+        message: supabaseError.message,
+        details: supabaseError.details,
+        hint: supabaseError.hint,
         leadId,
       });
       throw error;
@@ -159,30 +161,31 @@ export async function POST(
     }
 
     return NextResponse.json({ activity: data });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const supabaseError = error as { code?: string; message?: string; details?: string; hint?: string };
     console.error('Error creating activity:', {
       error,
-      message: error?.message,
-      code: error?.code,
-      details: error?.details,
-      hint: error?.hint,
+      message: supabaseError.message,
+      code: supabaseError.code,
+      details: supabaseError.details,
+      hint: supabaseError.hint,
     });
     
     // Provide more specific error messages
     let errorMessage = 'Fout bij aanmaken activiteit';
-    if (error?.code === '23503') {
+    if (supabaseError.code === '23503') {
       errorMessage = 'Lead bestaat niet of is verwijderd';
-    } else if (error?.code === '23505') {
+    } else if (supabaseError.code === '23505') {
       errorMessage = 'Deze activiteit bestaat al';
-    } else if (error?.code === '23514') {
+    } else if (supabaseError.code === '23514') {
       errorMessage = 'Ongeldige waarde voor activity type';
-    } else if (error?.message) {
-      errorMessage = error.message;
+    } else if (supabaseError.message) {
+      errorMessage = supabaseError.message;
     }
 
     return NextResponse.json(
       { error: errorMessage },
-      { status: error?.code === '23503' ? 404 : 500 }
+      { status: supabaseError.code === '23503' ? 404 : 500 }
     );
   }
 }

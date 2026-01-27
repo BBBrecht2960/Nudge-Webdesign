@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { supabase, type Lead } from '@/lib/db';
 import { Users, Mail, CheckCircle, XCircle, Clock } from 'lucide-react';
 
@@ -198,12 +199,12 @@ export default function DashboardPage() {
           </table>
         </div>
         <div className="mt-4">
-          <a
+          <Link
             href="/admin/leads"
             className="text-primary hover:underline"
           >
             Bekijk alle leads →
-          </a>
+          </Link>
         </div>
       </div>
     </div>
