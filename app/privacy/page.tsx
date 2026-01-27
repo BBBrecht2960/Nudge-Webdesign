@@ -20,7 +20,7 @@ export default function PrivacyPage() {
           <div className="bg-muted/50 p-4 rounded-lg mb-4">
             <p className="font-semibold mb-2">Almost 3000 BV</p>
             <p className="mb-1">Adres: Herkenrodesingel 19C/4.2, 3500 Hasselt, België</p>
-            <p className="mb-1">E-mail: <a href="/contact" className="text-primary hover:underline">info@almost3000.be</a></p>
+            <p className="mb-1">E-mail: <a href="mailto:brecht.leap@gmail.com" className="text-primary hover:underline">brecht.leap@gmail.com</a></p>
             <p>BTW-nummer: BE 1007.673.513</p>
           </div>
           <p>

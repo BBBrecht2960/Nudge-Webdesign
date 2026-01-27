@@ -138,101 +138,101 @@ export function LeadForm() {
     <form
       id="contact-form"
       onSubmit={handleSubmit(onSubmit)}
-      className="bg-card border-2 border-border rounded-2xl p-5 sm:p-6 md:p-8 space-y-6 shadow-xl w-full max-w-2xl mx-auto"
+      className="bg-card border-2 border-border rounded-2xl p-4 sm:p-5 md:p-6 space-y-4 sm:space-y-5 shadow-xl w-full max-w-2xl mx-auto"
     >
-      <div className="text-center space-y-2 mb-6">
-        <h2 className="text-2xl sm:text-3xl font-bold">Neem contact op</h2>
-        <p className="text-muted-foreground">Vul je gegevens in en we nemen zo snel mogelijk contact met je op</p>
+      <div className="text-center space-y-1 sm:space-y-2 mb-4 sm:mb-5">
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold">Neem contact op</h2>
+        <p className="text-sm sm:text-base text-muted-foreground">Vul je gegevens in en we nemen zo snel mogelijk contact met je op</p>
       </div>
 
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="space-y-3 sm:space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <div>
-            <label htmlFor="first_name" className="block text-sm font-medium mb-2">
+            <label htmlFor="first_name" className="block text-sm font-medium mb-1.5">
               Voornaam *
             </label>
             <input
               {...register('first_name')}
               type="text"
               id="first_name"
-              className="w-full px-4 py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-base"
+              className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm sm:text-base"
               placeholder="Jan"
             />
             {errors.first_name && (
-              <p className="text-sm text-red-600 mt-1">{errors.first_name.message}</p>
+              <p className="text-xs sm:text-sm text-red-600 mt-1">{errors.first_name.message}</p>
             )}
           </div>
 
           <div>
-            <label htmlFor="last_name" className="block text-sm font-medium mb-2">
+            <label htmlFor="last_name" className="block text-sm font-medium mb-1.5">
               Naam *
             </label>
             <input
               {...register('last_name')}
               type="text"
               id="last_name"
-              className="w-full px-4 py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-base"
+              className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm sm:text-base"
               placeholder="Janssen"
             />
             {errors.last_name && (
-              <p className="text-sm text-red-600 mt-1">{errors.last_name.message}</p>
+              <p className="text-xs sm:text-sm text-red-600 mt-1">{errors.last_name.message}</p>
             )}
           </div>
         </div>
 
         <div>
-          <label htmlFor="email" className="block text-sm font-medium mb-2">
+          <label htmlFor="email" className="block text-sm font-medium mb-1.5">
             E-mailadres *
           </label>
           <input
             {...register('email')}
             type="email"
             id="email"
-            className="w-full px-4 py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-base"
+            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm sm:text-base"
             placeholder="jan@voorbeeld.be"
           />
           {errors.email && (
-            <p className="text-sm text-red-600 mt-1">{errors.email.message}</p>
+            <p className="text-xs sm:text-sm text-red-600 mt-1">{errors.email.message}</p>
           )}
         </div>
 
         <div>
-          <label htmlFor="phone" className="block text-sm font-medium mb-2">
+          <label htmlFor="phone" className="block text-sm font-medium mb-1.5">
             Telefoonnummer *
           </label>
           <input
             {...register('phone')}
             type="tel"
             id="phone"
-            className="w-full px-4 py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-base"
+            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm sm:text-base"
             placeholder="0491234567"
           />
           {errors.phone && (
-            <p className="text-sm text-red-600 mt-1">{errors.phone.message}</p>
+            <p className="text-xs sm:text-sm text-red-600 mt-1">{errors.phone.message}</p>
           )}
         </div>
 
         <div>
-          <label htmlFor="message" className="block text-sm font-medium mb-2">
+          <label htmlFor="message" className="block text-sm font-medium mb-1.5">
             Extra info (optioneel)
           </label>
           <textarea
             {...register('message')}
             id="message"
-            rows={4}
-            className="w-full px-4 py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none text-base"
+            rows={3}
+            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none text-sm sm:text-base"
             placeholder="Vertel ons meer over je project of vraag..."
           />
         </div>
 
-        <div className="bg-muted/50 rounded-xl p-4">
-          <label className="flex items-start gap-3 cursor-pointer">
+        <div className="bg-muted/50 rounded-xl p-3 sm:p-4">
+          <label className="flex items-start gap-2 sm:gap-3 cursor-pointer">
             <input
               {...register('gdpr_consent')}
               type="checkbox"
-              className="mt-1 w-5 h-5 shrink-0 text-primary focus:outline-none rounded border-2 border-border cursor-pointer"
+              className="mt-0.5 sm:mt-1 w-4 h-4 sm:w-5 sm:h-5 shrink-0 text-primary focus:outline-none rounded border-2 border-border cursor-pointer"
             />
-            <span className="text-sm leading-relaxed">
+            <span className="text-xs sm:text-sm leading-relaxed">
               Ik ga akkoord met het{' '}
               <a href="/privacy" className="text-primary hover:underline font-medium" target="_blank">
                 privacybeleid
@@ -241,7 +241,7 @@ export function LeadForm() {
             </span>
           </label>
           {errors.gdpr_consent && (
-            <p className="text-sm text-red-600 mt-2">{errors.gdpr_consent.message}</p>
+            <p className="text-xs sm:text-sm text-red-600 mt-2">{errors.gdpr_consent.message}</p>
           )}
         </div>
       </div>
@@ -249,7 +249,7 @@ export function LeadForm() {
       <Button
         type="submit"
         disabled={isSubmitting}
-        className="w-full py-3 text-base font-semibold"
+        className="w-full py-2.5 sm:py-3 text-sm sm:text-base font-semibold"
       >
         {isSubmitting ? 'Verzenden...' : 'Verstuur aanvraag'}
       </Button>

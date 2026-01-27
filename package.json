@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "vercel:env": "bash scripts/setup-vercel-env-simple.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
