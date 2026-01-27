@@ -143,10 +143,10 @@ export default function PrivacyPage() {
             <p className="font-semibold mb-2">Gegevensbeschermingsautoriteit (GBA)</p>
             <p className="mb-1">Drukpersstraat 35, 1000 Brussel</p>
             <p className="mb-1">
-              📧 <a href="mailto:contact@apd-gba.be" className="text-primary hover:underline">contact@apd-gba.be</a>
+              <a href="mailto:contact@apd-gba.be" className="text-primary hover:underline">contact@apd-gba.be</a>
             </p>
             <p>
-              🌐 <a href="https://www.gegevensbeschermingsautoriteit.be" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">www.gegevensbeschermingsautoriteit.be</a>
+              <a href="https://www.gegevensbeschermingsautoriteit.be" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">www.gegevensbeschermingsautoriteit.be</a>
             </p>
           </div>
         </section>

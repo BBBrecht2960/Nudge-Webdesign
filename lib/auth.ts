@@ -25,10 +25,13 @@ export async function authenticateAdmin(email: string, password: string): Promis
       return false;
     }
 
+    // Normalize email to lowercase and trim
+    const normalizedEmail = email.toLowerCase().trim();
+
     const { data, error } = await supabase
       .from('admin_users')
       .select('password_hash')
-      .eq('email', email)
+      .eq('email', normalizedEmail)
       .single();
 
     if (error) {

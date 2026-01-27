@@ -50,6 +50,12 @@
 - Prefer deny over allow, validation over trust, and server-side over client-side.
 - Document assumptions and get explicit approval before weakening any rule.
 
+## 9. No Emojis
+
+- **Never use emojis in code, UI, or any project content.**
+- Use text, icons (e.g. Lucide icons), or other visual elements instead.
+- This applies to all code, components, messages, placeholders, and documentation.
+
 ---
 
 *Last updated: 2025-01-27. These rules override any conflicting local conventions.*

@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json();
+    const { email, password, rememberMe } = await request.json();
 
     if (!email || !password) {
       return NextResponse.json(
@@ -30,15 +30,18 @@ export async function POST(request: NextRequest) {
     const sessionToken = Buffer.from(`${normalizedEmail}:${Date.now()}`).toString('base64');
     
     const cookieStore = await cookies();
+    // If rememberMe is true, set cookie for 30 days, otherwise 7 days
+    const maxAge = rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24 * 7;
+    
     cookieStore.set('admin_session', sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge,
       path: '/',
     });
 
-    console.log('[Login] Succesvol ingelogd:', normalizedEmail);
+    console.log('[Login] Succesvol ingelogd:', normalizedEmail, rememberMe ? '(onthouden)' : '');
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Login error:', error);

@@ -1,7 +1,7 @@
 /**
- * Script om meerdere admin gebruikers aan te maken
+ * Script om admin wachtwoorden te updaten
  * 
- * Gebruik: npx tsx scripts/create-admins.ts
+ * Gebruik: npx tsx scripts/update-admin-password.ts
  */
 
 import { readFileSync, existsSync } from 'fs';
@@ -39,48 +39,38 @@ const admins = [
   { email: 'yinthe.gaens@gmail.com', password: 'Nudge2026!!' },
 ];
 
-async function createAdmin(email: string, password: string) {
+async function updateAdminPassword(email: string, password: string) {
   try {
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Check if user already exists
+    // Normalize email
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Check if user exists
     const { data: existing } = await supabase
       .from('admin_users')
-      .select('id')
-      .eq('email', email)
+      .select('id, email')
+      .eq('email', normalizedEmail)
       .single();
 
-    if (existing) {
-      // Update existing user
-      const { error } = await supabase
-        .from('admin_users')
-        .update({ password_hash: passwordHash })
-        .eq('email', email);
-
-      if (error) {
-        console.error(`Fout bij updaten ${email}:`, error.message);
-        return false;
-      }
-
-      console.log(`Admin gebruiker bijgewerkt: ${email}`);
-      return true;
-    } else {
-      // Create new user
-      const { error } = await supabase
-        .from('admin_users')
-        .insert({
-          email,
-          password_hash: passwordHash,
-        });
-
-      if (error) {
-        console.error(`Fout bij aanmaken ${email}:`, error.message);
-        return false;
-      }
-
-      console.log(`Admin gebruiker aangemaakt: ${email}`);
-      return true;
+    if (!existing) {
+      console.error(`Admin gebruiker niet gevonden: ${normalizedEmail}`);
+      return false;
     }
+
+    // Update password
+    const { error } = await supabase
+      .from('admin_users')
+      .update({ password_hash: passwordHash })
+      .eq('email', normalizedEmail);
+
+    if (error) {
+      console.error(`Fout bij updaten ${normalizedEmail}:`, error.message);
+      return false;
+    }
+
+    console.log(`Wachtwoord bijgewerkt voor: ${normalizedEmail}`);
+    return true;
   } catch (error) {
     console.error(`Fout bij ${email}:`, error);
     return false;
@@ -88,16 +78,15 @@ async function createAdmin(email: string, password: string) {
 }
 
 async function main() {
-  console.log('\nAdmin gebruikers aanmaken\n');
+  console.log('\nAdmin wachtwoorden updaten\n');
 
   let successCount = 0;
   for (const admin of admins) {
-    const success = await createAdmin(admin.email, admin.password);
+    const success = await updateAdminPassword(admin.email, admin.password);
     if (success) successCount++;
   }
 
-  console.log(`\n${successCount}/${admins.length} admin gebruikers succesvol verwerkt\n`);
-  console.log('Login op: http://localhost:3000/admin\n');
+  console.log(`\n${successCount}/${admins.length} wachtwoorden succesvol bijgewerkt\n`);
 }
 
 main();

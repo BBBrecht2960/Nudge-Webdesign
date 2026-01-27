@@ -14,7 +14,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('❌ Supabase credentials ontbreken!');
+  console.error('Supabase credentials ontbreken!');
   console.error('Zorg dat NEXT_PUBLIC_SUPABASE_URL en SUPABASE_SERVICE_ROLE_KEY zijn ingesteld.');
   process.exit(1);
 }
@@ -34,13 +34,13 @@ async function createAdmin() {
   };
 
   try {
-    console.log('\n🔐 Admin gebruiker aanmaken\n');
+    console.log('\nAdmin gebruiker aanmaken\n');
 
     const email = process.argv[2] || await question('E-mailadres: ');
     const password = process.argv[3] || await question('Wachtwoord: ');
 
     if (!email || !password) {
-      console.error('❌ E-mail en wachtwoord zijn verplicht');
+      console.error('E-mail en wachtwoord zijn verplicht');
       process.exit(1);
     }
 
@@ -62,11 +62,11 @@ async function createAdmin() {
         .eq('email', email);
 
       if (error) {
-        console.error('❌ Fout bij updaten:', error.message);
+        console.error('Fout bij updaten:', error.message);
         process.exit(1);
       }
 
-      console.log('✅ Admin gebruiker bijgewerkt!');
+      console.log('Admin gebruiker bijgewerkt!');
     } else {
       // Create new user
       const { error } = await supabase
@@ -77,8 +77,8 @@ async function createAdmin() {
         });
 
       if (error) {
-        console.error('❌ Fout bij aanmaken:', error.message);
-        console.error('\n💡 Tip: Zorg dat de admin_users tabel bestaat in Supabase:');
+        console.error('Fout bij aanmaken:', error.message);
+        console.error('\nTip: Zorg dat de admin_users tabel bestaat in Supabase:');
         console.log(`
 CREATE TABLE admin_users (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -90,13 +90,13 @@ CREATE TABLE admin_users (
         process.exit(1);
       }
 
-      console.log('✅ Admin gebruiker aangemaakt!');
+      console.log('Admin gebruiker aangemaakt!');
     }
 
-    console.log(`\n📧 E-mail: ${email}`);
-    console.log('🔗 Login op: http://localhost:3000/admin\n');
+    console.log(`\nE-mail: ${email}`);
+    console.log('Login op: http://localhost:3000/admin\n');
   } catch (error) {
-    console.error('❌ Fout:', error);
+    console.error('Fout:', error);
     process.exit(1);
   } finally {
     rl.close();

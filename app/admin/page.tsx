@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '../components/Button';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -10,8 +11,27 @@ export default function AdminLoginPage() {
   const isDebug = searchParams.get('debug') === '1';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Load saved credentials on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedEmail = localStorage.getItem('admin_email');
+      const savedPassword = localStorage.getItem('admin_password');
+      const savedRememberMe = localStorage.getItem('admin_remember') === 'true';
+      
+      if (savedEmail) {
+        setEmail(savedEmail);
+      }
+      if (savedPassword && savedRememberMe) {
+        setPassword(savedPassword);
+        setRememberMe(true);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     fetch('/api/auth/session')
@@ -35,7 +55,7 @@ export default function AdminLoginPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, rememberMe }),
       });
 
       const data = await response.json();
@@ -45,6 +65,18 @@ export default function AdminLoginPage() {
       if (!response.ok) {
         setError(data.error || 'Inloggen mislukt');
         return;
+      }
+
+      // Save credentials if remember me is checked
+      if (rememberMe && typeof window !== 'undefined') {
+        localStorage.setItem('admin_email', email);
+        localStorage.setItem('admin_password', password);
+        localStorage.setItem('admin_remember', 'true');
+      } else if (typeof window !== 'undefined') {
+        // Clear saved credentials if remember me is unchecked
+        localStorage.removeItem('admin_email');
+        localStorage.removeItem('admin_password');
+        localStorage.removeItem('admin_remember');
       }
 
       if (isDebug) console.log('[Admin Login] login ok -> redirect /admin/dashboard');
@@ -94,15 +126,42 @@ export default function AdminLoginPage() {
             <label htmlFor="password" className="block text-sm font-semibold mb-2 text-foreground">
               Wachtwoord
             </label>
+            <div className="relative">
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                placeholder="••••••••"
+                className="w-full px-4 py-3 pr-12 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label={showPassword ? 'Wachtwoord verbergen' : 'Wachtwoord tonen'}
+              >
+                {showPassword ? (
+                  <EyeOff className="w-5 h-5" />
+                ) : (
+                  <Eye className="w-5 h-5" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center">
             <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="••••••••"
-              className="w-full px-4 py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+              id="rememberMe"
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="w-4 h-4 text-primary border-border rounded focus:ring-2 focus:ring-primary focus:ring-offset-0 cursor-pointer"
             />
+            <label htmlFor="rememberMe" className="ml-2 text-sm text-foreground cursor-pointer">
+              Onthoud mij
+            </label>
           </div>
 
           {error && (

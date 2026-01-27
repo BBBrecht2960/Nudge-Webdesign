@@ -1,6 +1,6 @@
 # Vercel Deployment Checklist
 
-## ✅ Stappen om naar Vercel te deployen
+## Stappen om naar Vercel te deployen
 
 ### 1. Git Commit & Push
 ```bash
@@ -116,7 +116,7 @@ Na de eerste deploy, test:
 - Error tracking (overweeg Sentry)
 - Uptime monitoring
 
-## ⚠️ Belangrijke Notities
+## Belangrijke Notities
 
 1. **Environment Variables:** Zorg dat alle env vars zijn ingesteld VOOR de eerste deploy
 2. **Database:** Alle SQL scripts moeten zijn uitgevoerd

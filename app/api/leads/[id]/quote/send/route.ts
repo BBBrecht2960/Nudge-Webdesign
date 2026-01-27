@@ -150,7 +150,7 @@ export async function POST(
             return `
             <li style="margin-bottom: ${note ? '8px' : '4px'};">
               ${opt.name} - €${opt.price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              ${note ? `<br><span style="font-size: 11px; color: #666; font-style: italic; margin-left: 20px;">ℹ️ ${note}</span>` : ''}
+              ${note ? `<br><span style="font-size: 11px; color: #666; font-style: italic; margin-left: 20px;">${note}</span>` : ''}
             </li>
           `;
           }).join('')}
