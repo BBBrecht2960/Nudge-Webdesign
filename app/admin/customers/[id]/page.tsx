@@ -430,7 +430,7 @@ export default function CustomerDetailPage() {
       case 'on_hold':
         return 'bg-red-100 text-red-800';
       case 'canceled':
-        return 'bg-red-100 text-red-800 border-red-300 font-semibold';
+        return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border-red-300 dark:border-red-700 font-semibold';
       default:
         return 'bg-gray-100 text-gray-800';
     }

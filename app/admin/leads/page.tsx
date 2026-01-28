@@ -84,7 +84,7 @@ export default function LeadsPage() {
       case 'converted':
         return 'bg-green-100 text-green-800';
       case 'lost':
-        return 'bg-red-100 text-red-800 border-red-300 font-semibold';
+        return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border-red-300 dark:border-red-700 font-semibold';
       case 'qualified':
         return 'bg-blue-100 text-blue-800';
       case 'contacted':
@@ -261,12 +261,12 @@ export default function LeadsPage() {
                   <tr
                     key={lead.id}
                     className={`border-t border-border hover:bg-accent/50 cursor-pointer transition-colors ${
-                      isLost ? 'bg-gray-50 opacity-75' : ''
+                      isLost ? 'bg-gray-50 dark:bg-gray-800/50 opacity-75' : ''
                     }`}
                     onClick={() => router.push(`/admin/leads/${lead.id}`)}
                   >
                     <td className="p-3 sm:p-4 break-words min-w-0">
-                      <div className={`font-medium ${isLost ? 'line-through text-gray-500' : ''}`}>
+                      <div className={`font-medium ${isLost ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>
                         {lead.name}
                       </div>
                     </td>
@@ -275,7 +275,7 @@ export default function LeadsPage() {
                         <a
                           href={`mailto:${lead.email}`}
                           className={`hover:underline break-all text-sm flex items-center gap-1 ${
-                            isLost ? 'line-through text-gray-400' : 'text-primary'
+                            isLost ? 'line-through text-gray-400 dark:text-gray-500' : 'text-primary'
                           }`}
                           onClick={(e) => e.stopPropagation()}
                         >
@@ -286,7 +286,7 @@ export default function LeadsPage() {
                           <a
                             href={`tel:${lead.phone}`}
                             className={`hover:underline break-all text-sm flex items-center gap-1 ${
-                              isLost ? 'line-through text-gray-400' : 'text-primary'
+                              isLost ? 'line-through text-gray-400 dark:text-gray-500' : 'text-primary'
                             }`}
                             onClick={(e) => e.stopPropagation()}
                           >
@@ -296,10 +296,10 @@ export default function LeadsPage() {
                         )}
                       </div>
                     </td>
-                    <td className={`p-3 sm:p-4 break-words min-w-0 ${isLost ? 'line-through text-gray-500' : ''}`}>
+                    <td className={`p-3 sm:p-4 break-words min-w-0 ${isLost ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>
                       {lead.company_name || '-'}
                     </td>
-                    <td className={`p-3 sm:p-4 break-words min-w-0 ${isLost ? 'line-through text-gray-500' : ''}`}>
+                    <td className={`p-3 sm:p-4 break-words min-w-0 ${isLost ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>
                       {lead.package_interest || '-'}
                     </td>
                     <td className="p-3 sm:p-4 min-w-0">
@@ -308,7 +308,7 @@ export default function LeadsPage() {
                       </span>
                     </td>
                     <td className={`p-3 sm:p-4 text-sm whitespace-nowrap min-w-0 ${
-                      isLost ? 'line-through text-gray-400' : 'text-muted-foreground'
+                      isLost ? 'line-through text-gray-400 dark:text-gray-500' : 'text-muted-foreground'
                     }`}>
                       <div className="flex items-center gap-1">
                         <Clock className="w-3 h-3 shrink-0" />

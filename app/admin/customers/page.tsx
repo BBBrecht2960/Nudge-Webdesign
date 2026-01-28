@@ -121,7 +121,7 @@ export default function CustomersPage() {
       case 'on_hold':
         return 'bg-red-100 text-red-800';
       case 'canceled':
-        return 'bg-red-100 text-red-800 border-red-300 font-semibold';
+        return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border-red-300 dark:border-red-700 font-semibold';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -350,22 +350,22 @@ export default function CustomersPage() {
                   <tr
                     key={customer.id}
                     className={`border-b border-border hover:bg-accent/50 cursor-pointer transition-colors ${
-                      isCanceled ? 'bg-gray-50 opacity-75' : ''
+                      isCanceled ? 'bg-gray-50 dark:bg-gray-800/50 opacity-75' : ''
                     }`}
                     onClick={() => router.push(`/admin/customers/${customer.id}`)}
                   >
                     <td className="p-3 sm:p-4 break-words min-w-0">
-                      <div className={`font-medium ${isCanceled ? 'line-through text-gray-500' : ''}`}>
+                      <div className={`font-medium ${isCanceled ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>
                         {customer.name}
                       </div>
-                      <div className={`text-xs break-all ${isCanceled ? 'line-through text-gray-400' : 'text-muted-foreground'}`}>
+                      <div className={`text-xs break-all ${isCanceled ? 'line-through text-gray-400 dark:text-gray-500' : 'text-muted-foreground'}`}>
                         {customer.email}
                       </div>
                     </td>
-                    <td className={`p-3 sm:p-4 break-words min-w-0 ${isCanceled ? 'line-through text-gray-500' : ''}`}>
+                    <td className={`p-3 sm:p-4 break-words min-w-0 ${isCanceled ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>
                       {customer.company_name || '-'}
                     </td>
-                    <td className={`p-3 sm:p-4 break-words min-w-0 ${isCanceled ? 'line-through text-gray-500' : ''}`}>
+                    <td className={`p-3 sm:p-4 break-words min-w-0 ${isCanceled ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>
                       {customer.package_interest || '-'}
                     </td>
                     <td className="p-3 sm:p-4 min-w-0">
@@ -387,10 +387,10 @@ export default function CustomersPage() {
                         {getStatusLabel(customer.project_status)}
                       </span>
                     </td>
-                    <td className={`p-3 sm:p-4 break-words min-w-0 ${isCanceled ? 'line-through text-gray-500' : ''}`}>
+                    <td className={`p-3 sm:p-4 break-words min-w-0 ${isCanceled ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>
                       {customer.assigned_to || <span className="text-muted-foreground text-sm">-</span>}
                     </td>
-                    <td className={`p-3 sm:p-4 text-sm whitespace-nowrap min-w-0 ${isCanceled ? 'line-through text-gray-400' : 'text-muted-foreground'}`}>
+                    <td className={`p-3 sm:p-4 text-sm whitespace-nowrap min-w-0 ${isCanceled ? 'line-through text-gray-400 dark:text-gray-500' : 'text-muted-foreground'}`}>
                       <div className="flex items-center gap-1">
                         <Clock className="w-3 h-3 shrink-0" />
                         {new Date(customer.converted_at).toLocaleDateString('nl-BE')}
