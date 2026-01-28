@@ -129,14 +129,45 @@ export default function CustomerDetailPage() {
     try {
       const oldStatus = customer.project_status;
       
-      const { error: updateError } = await supabase
+      const { data: updatedCustomer, error: updateError } = await supabase
         .from('customers')
         .update({ project_status: newStatus })
-        .eq('id', customerId);
+        .eq('id', customerId)
+        .select()
+        .single();
 
       if (updateError) {
-        console.error('Error updating customer status:', updateError);
+        const errorDetails = {
+          code: updateError.code,
+          message: updateError.message,
+          details: updateError.details,
+          hint: updateError.hint,
+        };
+        console.error('Error updating customer status:', errorDetails);
+        
+        // Check if it's a constraint violation (e.g., canceled not in CHECK constraint)
+        if (updateError.code === '23514' || updateError.message?.includes('check constraint')) {
+          throw new Error('De status "Geannuleerd" is nog niet toegevoegd aan de database. Voer add-canceled-status.sql uit.');
+        }
+        
         throw new Error(updateError.message || 'Fout bij bijwerken status');
+      }
+
+      // If customer is canceled, also update related lead to "lost"
+      if (newStatus === 'canceled' && customer.lead_id) {
+        try {
+          const { error: leadUpdateError } = await supabase
+            .from('leads')
+            .update({ status: 'lost' })
+            .eq('id', customer.lead_id);
+
+          if (leadUpdateError) {
+            console.warn('Error updating related lead to lost:', leadUpdateError);
+            // Don't fail the customer update, just log the warning
+          }
+        } catch (leadErr) {
+          console.warn('Error updating related lead to lost:', leadErr);
+        }
       }
 
       // Add to progress history (non-blocking - don't fail if table doesn't exist)
@@ -162,8 +193,13 @@ export default function CustomerDetailPage() {
         console.warn('Error adding to progress history (non-critical):', historyErr);
       }
 
-      setCustomer({ ...customer, project_status: newStatus as Customer['project_status'] });
-      setProjectStatus(newStatus);
+      if (updatedCustomer) {
+        setCustomer(updatedCustomer);
+        setProjectStatus(newStatus);
+      } else {
+        // Reload customer data if update didn't return data
+        loadCustomerData();
+      }
       
       // Reload progress history (non-blocking)
       try {
@@ -177,15 +213,36 @@ export default function CustomerDetailPage() {
         console.warn('Error reloading progress history:', historyErr);
       }
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Onbekende fout';
-      const errorObj = error as { code?: string; message?: string; details?: string };
-      console.error('Error updating status:', {
+      // Better error handling
+      let errorMessage = 'Onbekende fout';
+      let errorDetails = '';
+
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        const errorObj = error as { code?: string; message?: string; details?: string; hint?: string };
+        errorMessage = errorObj.message || errorMessage;
+        errorDetails = [
+          errorObj.code ? `Code: ${errorObj.code}` : '',
+          errorObj.details ? `Details: ${errorObj.details}` : '',
+          errorObj.hint ? `Hint: ${errorObj.hint}` : '',
+        ].filter(Boolean).join(', ');
+      }
+
+      console.error('Error updating customer status:', {
         error,
-        message: errorMessage,
-        code: errorObj.code,
-        details: errorObj.details,
+        errorMessage,
+        errorDetails,
+        customerId,
+        newStatus,
       });
-      alert(`Fout bij het bijwerken van de status: ${errorMessage}`);
+
+      // Check for specific error types
+      if (errorMessage.includes('check constraint') || errorMessage.includes('23514')) {
+        alert('De status "Geannuleerd" is nog niet toegevoegd aan de database. Voer add-canceled-status.sql uit in Supabase.');
+      } else {
+        alert(`Fout bij het bijwerken van de status: ${errorMessage}${errorDetails ? ` (${errorDetails})` : ''}`);
+      }
     } finally {
       setIsSaving(false);
     }

@@ -421,6 +421,33 @@ export default function LeadDetailPage() {
         }),
       });
 
+      // If status is "lost", also cancel related customer if exists
+      if (newStatus === 'lost') {
+        try {
+          // Check if customer exists for this lead
+          const { data: existingCustomer } = await supabase
+            .from('customers')
+            .select('id, project_status')
+            .eq('lead_id', leadId)
+            .maybeSingle();
+
+          if (existingCustomer && existingCustomer.project_status !== 'canceled') {
+            const { error: customerUpdateError } = await supabase
+              .from('customers')
+              .update({ project_status: 'canceled' })
+              .eq('id', existingCustomer.id);
+
+            if (customerUpdateError) {
+              console.warn('Error updating related customer to canceled:', customerUpdateError);
+            } else {
+              console.log('Related customer marked as canceled');
+            }
+          }
+        } catch (customerErr) {
+          console.warn('Error checking/updating related customer:', customerErr);
+        }
+      }
+
       // If status is "converted", automatically convert to customer
       if (newStatus === 'converted') {
         try {
