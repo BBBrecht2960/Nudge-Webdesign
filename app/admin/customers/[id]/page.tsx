@@ -134,31 +134,58 @@ export default function CustomerDetailPage() {
         .update({ project_status: newStatus })
         .eq('id', customerId);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Error updating customer status:', updateError);
+        throw new Error(updateError.message || 'Fout bij bijwerken status');
+      }
 
-      // Add to progress history
-      await supabase
-        .from('customer_progress_history')
-        .insert({
-          customer_id: customerId,
-          old_status: oldStatus,
-          new_status: newStatus,
-          changed_by: 'Admin',
-        });
+      // Add to progress history (non-blocking - don't fail if table doesn't exist)
+      try {
+        const { error: historyError } = await supabase
+          .from('customer_progress_history')
+          .insert({
+            customer_id: customerId,
+            old_status: oldStatus,
+            new_status: newStatus,
+            changed_by: 'Admin',
+          });
+
+        if (historyError) {
+          // Check if table doesn't exist
+          if (historyError.code === '42P01' || historyError.message?.includes('does not exist')) {
+            console.warn('customer_progress_history table does not exist. Run create-customer-updates-table.sql');
+          } else {
+            console.warn('Error adding to progress history (non-critical):', historyError);
+          }
+        }
+      } catch (historyErr) {
+        console.warn('Error adding to progress history (non-critical):', historyErr);
+      }
 
       setCustomer({ ...customer, project_status: newStatus as Customer['project_status'] });
       setProjectStatus(newStatus);
       
-      // Reload progress history
-      const { data: historyData } = await supabase
-        .from('customer_progress_history')
-        .select('*')
-        .eq('customer_id', customerId)
-        .order('created_at', { ascending: false });
-      setProgressHistory(historyData || []);
-    } catch (error) {
-      console.error('Error updating status:', error);
-      alert('Fout bij het bijwerken van de status');
+      // Reload progress history (non-blocking)
+      try {
+        const { data: historyData } = await supabase
+          .from('customer_progress_history')
+          .select('*')
+          .eq('customer_id', customerId)
+          .order('created_at', { ascending: false });
+        setProgressHistory(historyData || []);
+      } catch (historyErr) {
+        console.warn('Error reloading progress history:', historyErr);
+      }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Onbekende fout';
+      const errorObj = error as { code?: string; message?: string; details?: string };
+      console.error('Error updating status:', {
+        error,
+        message: errorMessage,
+        code: errorObj.code,
+        details: errorObj.details,
+      });
+      alert(`Fout bij het bijwerken van de status: ${errorMessage}`);
     } finally {
       setIsSaving(false);
     }

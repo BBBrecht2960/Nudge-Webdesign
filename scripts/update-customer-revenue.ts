@@ -4,11 +4,25 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import * as dotenv from 'dotenv';
+import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
 
-// Load environment variables
-dotenv.config({ path: resolve(process.cwd(), '.env.local') });
+// Load environment variables (same method as create-admins.ts)
+const envPath = resolve(process.cwd(), '.env.local');
+if (existsSync(envPath)) {
+  const content = readFileSync(envPath, 'utf8');
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const [key, ...valueParts] = trimmed.split('=');
+    if (key && valueParts.length > 0) {
+      const value = valueParts.join('=').trim();
+      // Remove quotes if present
+      const cleanValue = value.replace(/^["']|["']$/g, '');
+      process.env[key.trim()] = cleanValue;
+    }
+  }
+}
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
