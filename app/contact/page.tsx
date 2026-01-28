@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { LeadForm } from '../components/LeadForm';
 
 export const metadata: Metadata = {
-  title: 'Contact - Almost 3000 BV',
+  title: 'Contact - Nudge Webdesign',
   description: 'Neem contact met ons op voor een gratis gesprek over uw website of webshop project.',
 };
 

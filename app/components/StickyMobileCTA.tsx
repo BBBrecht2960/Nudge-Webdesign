@@ -80,14 +80,14 @@ export function StickyMobileCTA() {
 
   return (
     <div 
-      className={`fixed bottom-0 left-0 right-0 z-[9999] bg-white border-t-2 border-primary shadow-lg transition-all duration-300 ${
+      className={`fixed bottom-0 left-0 right-0 z-[9999] bg-white border-t-2 border-primary shadow-lg transition-all duration-300 w-full min-w-0 ${
         show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full pointer-events-none'
       }`}
     >
-      <div className="flex items-center gap-3 p-4 max-w-7xl mx-auto">
+      <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 max-w-7xl mx-auto w-full min-w-0">
         <Button
           onClick={handleClick}
-          className="flex-1 text-sm min-h-[48px] font-semibold"
+          className="flex-1 text-xs sm:text-sm min-h-[48px] font-semibold min-w-0 break-words"
           size="lg"
         >
           Plan gratis gesprek
@@ -95,10 +95,10 @@ export function StickyMobileCTA() {
         <a
           href={`tel:${phoneNumber}`}
           onClick={handlePhoneClick}
-          className="p-3.5 min-h-[48px] min-w-[48px] flex items-center justify-center rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors shrink-0"
+          className="p-3 sm:p-3.5 min-h-[48px] min-w-[48px] flex items-center justify-center rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors shrink-0"
           aria-label="Bel ons"
         >
-          <Phone className="w-5 h-5" />
+          <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
         </a>
       </div>
     </div>

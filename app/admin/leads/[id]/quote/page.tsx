@@ -164,6 +164,10 @@ export default function QuoteBuilderPage() {
           if (data.extraPages !== undefined) restoredState.extraPages = data.extraPages;
           if (data.contentPages !== undefined) restoredState.contentPages = data.contentPages;
           
+          // Restore scope and timeline
+          if (data.scopeDescription !== undefined) restoredState.scopeDescription = data.scopeDescription;
+          if (data.timeline !== undefined) restoredState.timeline = data.timeline;
+          
           actions.loadState(restoredState);
           
           if (quote.updated_at) {
@@ -207,6 +211,8 @@ export default function QuoteBuilderPage() {
         contentPages: state.contentPages,
         customLineItems: state.customLineItems,
         discount: state.discount,
+        scopeDescription: state.scopeDescription,
+        timeline: state.timeline,
       };
 
       const response = await fetch(`/api/leads/${leadId}/quote`, {
@@ -443,7 +449,7 @@ export default function QuoteBuilderPage() {
         };
       case 'analytics-reporting':
         return {
-          title: 'Analytics & rapportage',
+          title: 'Analytics & rapportage (maandelijks)',
           description: 'Analytics setup en maandelijkse rapportage van prestaties.',
           examples: [
             'Google Analytics configuratie',
@@ -699,6 +705,60 @@ export default function QuoteBuilderPage() {
         doc.setFont('helvetica', 'normal');
         doc.text(lead.company_website, margin + 30, yPos);
         yPos += lineHeight + 2;
+      }
+      
+      yPos += 5;
+      
+      // Project Details (Scope & Timeline)
+      if (state.timeline || state.scopeDescription) {
+        // Add spacing before project details
+        yPos += 5;
+        
+        // Check if we need a new page
+        checkNewPage(15);
+        
+        // Project Details section
+        doc.setFontSize(13);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(144, 103, 198);
+        doc.text('Project Details', margin + 8, yPos);
+        doc.setTextColor(0, 0, 0);
+        yPos += 8;
+        
+        // Divider line
+        doc.setDrawColor(220, 220, 230);
+        doc.setLineWidth(0.5);
+        doc.line(margin + 8, yPos - 2, pageWidth - margin - 8, yPos - 2);
+        yPos += 5;
+        
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        
+        if (state.timeline) {
+          doc.setFont('helvetica', 'bold');
+          doc.text('Levertijd:', margin + 8, yPos);
+          doc.setFont('helvetica', 'normal');
+          doc.text(state.timeline, margin + 30, yPos);
+          yPos += lineHeight + 3;
+        }
+        
+        if (state.scopeDescription) {
+          doc.setFont('helvetica', 'bold');
+          doc.text('Scope Beschrijving:', margin + 8, yPos);
+          yPos += lineHeight + 2;
+          doc.setFont('helvetica', 'normal');
+          
+          // Split scope description into lines that fit the page width
+          const scopeLines = doc.splitTextToSize(state.scopeDescription, contentWidth - 16);
+          scopeLines.forEach((line: string) => {
+            checkNewPage(5);
+            doc.text(line, margin + 8, yPos);
+            yPos += lineHeight + 1;
+          });
+          yPos += 3;
+        }
+        
+        yPos += 5;
       }
 
       doc.setTextColor(0, 0, 0);
@@ -1250,21 +1310,33 @@ export default function QuoteBuilderPage() {
   return (
     <>
       <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto relative">
-      <Button
-        onClick={() => router.push(`/admin/leads/${leadId}`)}
-        variant="outline"
-        className="mb-6"
-      >
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Terug naar lead
-      </Button>
-
       <div className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-2">Offerte Builder</h1>
-        <p className="text-muted-foreground">
-          Voor: <span className="font-medium">{lead.name}</span>
-          {lead.company_name && ` - ${lead.company_name}`}
-        </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">Offerte Builder</h1>
+            <p className="text-muted-foreground">
+              Voor: <span className="font-medium">{lead.name}</span>
+              {lead.company_name && ` - ${lead.company_name}`}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => router.push(`/admin/leads/${leadId}`)}
+              variant="outline"
+              size="sm"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Lead Details
+            </Button>
+            <Button
+              onClick={() => router.push('/admin/leads')}
+              variant="outline"
+              size="sm"
+            >
+              Alle Leads
+            </Button>
+          </div>
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -1364,8 +1436,7 @@ export default function QuoteBuilderPage() {
                         </div>
                         <p className="text-sm text-muted-foreground mb-3 flex-1">{pkg.description}</p>
                         <div className="text-xs text-muted-foreground">
-                          {pkg.features.slice(0, 3).join(' • ')}
-                          {pkg.features.length > 3 && ' • ...'}
+                          {pkg.features.join(' • ')}
                         </div>
                       </button>
                     </div>
@@ -1374,6 +1445,66 @@ export default function QuoteBuilderPage() {
               </div>
             )}
           </div>
+
+          {/* Project Details - Scope & Timeline */}
+          {selectedPackage && (
+            <div className="bg-card border border-border rounded-lg overflow-hidden">
+              <button
+                onClick={() => toggleSection('project-details')}
+                className="w-full p-6 flex items-center justify-between hover:bg-accent/50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <FileText className="w-5 h-5 text-primary" />
+                  <h2 className="text-xl font-bold">Project Details</h2>
+                  {(state.scopeDescription || state.timeline) && (
+                    <span className="text-sm bg-primary/10 text-primary px-2 py-1 rounded">
+                      Ingevuld
+                    </span>
+                  )}
+                </div>
+                {expandedSections.has('project-details') ? (
+                  <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                )}
+              </button>
+
+              {expandedSections.has('project-details') && (
+                <div className="px-6 pb-6 space-y-4">
+                  {/* Timeline */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Levertijd / Tijdsduur
+                    </label>
+                    <input
+                      type="text"
+                      value={state.timeline}
+                      onChange={(e) => actions.setTimeline(e.target.value)}
+                      placeholder="Bijv. 4-6 weken, 2 maanden, etc."
+                      className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                    />
+                  </div>
+
+                  {/* Scope Description */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Scope Beschrijving
+                    </label>
+                    <textarea
+                      value={state.scopeDescription}
+                      onChange={(e) => actions.setScopeDescription(e.target.value)}
+                      placeholder="Beschrijf de scope in detail. Bijv: Een webshop voor een koffie zaak met donkere kleuren, gerund door een marokkaanse vrouw dus met marokkaanse vibes..."
+                      rows={6}
+                      className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm resize-y"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Beschrijf hier de visie, stijl, doelgroep, en specifieke wensen voor het project.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Step 2: Options - Only show if package selected */}
           {selectedPackage && (
@@ -1860,7 +1991,7 @@ export default function QuoteBuilderPage() {
                 >
                   <div className="flex items-center gap-3">
                     <Wrench className="w-5 h-5 text-primary" />
-                    <h2 className="text-xl font-bold">Onderhoud (maandelijks)</h2>
+                    <h2 className="text-xl font-bold">Onderhoud & Analytics (maandelijks)</h2>
                     {selectedMaintenance && (
                       <span className="text-sm bg-primary/10 text-primary px-2 py-1 rounded">
                         Geselecteerd
@@ -1876,7 +2007,8 @@ export default function QuoteBuilderPage() {
 
                 {expandedSections.has('maintenance') && (
                   <div className="px-6 pb-6 space-y-3">
-                    {maintenanceOptions.map((option) => {
+                    {/* Maintenance Packages */}
+                    {maintenanceOptions.filter(opt => opt.id.startsWith('maintenance-')).map((option) => {
                       const isSelected = selectedMaintenance?.id === option.id;
                       return (
                         <div
@@ -1910,8 +2042,45 @@ export default function QuoteBuilderPage() {
                               </div>
                             </div>
                           </button>
-                          
-                          {/* Tooltip */}
+                        </div>
+                      );
+                    })}
+                    
+                    {/* Analytics & Reporting (as separate option) */}
+                    {maintenanceOptions.filter(opt => opt.id === 'analytics-reporting').map((option) => {
+                      const isSelected = state.selectedOptions.some((o) => o.id === option.id);
+                      return (
+                        <div
+                          key={option.id}
+                          className="relative"
+                        >
+                          <button
+                            onClick={() => actions.toggleOption(option)}
+                            className={`w-full p-4 border-2 rounded-lg text-left transition-all ${
+                              isSelected
+                                ? 'border-primary bg-primary/5'
+                                : 'border-border hover:border-primary/50'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <div className="font-semibold mb-1">{option.name}</div>
+                                {option.description && (
+                                  <div className="text-sm text-muted-foreground">{option.description}</div>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-3 ml-4">
+                                <span className="font-bold text-primary">
+                                  €{option.price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/maand
+                                </span>
+                                {isSelected && (
+                                  <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center">
+                                    <Check className="w-4 h-4" />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </button>
                         </div>
                       );
                     })}
@@ -2113,6 +2282,25 @@ export default function QuoteBuilderPage() {
                 </div>
               </div>
 
+              {/* Project Details */}
+              {(state.scopeDescription || state.timeline) && (
+                <div className="bg-muted/50 rounded-lg p-4">
+                  <h3 className="font-semibold mb-3 text-primary">Project Details</h3>
+                  {state.timeline && (
+                    <div className="mb-3">
+                      <span className="text-sm text-muted-foreground">Levertijd:</span>
+                      <span className="ml-2 font-medium text-sm">{state.timeline}</span>
+                    </div>
+                  )}
+                  {state.scopeDescription && (
+                    <div>
+                      <span className="text-sm text-muted-foreground block mb-1">Scope Beschrijving:</span>
+                      <p className="text-sm whitespace-pre-wrap break-words">{state.scopeDescription}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Geselecteerde Items */}
               <div>
                 <h3 className="font-semibold mb-3 text-primary">Geselecteerde Items</h3>
@@ -2267,26 +2455,15 @@ export default function QuoteBuilderPage() {
                 Sluiten
               </Button>
               <Button
-                onClick={async () => {
-                  await handleSendQuote();
-                  if (!isSending) {
-                    setShowReview(false);
-                  }
+                onClick={() => {
+                  alert('E-mail verzenden is tijdelijk uitgeschakeld. Gebruik de PDF download om de offerte te delen.');
                 }}
-                disabled={isSending || isSaving || !selectedPackage || !lead?.email}
-                className="flex-1"
+                disabled={true}
+                className="flex-1 opacity-50 cursor-not-allowed"
+                title="E-mail verzenden is tijdelijk uitgeschakeld. Gebruik de PDF download."
               >
-                {isSending ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                    Verzenden...
-                  </>
-                ) : (
-                  <>
-                    <Mail className="w-4 h-4 mr-2" />
-                    Verzend Offerte
-                  </>
-                )}
+                <Mail className="w-4 h-4 mr-2" />
+                Verzend Offerte (Uitgeschakeld)
               </Button>
             </div>
           </div>

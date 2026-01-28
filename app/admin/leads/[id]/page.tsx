@@ -316,6 +316,35 @@ export default function LeadDetailPage() {
         }),
       });
 
+      // If status is "converted", automatically convert to customer
+      if (newStatus === 'converted') {
+        try {
+          const convertResponse = await fetch(`/api/leads/${leadId}/convert`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+          });
+
+          if (convertResponse.ok) {
+            const convertData = await convertResponse.json();
+            alert(`Lead succesvol geconverteerd naar customer! AI prompt is gegenereerd.`);
+            // Optionally redirect to customer page
+            // router.push(`/admin/customers/${convertData.customer.id}`);
+          } else {
+            const errorData = await convertResponse.json();
+            // Check if customer already exists
+            if (errorData.customer_id) {
+              alert(`Lead is al geconverteerd naar customer.`);
+            } else {
+              console.error('Error converting to customer:', errorData);
+              alert(`Status bijgewerkt, maar conversie naar customer mislukt: ${errorData.error || 'Onbekende fout'}`);
+            }
+          }
+        } catch (convertError) {
+          console.error('Error converting to customer:', convertError);
+          alert('Status bijgewerkt, maar conversie naar customer mislukt. Probeer handmatig te converteren.');
+        }
+      }
+
       // Reload to get fresh data
       loadLeadData();
     } catch (error) {
@@ -673,39 +702,39 @@ export default function LeadDetailPage() {
   const currentStatusDesc = getStatusDescription(lead.status);
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-3 sm:p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden">
       <Button
         onClick={() => router.push('/admin/leads')}
         variant="outline"
-        className="mb-6"
+        className="mb-4 sm:mb-6 text-sm sm:text-base"
       >
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Terug naar leads
+        <ArrowLeft className="w-4 h-4 mr-2 shrink-0" />
+        <span className="break-words">Terug naar leads</span>
       </Button>
 
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 w-full min-w-0">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
           {/* Lead Header */}
-          <div className="bg-card border border-border rounded-lg p-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold mb-2">{lead.name}</h1>
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
+            <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-4 mb-4 sm:mb-6 w-full min-w-0">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-2 break-words">{lead.name}</h1>
                 {lead.company_name && (
-                  <p className="text-lg text-muted-foreground flex items-center gap-2">
-                    <Building className="w-5 h-5" />
-                    {lead.company_name}
+                  <p className="text-base sm:text-lg text-muted-foreground flex items-center gap-2 break-words min-w-0">
+                    <Building className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                    <span className="break-words">{lead.company_name}</span>
                   </p>
                 )}
               </div>
-              <div className="flex flex-col items-end gap-2">
+              <div className="flex flex-col items-start sm:items-end gap-2 w-full sm:w-auto min-w-0">
                 <select
                   value={lead.status}
                   onChange={(e) => handleStatusChange(e.target.value)}
                   disabled={isSaving}
-                  className={`px-4 py-2 rounded border text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary ${getStatusColor(lead.status)} ${
+                  className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary ${getStatusColor(lead.status)} ${
                     isSaving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-                  }`}
+                  } min-w-0`}
                 >
                   {(statusDescriptions.length > 0 ? statusDescriptions : [
                     { status: 'new', name_nl: 'Nieuw' },
@@ -720,188 +749,190 @@ export default function LeadDetailPage() {
                   ))}
                 </select>
                 {currentStatusDesc && (
-                  <p className="text-xs text-muted-foreground max-w-xs text-right">
+                  <p className="text-xs text-muted-foreground max-w-xs text-left sm:text-right break-words">
                     {currentStatusDesc.description_nl}
                   </p>
                 )}
               </div>
             </div>
 
-            <div className="grid sm:grid-cols-2 gap-4 mb-6">
-              <div className="flex items-center gap-2">
-                <Mail className="w-5 h-5 text-muted-foreground" />
-                <a href={`mailto:${lead.email}`} className="text-primary hover:underline">
+            <div className="grid sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
+              <div className="flex items-center gap-2 min-w-0">
+                <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground shrink-0" />
+                <a href={`mailto:${lead.email}`} className="text-primary hover:underline break-all text-sm sm:text-base">
                   {lead.email}
                 </a>
               </div>
               {lead.phone && (
-                <div className="flex items-center gap-2">
-                  <Phone className="w-5 h-5 text-muted-foreground" />
-                  <a href={`tel:${lead.phone}`} className="text-primary hover:underline">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Phone className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground shrink-0" />
+                  <a href={`tel:${lead.phone}`} className="text-primary hover:underline break-all text-sm sm:text-base">
                     {lead.phone}
                   </a>
                 </div>
               )}
               {lead.company_size && (
-                <div className="flex items-center gap-2">
-                  <Building className="w-5 h-5 text-muted-foreground" />
-                  <span>{lead.company_size} medewerkers</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <Building className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground shrink-0" />
+                  <span className="text-sm sm:text-base break-words">{lead.company_size} medewerkers</span>
                 </div>
               )}
               {lead.package_interest && (
-                <div className="flex items-center gap-2">
-                  <Package className="w-5 h-5 text-muted-foreground" />
-                  <span>{lead.package_interest}</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <Package className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground shrink-0" />
+                  <span className="text-sm sm:text-base break-words">{lead.package_interest}</span>
                 </div>
               )}
-              <div className="flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-muted-foreground" />
-                <span className="text-sm">{new Date(lead.created_at).toLocaleString('nl-BE')}</span>
+              <div className="flex items-center gap-2 min-w-0">
+                <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground shrink-0" />
+                <span className="text-xs sm:text-sm break-words">{new Date(lead.created_at).toLocaleString('nl-BE')}</span>
               </div>
             </div>
 
             {lead.pain_points && lead.pain_points.length > 0 && (
-              <div className="mb-6">
-                <h3 className="font-semibold mb-2">Uitdagingen:</h3>
-                <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+              <div className="mb-4 sm:mb-6 min-w-0">
+                <h3 className="font-semibold mb-2 text-sm sm:text-base break-words">Uitdagingen:</h3>
+                <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm text-muted-foreground">
                   {lead.pain_points.map((point, i) => (
-                    <li key={i}>{point}</li>
+                    <li key={i} className="break-words">{point}</li>
                   ))}
                 </ul>
               </div>
             )}
 
             {lead.message && (
-              <div>
-                <h3 className="font-semibold mb-2">Bericht:</h3>
-                <p className="text-muted-foreground whitespace-pre-wrap">{lead.message}</p>
+              <div className="min-w-0">
+                <h3 className="font-semibold mb-2 break-words">Bericht:</h3>
+                <p className="text-muted-foreground whitespace-pre-wrap break-words">{lead.message}</p>
               </div>
             )}
 
             {/* Company Information Section */}
-            <div className="bg-card border border-border rounded-lg p-6 mt-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">Bedrijfsgegevens</h2>
+            <div className="bg-card border border-border rounded-lg p-4 sm:p-6 mt-4 sm:mt-6 w-full min-w-0">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 w-full min-w-0">
+                <h2 className="text-lg sm:text-xl font-bold break-words">Bedrijfsgegevens</h2>
                 <Button
                   onClick={() => setShowCompanyForm(!showCompanyForm)}
                   size="sm"
                   variant="outline"
+                  className="w-full sm:w-auto text-xs sm:text-sm"
                 >
                   {showCompanyForm ? 'Annuleren' : lead.vat_number ? 'Bewerken' : 'Toevoegen'}
                 </Button>
               </div>
 
               {!showCompanyForm && (
-                <div className="space-y-2 text-sm">
+                <div className="space-y-2 text-xs sm:text-sm min-w-0">
                   {lead.vat_number && (
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">BTW-nummer:</span>
-                      <span>{lead.vat_number}</span>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0">
+                      <span className="font-medium shrink-0">BTW-nummer:</span>
+                      <span className="break-words">{lead.vat_number}</span>
                     </div>
                   )}
                   {lead.company_address && (
-                    <div className="flex items-start gap-2">
-                      <span className="font-medium">Adres:</span>
-                      <span>{lead.company_address}</span>
+                    <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2 min-w-0">
+                      <span className="font-medium shrink-0">Adres:</span>
+                      <span className="break-words">{lead.company_address}</span>
                     </div>
                   )}
                   {(lead.company_postal_code || lead.company_city) && (
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">Postcode & Stad:</span>
-                      <span>{[lead.company_postal_code, lead.company_city].filter(Boolean).join(' ')}</span>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0">
+                      <span className="font-medium shrink-0">Postcode & Stad:</span>
+                      <span className="break-words">{[lead.company_postal_code, lead.company_city].filter(Boolean).join(' ')}</span>
                     </div>
                   )}
                   {lead.company_country && (
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">Land:</span>
-                      <span>{lead.company_country}</span>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0">
+                      <span className="font-medium shrink-0">Land:</span>
+                      <span className="break-words">{lead.company_country}</span>
                     </div>
                   )}
                   {lead.company_website && (
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">Website:</span>
-                      <a href={lead.company_website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0">
+                      <span className="font-medium shrink-0">Website:</span>
+                      <a href={lead.company_website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
                         {lead.company_website}
                       </a>
                     </div>
                   )}
                   {!lead.vat_number && !lead.company_address && !lead.company_postal_code && !lead.company_city && (
-                    <p className="text-muted-foreground italic">Geen bedrijfsgegevens ingevuld</p>
+                    <p className="text-muted-foreground italic break-words">Geen bedrijfsgegevens ingevuld</p>
                   )}
                 </div>
               )}
 
               {showCompanyForm && (
-                <div className="space-y-4 mt-4">
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-2">BTW-nummer *</label>
+                <div className="space-y-3 sm:space-y-4 mt-3 sm:mt-4 w-full min-w-0">
+                  <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div className="min-w-0">
+                      <label className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2">BTW-nummer *</label>
                       <input
                         type="text"
                         value={vatNumber}
                         onChange={(e) => setVatNumber(e.target.value)}
                         placeholder="BE0123456789"
-                        className="w-full px-3 py-2 border border-border rounded-md"
+                        className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-border rounded-md text-sm sm:text-base"
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Website</label>
+                    <div className="min-w-0">
+                      <label className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2">Website</label>
                       <input
                         type="url"
                         value={companyWebsite}
                         onChange={(e) => setCompanyWebsite(e.target.value)}
                         placeholder="https://www.example.com"
-                        className="w-full px-3 py-2 border border-border rounded-md"
+                        className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-border rounded-md text-sm sm:text-base"
                       />
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Adres</label>
+                  <div className="min-w-0">
+                    <label className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2">Adres</label>
                     <input
                       type="text"
                       value={companyAddress}
                       onChange={(e) => setCompanyAddress(e.target.value)}
                       placeholder="Straat en nummer"
-                      className="w-full px-3 py-2 border border-border rounded-md"
+                      className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-border rounded-md text-sm sm:text-base"
                     />
                   </div>
-                  <div className="grid sm:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Postcode</label>
+                  <div className="grid sm:grid-cols-3 gap-3 sm:gap-4">
+                    <div className="min-w-0">
+                      <label className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2">Postcode</label>
                       <input
                         type="text"
                         value={companyPostalCode}
                         onChange={(e) => setCompanyPostalCode(e.target.value)}
                         placeholder="3500"
-                        className="w-full px-3 py-2 border border-border rounded-md"
+                        className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-border rounded-md text-sm sm:text-base"
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Stad</label>
+                    <div className="min-w-0">
+                      <label className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2">Stad</label>
                       <input
                         type="text"
                         value={companyCity}
                         onChange={(e) => setCompanyCity(e.target.value)}
                         placeholder="Hasselt"
-                        className="w-full px-3 py-2 border border-border rounded-md"
+                        className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-border rounded-md text-sm sm:text-base"
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Land</label>
+                    <div className="min-w-0">
+                      <label className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2">Land</label>
                       <input
                         type="text"
                         value={companyCountry}
                         onChange={(e) => setCompanyCountry(e.target.value)}
                         placeholder="België"
-                        className="w-full px-3 py-2 border border-border rounded-md"
+                        className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-border rounded-md text-sm sm:text-base"
                       />
                     </div>
                   </div>
-                  <div className="flex gap-2 pt-2">
+                  <div className="flex flex-col sm:flex-row gap-2 pt-2">
                     <Button
                       onClick={handleSaveCompanyInfo}
                       disabled={isSavingCompany || !vatNumber.trim()}
                       size="sm"
+                      className="w-full sm:w-auto text-xs sm:text-sm"
                     >
                       {isSavingCompany ? 'Opslaan...' : 'Opslaan'}
                     </Button>
@@ -920,6 +951,7 @@ export default function LeadDetailPage() {
                       }}
                       variant="outline"
                       size="sm"
+                      className="w-full sm:w-auto text-xs sm:text-sm"
                     >
                       Annuleren
                     </Button>
@@ -930,39 +962,41 @@ export default function LeadDetailPage() {
           </div>
 
           {/* Activity Timeline */}
-          <div className="bg-card border border-border rounded-lg p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold">Activiteiten & Geschiedenis</h2>
-              <div className="flex gap-2">
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6 w-full min-w-0">
+              <h2 className="text-lg sm:text-xl font-bold break-words">Activiteiten & Geschiedenis</h2>
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                 <Button
                   onClick={() => router.push(`/admin/leads/${leadId}/quote`)}
                   size="sm"
                   variant="outline"
+                  className="w-full sm:w-auto text-xs sm:text-sm"
                 >
-                  <Calculator className="w-4 h-4 mr-2" />
-                  Offerte
+                  <Calculator className="w-3 h-3 sm:w-4 sm:h-4 mr-2 shrink-0" />
+                  <span className="break-words">Offerte</span>
                 </Button>
                 <Button
                   onClick={() => setShowActivityForm(!showActivityForm)}
                   size="sm"
                   variant="outline"
+                  className="w-full sm:w-auto text-xs sm:text-sm"
                 >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Activiteit toevoegen
+                  <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-2 shrink-0" />
+                  <span className="break-words">Activiteit toevoegen</span>
                 </Button>
               </div>
             </div>
 
             {/* Activity Form */}
             {showActivityForm && (
-              <div className="bg-muted border border-border rounded-lg p-4 mb-6">
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Type</label>
+              <div className="bg-muted border border-border rounded-lg p-3 sm:p-4 mb-4 sm:mb-6 w-full min-w-0">
+                <div className="space-y-3 sm:space-y-4">
+                  <div className="min-w-0">
+                    <label className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2">Type</label>
                     <select
                       value={activityType}
                       onChange={(e) => setActivityType(e.target.value as LeadActivity['activity_type'])}
-                      className="w-full px-3 py-2 border border-border rounded-md"
+                      className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-border rounded-md text-sm sm:text-base"
                     >
                       <option value="note">Notitie</option>
                       <option value="call">Telefoongesprek</option>
@@ -973,55 +1007,56 @@ export default function LeadDetailPage() {
                       <option value="contract_sent">Contract verstuurd</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Titel *</label>
+                  <div className="min-w-0">
+                    <label className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2">Titel *</label>
                     <input
                       type="text"
                       value={activityTitle}
                       onChange={(e) => setActivityTitle(e.target.value)}
                       placeholder="Bijv. 'Telefoongesprek met klant'"
-                      className="w-full px-3 py-2 border border-border rounded-md"
+                      className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-border rounded-md text-sm sm:text-base"
                     />
                   </div>
                   {(activityType === 'call' || activityType === 'meeting') && (
                     <>
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Duur (minuten)</label>
+                      <div className="min-w-0">
+                        <label className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2">Duur (minuten)</label>
                         <input
                           type="number"
                           value={activityDuration}
                           onChange={(e) => setActivityDuration(e.target.value)}
                           placeholder="30"
-                          className="w-full px-3 py-2 border border-border rounded-md"
+                          className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-border rounded-md text-sm sm:text-base"
                         />
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Gesprekssamenvatting</label>
+                      <div className="min-w-0">
+                        <label className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2">Gesprekssamenvatting</label>
                         <textarea
                           value={activitySummary}
                           onChange={(e) => setActivitySummary(e.target.value)}
                           placeholder="Wat is er besproken? Belangrijke punten, afspraken, etc."
                           rows={4}
-                          className="w-full px-3 py-2 border border-border rounded-md"
+                          className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-border rounded-md text-sm sm:text-base resize-none"
                         />
                       </div>
                     </>
                   )}
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Beschrijving</label>
+                  <div className="min-w-0">
+                    <label className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2">Beschrijving</label>
                     <textarea
                       value={activityDescription}
                       onChange={(e) => setActivityDescription(e.target.value)}
                       placeholder="Extra details..."
                       rows={3}
-                      className="w-full px-3 py-2 border border-border rounded-md"
+                      className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-border rounded-md text-sm sm:text-base resize-none"
                     />
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <Button
                       onClick={handleAddActivity}
                       disabled={!activityTitle.trim() || isSaving}
                       size="sm"
+                      className="w-full sm:w-auto text-xs sm:text-sm"
                     >
                       {isSaving ? 'Opslaan...' : 'Toevoegen'}
                     </Button>
@@ -1035,6 +1070,7 @@ export default function LeadDetailPage() {
                       }}
                       variant="outline"
                       size="sm"
+                      className="w-full sm:w-auto text-xs sm:text-sm"
                     >
                       Annuleren
                     </Button>
@@ -1045,7 +1081,7 @@ export default function LeadDetailPage() {
 
             {/* Activities List */}
             <div 
-              className="max-h-[600px] overflow-y-auto pr-2 space-y-4 custom-scrollbar"
+              className="max-h-[400px] sm:max-h-[600px] overflow-y-auto pr-2 space-y-3 sm:space-y-4 custom-scrollbar w-full min-w-0"
               style={{
                 scrollbarWidth: 'thin',
                 scrollbarColor: 'rgba(144, 103, 198, 0.3) transparent'
@@ -1072,37 +1108,37 @@ export default function LeadDetailPage() {
                 activities.map((activity) => (
                   <div
                     key={activity.id}
-                    className="border-l-4 border-primary pl-4 py-3 bg-muted/30 rounded-r"
+                    className="border-l-4 border-primary pl-3 sm:pl-4 py-2 sm:py-3 bg-muted/30 rounded-r min-w-0"
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <div className="text-primary">{getActivityIcon(activity.activity_type)}</div>
-                        <h3 className="font-semibold">{activity.title}</h3>
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="text-primary shrink-0">{getActivityIcon(activity.activity_type)}</div>
+                        <h3 className="font-semibold text-sm sm:text-base break-words">{activity.title}</h3>
                       </div>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-muted-foreground shrink-0">
                         {new Date(activity.created_at).toLocaleString('nl-BE')}
                       </span>
                     </div>
                     {activity.summary && (
-                      <div className="mb-2">
-                        <p className="text-sm font-medium text-muted-foreground mb-1">Samenvatting:</p>
-                        <p className="text-sm whitespace-pre-wrap bg-white p-2 rounded border border-border">
+                      <div className="mb-2 min-w-0">
+                        <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 break-words">Samenvatting:</p>
+                        <p className="text-xs sm:text-sm whitespace-pre-wrap bg-white p-2 rounded border border-border break-words">
                           {activity.summary}
                         </p>
                       </div>
                     )}
                     {activity.description && (
-                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                      <p className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap break-words">
                         {activity.description}
                       </p>
                     )}
                     {activity.duration_minutes && (
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-xs text-muted-foreground mt-1 break-words">
                         Duur: {activity.duration_minutes} minuten
                       </p>
                     )}
                     {activity.created_by && (
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-xs text-muted-foreground mt-1 break-words">
                         Door: {activity.created_by}
                       </p>
                     )}
@@ -1113,10 +1149,10 @@ export default function LeadDetailPage() {
           </div>
 
           {/* Attachments */}
-          <div className="bg-card border border-border rounded-lg p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Bijlagen</h2>
-              <label className="cursor-pointer">
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 w-full min-w-0">
+              <h2 className="text-lg sm:text-xl font-bold break-words">Bijlagen</h2>
+              <label className="cursor-pointer w-full sm:w-auto">
                 <input
                   type="file"
                   onChange={handleFileUpload}
@@ -1124,38 +1160,38 @@ export default function LeadDetailPage() {
                   className="hidden"
                   accept="image/*,.pdf,.doc,.docx"
                 />
-                <Button size="sm" variant="outline" disabled={uploadingFile} asChild>
+                <Button size="sm" variant="outline" disabled={uploadingFile} className="w-full sm:w-auto text-xs sm:text-sm" asChild>
                   <span>
-                    <Upload className="w-4 h-4 mr-2" />
-                    {uploadingFile ? 'Uploaden...' : 'Upload bestand'}
+                    <Upload className="w-3 h-3 sm:w-4 sm:h-4 mr-2 shrink-0" />
+                    <span className="break-words">{uploadingFile ? 'Uploaden...' : 'Upload bestand'}</span>
                   </span>
                 </Button>
               </label>
             </div>
             {attachments.length === 0 ? (
-              <p className="text-muted-foreground text-center py-4">Geen bijlagen</p>
+              <p className="text-muted-foreground text-center py-4 text-sm break-words">Geen bijlagen</p>
             ) : (
               <div className="space-y-2">
                 {attachments.map((attachment) => (
                   <div
                     key={attachment.id}
-                    className="flex items-center gap-3 p-3 border border-border rounded-lg hover:bg-accent transition-colors group"
+                    className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 border border-border rounded-lg hover:bg-accent transition-colors group min-w-0"
                   >
                     <a
                       href={attachment.file_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-3 flex-1 min-w-0"
+                      className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0"
                     >
                       {attachment.file_type?.startsWith('image/') ? (
-                        <ImageIcon className="w-5 h-5 text-primary shrink-0" />
+                        <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
                       ) : (
-                        <File className="w-5 h-5 text-primary shrink-0" />
+                        <File className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{attachment.file_name}</p>
+                        <p className="font-medium text-xs sm:text-sm truncate break-words">{attachment.file_name}</p>
                         {attachment.description && (
-                          <p className="text-sm text-muted-foreground truncate">
+                          <p className="text-xs text-muted-foreground truncate break-words">
                             {attachment.description}
                           </p>
                         )}
@@ -1167,13 +1203,13 @@ export default function LeadDetailPage() {
                     <button
                       onClick={() => setShowDeleteConfirm(attachment.id)}
                       disabled={deletingAttachmentId === attachment.id}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-destructive/10 rounded text-destructive hover:text-destructive/80 disabled:opacity-50"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 sm:p-2 hover:bg-destructive/10 rounded text-destructive hover:text-destructive/80 disabled:opacity-50 shrink-0"
                       title="Verwijder bijlage"
                     >
                       {deletingAttachmentId === attachment.id ? (
-                        <div className="w-4 h-4 border-2 border-destructive border-t-transparent rounded-full animate-spin" />
+                        <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-destructive border-t-transparent rounded-full animate-spin" />
                       ) : (
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                       )}
                     </button>
                   </div>
@@ -1184,16 +1220,16 @@ export default function LeadDetailPage() {
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6 w-full min-w-0">
           {/* Assignment */}
-          <div className="bg-card border border-border rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-4">Toegewezen aan</h2>
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
+            <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 break-words">Toegewezen aan</h2>
             <div className="space-y-3">
               <select
                 value={assignedTo}
                 onChange={(e) => handleAssignTo(e.target.value)}
                 disabled={isSaving}
-                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm sm:text-base"
               >
                 <option value="">Niet toegewezen</option>
                 {adminUsers.map((user) => (
@@ -1203,55 +1239,55 @@ export default function LeadDetailPage() {
                 ))}
               </select>
               {(lead as Lead & { assigned_to?: string }).assigned_to && (
-                <p className="text-sm text-muted-foreground">
-                  Huidig: <span className="font-medium">{(lead as Lead & { assigned_to?: string }).assigned_to}</span>
+                <p className="text-xs sm:text-sm text-muted-foreground break-words">
+                  Huidig: <span className="font-medium break-all">{(lead as Lead & { assigned_to?: string }).assigned_to}</span>
                 </p>
               )}
             </div>
           </div>
 
           {/* Quote Builder */}
-          <div className="bg-card border border-border rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-4">Offerte</h2>
-            <p className="text-muted-foreground text-sm mb-4">
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
+            <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 break-words">Offerte</h2>
+            <p className="text-muted-foreground text-xs sm:text-sm mb-3 sm:mb-4 break-words">
               Stel een offerte op maat samen voor deze lead.
             </p>
             <Button
               onClick={() => router.push(`/admin/leads/${leadId}/quote`)}
-              className="w-full mb-3"
+              className="w-full mb-3 text-xs sm:text-sm"
               variant="default"
             >
-              <Quote className="w-4 h-4 mr-2" />
-              Offerte Builder
+              <Quote className="w-3 h-3 sm:w-4 sm:h-4 mr-2 shrink-0" />
+              <span className="break-words">Offerte Builder</span>
             </Button>
             <LoadSavedQuoteInfo leadId={leadId} />
           </div>
 
           {/* Attribution Data */}
           {(lead.utm_source || lead.referrer) && (
-            <div className="bg-card border border-border rounded-lg p-6">
-              <h2 className="text-xl font-bold mb-4">Attributie Data</h2>
-              <div className="space-y-2 text-sm">
+            <div className="bg-card border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
+              <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 break-words">Attributie Data</h2>
+              <div className="space-y-2 text-xs sm:text-sm min-w-0">
                 {lead.utm_source && (
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-muted-foreground">UTM Source:</span>{' '}
-                    <span className="font-medium">{lead.utm_source}</span>
+                    <span className="font-medium break-words">{lead.utm_source}</span>
                   </div>
                 )}
                 {lead.utm_medium && (
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-muted-foreground">UTM Medium:</span>{' '}
-                    <span className="font-medium">{lead.utm_medium}</span>
+                    <span className="font-medium break-words">{lead.utm_medium}</span>
                   </div>
                 )}
                 {lead.utm_campaign && (
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-muted-foreground">UTM Campaign:</span>{' '}
-                    <span className="font-medium">{lead.utm_campaign}</span>
+                    <span className="font-medium break-words">{lead.utm_campaign}</span>
                   </div>
                 )}
                 {lead.referrer && (
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-muted-foreground">Referrer:</span>{' '}
                     <a
                       href={lead.referrer}
@@ -1264,9 +1300,9 @@ export default function LeadDetailPage() {
                   </div>
                 )}
                 {lead.landing_path && (
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-muted-foreground">Landing Path:</span>{' '}
-                    <span className="font-medium">{lead.landing_path}</span>
+                    <span className="font-medium break-words">{lead.landing_path}</span>
                   </div>
                 )}
               </div>
@@ -1277,8 +1313,8 @@ export default function LeadDetailPage() {
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card border border-border rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 max-w-md w-full shadow-xl min-w-0">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
                 <AlertTriangle className="w-6 h-6 text-destructive" />

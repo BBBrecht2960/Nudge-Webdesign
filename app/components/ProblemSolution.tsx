@@ -90,10 +90,10 @@ export function ProblemSolution() {
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -mr-32 -mt-32" />
           <div className="relative p-6 sm:p-8 md:p-12 min-w-0">
             <h3 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 text-foreground break-words">
-              Wij bouwen websites die werken
+              Websites die voor jou werken
             </h3>
             <p className="text-base sm:text-lg md:text-xl text-muted-foreground leading-relaxed break-words">
-              Modern, snel, en geoptimaliseerd om leads of sales te genereren. Geen verouderde WordPress-sites, maar slimme oplossingen die resultaat opleveren.
+              Op maat gemaakt tegen een eerlijke prijs. We gebruiken de nieuwste technologie om websites te bouwen die niet alleen mooi zijn, maar ook zelfstandig werken en groeien met je business.
             </p>
           </div>
         </div>

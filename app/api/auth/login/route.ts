@@ -20,6 +20,10 @@ export async function POST(request: NextRequest) {
 
     if (!isValid) {
       console.error('[Login] Authenticatie mislukt voor:', normalizedEmail);
+      console.error('[Login] Controleer:');
+      console.error('  1. Of de admin user bestaat in de database');
+      console.error('  2. Of het wachtwoord hash correct is');
+      console.error('  3. Of SUPABASE_SERVICE_ROLE_KEY is ingesteld');
       return NextResponse.json(
         { error: 'Ongeldige inloggegevens. Controleer je e-mail en wachtwoord.' },
         { status: 401 }

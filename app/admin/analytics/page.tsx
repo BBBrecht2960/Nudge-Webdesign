@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { MetricCard } from '@/app/components/analytics/MetricCard';
 import { EventChart } from '@/app/components/analytics/EventChart';
 import { LeadChart } from '@/app/components/analytics/LeadChart';
-import { MousePointerClick, FileText, ShoppingCart, TrendingUp, Eye, Users, BarChart3, Calendar } from 'lucide-react';
+import { RevenueChart } from '@/app/components/analytics/RevenueChart';
+import { MousePointerClick, FileText, ShoppingCart, TrendingUp, Eye, Users, BarChart3, Calendar, Euro, DollarSign } from 'lucide-react';
 
 interface AnalyticsData {
   events: {
@@ -38,15 +39,40 @@ interface LeadAnalyticsData {
   };
 }
 
+interface RevenueAnalyticsData {
+  total: number;
+  trend: number;
+  count: number;
+  averageDealSize: number;
+  timeline: Array<{
+    date: string;
+    total: number;
+    count: number;
+    byStatus: Record<string, number>;
+  }>;
+  byStatus: Record<string, number>;
+  dateRange: {
+    start: string;
+    end: string;
+    groupBy: string;
+  };
+}
+
+type TabType = 'overview' | 'leads' | 'revenue' | 'info';
+
 export default function AnalyticsPage() {
+  const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [leadData, setLeadData] = useState<LeadAnalyticsData | null>(null);
+  const [revenueData, setRevenueData] = useState<RevenueAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [leadLoading, setLeadLoading] = useState(true);
+  const [revenueLoading, setRevenueLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState(30);
   const [leadDays, setLeadDays] = useState(30);
   const [leadGroupBy, setLeadGroupBy] = useState<'day' | 'week' | 'month'>('day');
+  const [revenueGroupBy, setRevenueGroupBy] = useState<'day' | 'week' | 'month'>('day');
   const [customDateRange, setCustomDateRange] = useState(false);
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
@@ -111,32 +137,79 @@ export default function AnalyticsPage() {
     fetchLeadData();
   }, [leadDays, leadGroupBy, customDateRange, startDate, endDate]);
 
+  useEffect(() => {
+    const fetchRevenueData = async () => {
+      try {
+        setRevenueLoading(true);
+        let url = '';
+        
+        if (customDateRange && startDate && endDate) {
+          url = `/api/analytics/revenue?startDate=${startDate}&endDate=${endDate}&groupBy=${revenueGroupBy}`;
+        } else {
+          const end = new Date();
+          const start = new Date();
+          start.setDate(start.getDate() - leadDays);
+          url = `/api/analytics/revenue?startDate=${start.toISOString().split('T')[0]}&endDate=${end.toISOString().split('T')[0]}&groupBy=${revenueGroupBy}`;
+        }
+
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error('Failed to fetch revenue analytics');
+        }
+        const result = await response.json();
+        setRevenueData(result);
+      } catch (err: unknown) {
+        console.error('Error fetching revenue analytics:', err);
+      } finally {
+        setRevenueLoading(false);
+      }
+    };
+
+    fetchRevenueData();
+  }, [leadDays, revenueGroupBy, customDateRange, startDate, endDate]);
+
+  const tabs = [
+    { id: 'overview' as TabType, label: 'Overzicht', icon: BarChart3 },
+    { id: 'leads' as TabType, label: 'Leads', icon: Users },
+    { id: 'revenue' as TabType, label: 'Omzet', icon: Euro },
+    { id: 'info' as TabType, label: 'Info', icon: FileText },
+  ];
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Analytics Dashboard</h1>
-        <p className="text-muted-foreground">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-2 break-words">Analytics Dashboard</h1>
+        <p className="text-muted-foreground text-sm sm:text-base">
           Overzicht van website performance en gebruikersgedrag
         </p>
       </div>
 
-      {/* Date Range Selector */}
-      <div className="mb-6 flex items-center gap-4">
-        <label className="text-sm font-medium">Periode:</label>
-        <select
-          value={days}
-          onChange={(e) => setDays(parseInt(e.target.value))}
-          className="px-3 py-2 border border-border rounded-md bg-card"
-        >
-          <option value="7">Laatste 7 dagen</option>
-          <option value="30">Laatste 30 dagen</option>
-          <option value="90">Laatste 90 dagen</option>
-        </select>
+      {/* Tabs */}
+      <div className="border-b border-border mb-6 sm:mb-8">
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide -mb-px">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-3 font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  activeTab === tab.id
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300'
+                }`}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="text-sm sm:text-base">{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <p className="text-red-800 text-sm">
+          <p className="text-red-800 text-sm break-words">
             {error}
             {error.includes('API key') && (
               <span className="block mt-2">
@@ -147,12 +220,29 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="text-muted-foreground">Laden...</div>
-        </div>
-      ) : (
+      {/* Overview Tab */}
+      {activeTab === 'overview' && (
         <>
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="text-muted-foreground">Laden...</div>
+            </div>
+          ) : (
+            <>
+              {/* Date Range Selector */}
+              <div className="mb-6 flex flex-wrap items-center gap-4">
+                <label className="text-sm font-medium">Periode:</label>
+                <select
+                  value={days}
+                  onChange={(e) => setDays(parseInt(e.target.value))}
+                  className="px-3 py-2 border border-border rounded-md bg-card text-sm"
+                >
+                  <option value="7">Laatste 7 dagen</option>
+                  <option value="30">Laatste 30 dagen</option>
+                  <option value="90">Laatste 90 dagen</option>
+                </select>
+              </div>
+
           {/* Key Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <MetricCard
@@ -206,19 +296,50 @@ export default function AnalyticsPage() {
             />
           </div>
 
-          {/* Lead Analytics Section */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
-                  <Users className="w-6 h-6 text-primary" />
-                  Lead Analytics
+              {/* Conversion Metrics */}
+              <div className="bg-card border border-border rounded-lg p-4 sm:p-6 mb-6 sm:mb-8">
+                <h2 className="text-lg sm:text-xl font-bold mb-4 flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-primary" />
+                  Conversie Metrics
                 </h2>
-                <p className="text-muted-foreground">
-                  Gedetailleerde statistieken over gegenereerde leads
-                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <div className="text-xs sm:text-sm text-muted-foreground mb-1">CTA Click Rate</div>
+                    <div className="text-xl sm:text-2xl font-bold">
+                      {data?.pageviews.count && data?.events.cta_click.count
+                        ? ((data.events.cta_click.count / data.pageviews.count) * 100).toFixed(1)
+                        : '0'}
+                      %
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs sm:text-sm text-muted-foreground mb-1">Form Conversion</div>
+                    <div className="text-xl sm:text-2xl font-bold">
+                      {data?.pageviews.count && data?.events.form_submitted.count
+                        ? ((data.events.form_submitted.count / data.pageviews.count) * 100).toFixed(2)
+                        : '0'}
+                      %
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs sm:text-sm text-muted-foreground mb-1">Package Interest</div>
+                    <div className="text-xl sm:text-2xl font-bold">
+                      {data?.pageviews.count && data?.events.package_card_click.count
+                        ? ((data.events.package_card_click.count / data.pageviews.count) * 100).toFixed(1)
+                        : '0'}
+                      %
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
+            </>
+          )}
+        </>
+      )}
+
+      {/* Leads Tab */}
+      {activeTab === 'leads' && (
+        <div>
 
             {/* Lead Date Range Selector */}
             <div className="bg-card border border-border rounded-lg p-4 mb-6">
@@ -444,52 +565,181 @@ export default function AnalyticsPage() {
                 </div>
               </>
             ) : null}
-          </div>
+        </div>
+      )}
 
-          {/* Conversion Metrics */}
-          <div className="bg-card border border-border rounded-lg p-6 mb-8">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-primary" />
-              Conversie Metrics
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <div className="text-sm text-muted-foreground mb-1">CTA Click Rate</div>
-                <div className="text-2xl font-bold">
-                  {data?.pageviews.count && data?.events.cta_click.count
-                    ? ((data.events.cta_click.count / data.pageviews.count) * 100).toFixed(1)
-                    : '0'}
-                  %
-                </div>
+      {/* Revenue Tab */}
+      {activeTab === 'revenue' && (
+        <div>
+          {/* Revenue Date Range Selector */}
+          <div className="bg-card border border-border rounded-lg p-4 mb-6">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="customRangeRevenue"
+                  checked={customDateRange}
+                  onChange={(e) => setCustomDateRange(e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <label htmlFor="customRangeRevenue" className="text-sm font-medium">
+                  Aangepast datumbereik
+                </label>
               </div>
-              <div>
-                <div className="text-sm text-muted-foreground mb-1">Form Conversion</div>
-                <div className="text-2xl font-bold">
-                  {data?.pageviews.count && data?.events.form_submitted.count
-                    ? ((data.events.form_submitted.count / data.pageviews.count) * 100).toFixed(2)
-                    : '0'}
-                  %
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground mb-1">Package Interest</div>
-                <div className="text-2xl font-bold">
-                  {data?.pageviews.count && data?.events.package_card_click.count
-                    ? ((data.events.package_card_click.count / data.pageviews.count) * 100).toFixed(1)
-                    : '0'}
-                  %
-                </div>
+
+              {customDateRange ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="px-3 py-2 border border-border rounded-md bg-card text-sm"
+                    />
+                    <span className="text-muted-foreground">tot</span>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="px-3 py-2 border border-border rounded-md bg-card text-sm"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium">Periode:</label>
+                    <select
+                      value={leadDays}
+                      onChange={(e) => setLeadDays(parseInt(e.target.value))}
+                      className="px-3 py-2 border border-border rounded-md bg-card text-sm"
+                    >
+                      <option value="7">Laatste 7 dagen</option>
+                      <option value="14">Laatste 14 dagen</option>
+                      <option value="30">Laatste 30 dagen</option>
+                      <option value="60">Laatste 60 dagen</option>
+                      <option value="90">Laatste 90 dagen</option>
+                      <option value="180">Laatste 6 maanden</option>
+                      <option value="365">Laatste jaar</option>
+                    </select>
+                  </div>
+                </>
+              )}
+
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium">Groeperen op:</label>
+                <select
+                  value={revenueGroupBy}
+                  onChange={(e) => setRevenueGroupBy(e.target.value as 'day' | 'week' | 'month')}
+                  className="px-3 py-2 border border-border rounded-md bg-card text-sm"
+                >
+                  <option value="day">Dag</option>
+                  <option value="week">Week</option>
+                  <option value="month">Maand</option>
+                </select>
               </div>
             </div>
           </div>
 
+            {/* Revenue Metrics */}
+            {revenueLoading ? (
+              <div className="text-center py-12">
+                <div className="text-muted-foreground">Laden...</div>
+              </div>
+            ) : revenueData ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                  <MetricCard
+                    title="Totaal Omzet"
+                    value={`€${revenueData.total.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                    trend={revenueData.trend}
+                    icon={<Euro className="w-5 h-5" />}
+                  />
+                  <MetricCard
+                    title="Aantal Klanten"
+                    value={revenueData.count}
+                    icon={<Users className="w-5 h-5" />}
+                  />
+                  <MetricCard
+                    title="Gemiddelde Deal"
+                    value={`€${revenueData.averageDealSize.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                    icon={<TrendingUp className="w-5 h-5" />}
+                  />
+                  <MetricCard
+                    title="Conversie Rate"
+                    value={leadData && leadData.total > 0
+                      ? `${((revenueData.count / leadData.total) * 100).toFixed(1)}%`
+                      : '0%'}
+                    icon={<BarChart3 className="w-5 h-5" />}
+                  />
+                </div>
+
+                {/* Revenue Timeline Chart */}
+                <div className="mb-6">
+                  <RevenueChart
+                    title="Omzet Over Tijd"
+                    startDate={revenueData.dateRange.start}
+                    endDate={revenueData.dateRange.end}
+                    groupBy={revenueGroupBy}
+                  />
+                </div>
+
+                {/* Revenue by Status */}
+                <div className="bg-card border border-border rounded-lg p-6 mb-8">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-primary" />
+                    Omzet Per Project Status
+                  </h3>
+                  <div className="space-y-3">
+                    {Object.entries(revenueData.byStatus)
+                      .sort(([, a], [, b]) => b - a)
+                      .map(([status, revenue]) => {
+                        const percentage = (revenue / revenueData.total) * 100;
+                        const statusLabels: Record<string, string> = {
+                          new: 'Nieuw',
+                          in_progress: 'In Uitvoering',
+                          review: 'In Review',
+                          completed: 'Voltooid',
+                          on_hold: 'On Hold',
+                          canceled: 'Geannuleerd',
+                        };
+                        return (
+                          <div key={status}>
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-sm font-medium">
+                                {statusLabels[status] || status}
+                              </span>
+                              <span className="text-sm text-muted-foreground">
+                                €{revenue.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({percentage.toFixed(1)}%)
+                              </span>
+                            </div>
+                            <div className="w-full bg-muted rounded-full h-2">
+                              <div
+                                className="bg-primary h-2 rounded-full transition-all"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              </>
+            ) : null}
+        </div>
+      )}
+
+      {/* Info Tab */}
+      {activeTab === 'info' && (
+        <div className="space-y-6 sm:space-y-8">
           {/* Tracked Events Info */}
-          <div className="bg-card border border-border rounded-lg p-6 mb-8">
-            <h2 className="text-xl font-bold mb-4">Tracked Events</h2>
-            <div className="grid md:grid-cols-2 gap-6">
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
+            <h2 className="text-lg sm:text-xl font-bold mb-4 break-words">Tracked Events</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <h3 className="font-semibold mb-2">Custom Events:</h3>
-                <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                <h3 className="font-semibold mb-2 text-sm sm:text-base">Custom Events:</h3>
+                <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm text-muted-foreground break-words">
                   <li>cta_click - CTA button clicks</li>
                   <li>form_started - Form interactie gestart</li>
                   <li>form_submitted - Form succesvol verzonden</li>
@@ -501,8 +751,8 @@ export default function AnalyticsPage() {
                 </ul>
               </div>
               <div>
-                <h3 className="font-semibold mb-2">User Properties:</h3>
-                <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                <h3 className="font-semibold mb-2 text-sm sm:text-base">User Properties:</h3>
+                <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm text-muted-foreground break-words">
                   <li>UTM parameters (source, medium, campaign, etc.)</li>
                   <li>Referrer</li>
                   <li>Landing path</li>
@@ -514,21 +764,21 @@ export default function AnalyticsPage() {
           </div>
 
           {/* PostHog Link */}
-          <div className="bg-muted border border-border rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-4">Gedetailleerde Analytics</h2>
-            <p className="text-muted-foreground mb-4">
+          <div className="bg-muted border border-border rounded-lg p-4 sm:p-6">
+            <h2 className="text-lg sm:text-xl font-bold mb-4 break-words">Gedetailleerde Analytics</h2>
+            <p className="text-muted-foreground mb-4 text-sm sm:text-base break-words">
               Voor uitgebreide analytics, session recordings, funnels en meer, open het PostHog dashboard.
             </p>
             <a
               href="https://app.posthog.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block px-6 py-3 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+              className="inline-block px-4 sm:px-6 py-2 sm:py-3 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm sm:text-base"
             >
               Open PostHog Dashboard →
             </a>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

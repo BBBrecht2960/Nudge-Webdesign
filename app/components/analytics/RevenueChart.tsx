@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-interface LeadChartProps {
+interface RevenueChartProps {
   title: string;
   startDate: string;
   endDate: string;
@@ -12,10 +12,10 @@ interface LeadChartProps {
 interface TimelineData {
   date: string;
   total: number;
-  byStatus: Record<string, number>;
+  count: number;
 }
 
-export function LeadChart({ title, startDate, endDate, groupBy }: LeadChartProps) {
+export function RevenueChart({ title, startDate, endDate, groupBy }: RevenueChartProps) {
   const [data, setData] = useState<TimelineData[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -24,13 +24,13 @@ export function LeadChart({ title, startDate, endDate, groupBy }: LeadChartProps
       try {
         setLoading(true);
         const response = await fetch(
-          `/api/analytics/leads?startDate=${startDate}&endDate=${endDate}&groupBy=${groupBy}`
+          `/api/analytics/revenue?startDate=${startDate}&endDate=${endDate}&groupBy=${groupBy}`
         );
         if (!response.ok) throw new Error('Failed to fetch');
         const result = await response.json();
         setData(result.timeline || []);
       } catch (error) {
-        console.error('Error fetching lead chart data:', error);
+        console.error('Error fetching revenue chart data:', error);
       } finally {
         setLoading(false);
       }
@@ -72,10 +72,8 @@ export function LeadChart({ title, startDate, endDate, groupBy }: LeadChartProps
       
       switch (groupBy) {
         case 'day':
-          // Format as "27 jan" or "28 jan"
           return date.toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' });
         case 'week':
-          // Format as "27 jan - 3 feb" or just the start date
           return date.toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' });
         case 'month':
           return date.toLocaleDateString('nl-BE', { month: 'short', year: 'numeric' });
@@ -107,10 +105,10 @@ export function LeadChart({ title, startDate, endDate, groupBy }: LeadChartProps
                       background: 'linear-gradient(180deg, rgba(144, 103, 198, 1) 0%, rgba(144, 103, 198, 0.85) 100%)',
                       minHeight: item.total > 0 ? '4px' : '0px'
                     }}
-                    title={`${formatDate(item.date)}: ${item.total} leads`}
+                    title={`${formatDate(item.date)}: €${item.total.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                   >
                     <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-foreground text-background text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap z-10">
-                      {item.total} {item.total === 1 ? 'lead' : 'leads'}
+                      €{item.total.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                   </div>
                 </div>
@@ -122,9 +120,9 @@ export function LeadChart({ title, startDate, endDate, groupBy }: LeadChartProps
           })}
         </div>
         <div className="flex justify-between text-xs text-muted-foreground pt-4 border-t border-border">
-          <span>Min: {Math.min(...data.map((d) => d.total))}</span>
-          <span>Max: {Math.max(...data.map((d) => d.total))}</span>
-          <span>Gemiddelde: {Math.round(data.reduce((sum, d) => sum + d.total, 0) / data.length)}</span>
+          <span>Min: €{Math.min(...data.map((d) => d.total)).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span>Max: €{Math.max(...data.map((d) => d.total)).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span>Gemiddelde: €{(data.reduce((sum, d) => sum + d.total, 0) / data.length).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
       </div>
     </div>

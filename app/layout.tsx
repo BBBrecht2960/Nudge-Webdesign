@@ -19,24 +19,24 @@ const spaceGrotesk = Space_Grotesk({
 
 export const metadata: Metadata = {
   title: {
-    default: "Almost 3000 BV - Websites die écht werken",
-    template: "%s | Almost 3000 BV",
+    default: "Nudge Webdesign - Websites die voor jou werken",
+    template: "%s | Nudge Webdesign",
   },
-  description: "Wij bouwen moderne websites en webshops die leads genereren voor Belgische KMO's. Geen verouderde WordPress-sites, maar slimme oplossingen met onderhoud inbegrepen.",
-  keywords: ["website", "webshop", "webdesign", "Almost 3000 BV", "België", "KMO", "SEO", "online marketing", "Hasselt"],
-  authors: [{ name: "Almost 3000 BV" }],
+  description: "Webdesign op maat tegen een eerlijke prijs. Websites die voor jou werken en meegroeien met je business. Moderne technologie voor Belgische KMO's.",
+  keywords: ["website", "webshop", "webdesign", "Nudge Webdesign", "België", "KMO", "SEO", "online marketing", "Hasselt"],
+  authors: [{ name: "Nudge Webdesign" }],
   openGraph: {
     type: "website",
     locale: "nl_BE",
     url: process.env.NEXT_PUBLIC_SITE_URL || "https://yourwebsite.com",
-    siteName: "Almost 3000 BV",
-    title: "Almost 3000 BV - Websites die écht werken",
-    description: "Wij bouwen moderne websites en webshops die leads genereren voor Belgische KMO's.",
+    siteName: "Nudge Webdesign",
+    title: "Nudge Webdesign - Websites die voor jou werken",
+    description: "Webdesign op maat tegen een eerlijke prijs. Websites die voor jou werken en meegroeien met je business.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Almost 3000 BV - Websites die écht werken",
-    description: "Wij bouwen moderne websites en webshops die leads genereren voor Belgische KMO's.",
+    title: "Nudge Webdesign - Websites die voor jou werken",
+    description: "Webdesign op maat tegen een eerlijke prijs. Websites die voor jou werken en meegroeien met je business.",
   },
   robots: {
     index: true,

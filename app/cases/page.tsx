@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Cases - Almost 3000 BV',
+  title: 'Cases - Nudge Webdesign',
   description: 'Bekijk onze projecten en case studies. Websites en webshops die we hebben gebouwd voor Belgische KMO\'s.',
 };
 

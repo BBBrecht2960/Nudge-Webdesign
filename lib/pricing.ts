@@ -7,6 +7,7 @@ export interface PricingOption {
   price: number;
   description?: string;
   category: 'website' | 'webshop' | 'webapp' | 'scope' | 'complexity' | 'growth' | 'maintenance';
+  isRecurring?: boolean; // true if this is a monthly/recurring service
 }
 
 export interface PricingPackage {
@@ -146,7 +147,7 @@ export const scopeOptions: PricingOption[] = [
   {
     id: 'multi-language',
     name: 'Multi-language (NL/FR/EN)',
-    price: 999,
+    price: 299,
     description: 'Meertalige website ondersteuning: website beschikbaar in meerdere talen (Nederlands, Frans, Engels) met taalwisselaar',
     category: 'scope',
   },
@@ -163,14 +164,14 @@ export const complexityOptions: PricingOption[] = [
   {
     id: 'member-portal',
     name: 'Ledenportaal',
-    price: 1999,
+    price: 499,
     description: 'Ledenportaal met login en profielen: beveiligde ledenomgeving met gebruikersaccounts, profielen, en exclusieve content voor ingelogde gebruikers',
     category: 'complexity',
   },
   {
     id: 'booking-system',
-    name: 'Boekingssysteem',
-    price: 999,
+    name: 'Simpel boekingssysteem',
+    price: 599,
     description: 'Online boekingssysteem: klanten kunnen afspraken of reserveringen maken, kalender integratie, bevestigingsemails, en beschikbaarheidsbeheer',
     category: 'complexity',
   },
@@ -219,13 +220,6 @@ export const growthOptions: PricingOption[] = [
     description: 'Google Ads account setup en configuratie: campagne opzetten, keywords onderzoek, advertenties maken en conversie tracking instellen',
     category: 'growth',
   },
-  {
-    id: 'analytics-reporting',
-    name: 'Analytics & rapportage',
-    price: 350,
-    description: 'Analytics setup en maandelijkse rapportage: Google Analytics configureren, doelen instellen, en maandelijks overzicht van prestaties',
-    category: 'growth',
-  },
 ];
 
 export const maintenanceOptions: PricingOption[] = [
@@ -249,6 +243,14 @@ export const maintenanceOptions: PricingOption[] = [
     price: 119,
     description: '€119/maand - Dagelijkse updates, onbeperkte backups, premium beveiliging, telefonische support (binnen 4u), performance optimalisatie, en maandelijkse rapportage',
     category: 'maintenance',
+  },
+  {
+    id: 'analytics-reporting',
+    name: 'Analytics & rapportage (maandelijks)',
+    price: 350,
+    description: 'Analytics setup en maandelijkse rapportage: Google Analytics configureren, doelen instellen, en maandelijks overzicht van prestaties',
+    category: 'maintenance',
+    isRecurring: true,
   },
 ];
 

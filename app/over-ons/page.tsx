@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Over Ons - Almost 3000 BV',
+  title: 'Over Ons - Nudge Webdesign',
   description: 'Leer meer over ons team en onze aanpak. Wij bouwen websites die écht werken voor Belgische KMO\'s.',
 };
 
@@ -17,7 +17,7 @@ export default function OverOnsPage() {
           <section>
             <h2>Wie zijn wij?</h2>
             <p>
-              Almost 3000 BV is een webdesign agentschap, gespecialiseerd in het bouwen van moderne websites en webshops voor Belgische KMO's. Onze missie is om websites te maken die niet alleen mooi zijn, maar ook écht resultaat opleveren.
+              Nudge Webdesign is een webdesign agentschap, gespecialiseerd in het bouwen van moderne websites en webshops voor Belgische KMO's. Onze missie is om websites te maken die niet alleen mooi zijn, maar ook écht resultaat opleveren.
             </p>
           </section>
 

@@ -29,14 +29,30 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate');
     const groupBy = searchParams.get('groupBy') || 'day'; // day, week, month
 
-    // Default to last 30 days if no dates provided
-    const end = endDate ? new Date(endDate) : new Date();
-    const start = startDate ? new Date(startDate) : new Date();
-    if (!startDate) {
-      start.setDate(start.getDate() - 30);
+    // Parse dates correctly - treat date strings as local dates, not UTC
+    let end: Date;
+    let start: Date;
+    
+    if (endDate) {
+      // Parse as local date (YYYY-MM-DD format)
+      const [year, month, day] = endDate.split('-').map(Number);
+      end = new Date(year, month - 1, day, 23, 59, 59, 999);
+    } else {
+      end = new Date();
+      end.setHours(23, 59, 59, 999);
     }
-
-    // Format dates for PostgreSQL
+    
+    if (startDate) {
+      // Parse as local date (YYYY-MM-DD format)
+      const [year, month, day] = startDate.split('-').map(Number);
+      start = new Date(year, month - 1, day, 0, 0, 0, 0);
+    } else {
+      start = new Date();
+      start.setDate(start.getDate() - 30);
+      start.setHours(0, 0, 0, 0);
+    }
+    
+    // Format dates for PostgreSQL (use UTC for database queries)
     const startISO = start.toISOString().split('T')[0];
     const endISO = end.toISOString().split('T')[0];
 
@@ -62,11 +78,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Get leads grouped by date
+    // Use gte for start (includes the day) and lte for end with full timestamp (includes entire end day)
     const { data: leadsByDate, error: leadsError } = await supabase
       .from('leads')
       .select('created_at, status, utm_source, utm_medium, utm_campaign')
-      .gte('created_at', startISO)
-      .lte('created_at', endISO)
+      .gte('created_at', `${startISO}T00:00:00.000Z`)
+      .lte('created_at', `${endISO}T23:59:59.999Z`)
       .order('created_at', { ascending: true });
 
     if (leadsError) {
@@ -88,20 +105,36 @@ export async function GET(request: NextRequest) {
     }> = {};
 
     leadsByDate?.forEach((lead) => {
+      // Parse created_at as UTC timestamp from database
       const date = new Date(lead.created_at);
       let key = '';
       
       switch (groupBy) {
         case 'day':
-          key = date.toISOString().split('T')[0];
+          // Convert to local date for grouping (Belgian timezone)
+          const localYear = date.getFullYear();
+          const localMonth = date.getMonth();
+          const localDay = date.getDate();
+          key = `${localYear}-${String(localMonth + 1).padStart(2, '0')}-${String(localDay).padStart(2, '0')}`;
           break;
         case 'week':
-          const weekStart = new Date(date);
-          weekStart.setDate(date.getDate() - date.getDay());
-          key = weekStart.toISOString().split('T')[0];
+          // Week starts on Monday (day 1) in Belgium
+          // Get local date components
+          const weekDate = new Date(date);
+          const dayOfWeek = weekDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+          const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert to Monday-based week
+          weekDate.setDate(weekDate.getDate() - daysToMonday);
+          weekDate.setHours(0, 0, 0, 0);
+          const weekYear = weekDate.getFullYear();
+          const weekMonth = weekDate.getMonth();
+          const weekDay = weekDate.getDate();
+          key = `${weekYear}-${String(weekMonth + 1).padStart(2, '0')}-${String(weekDay).padStart(2, '0')}`;
           break;
         case 'month':
-          key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          // Use local month/year
+          const monthYear = date.getFullYear();
+          const monthMonth = date.getMonth();
+          key = `${monthYear}-${String(monthMonth + 1).padStart(2, '0')}`;
           break;
       }
 
@@ -122,17 +155,15 @@ export async function GET(request: NextRequest) {
       const status = lead.status || 'new';
       groupedData[key].byStatus[status] = (groupedData[key].byStatus[status] || 0) + 1;
 
-      // Count by UTM source
-      if (lead.utm_source) {
-        groupedData[key].bySource[lead.utm_source] = (groupedData[key].bySource[lead.utm_source] || 0) + 1;
-      }
+      // Count by UTM source (always count, use 'direct' if missing)
+      const source = lead.utm_source || 'direct';
+      groupedData[key].bySource[source] = (groupedData[key].bySource[source] || 0) + 1;
 
-      // Count by UTM medium
-      if (lead.utm_medium) {
-        groupedData[key].byMedium[lead.utm_medium] = (groupedData[key].byMedium[lead.utm_medium] || 0) + 1;
-      }
+      // Count by UTM medium (always count, use 'none' if missing)
+      const medium = lead.utm_medium || 'none';
+      groupedData[key].byMedium[medium] = (groupedData[key].byMedium[medium] || 0) + 1;
 
-      // Count by UTM campaign
+      // Count by UTM campaign (only if present)
       if (lead.utm_campaign) {
         groupedData[key].byCampaign[lead.utm_campaign] = (groupedData[key].byCampaign[lead.utm_campaign] || 0) + 1;
       }
@@ -168,17 +199,23 @@ export async function GET(request: NextRequest) {
     });
 
     // Calculate trends (compare with previous period)
-    const previousStart = new Date(start);
-    const previousEnd = new Date(start);
     const periodDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    previousStart.setDate(previousStart.getDate() - periodDays);
-    previousEnd.setTime(start.getTime() - 1);
+    const previousEnd = new Date(start);
+    previousEnd.setTime(start.getTime() - 1); // One millisecond before start
+    previousEnd.setHours(23, 59, 59, 999); // End of previous day
+    
+    const previousStart = new Date(previousEnd);
+    previousStart.setDate(previousStart.getDate() - periodDays + 1); // Same length period before
+    previousStart.setHours(0, 0, 0, 0); // Start of day
+
+    const previousStartISO = previousStart.toISOString().split('T')[0];
+    const previousEndISO = previousEnd.toISOString().split('T')[0];
 
     const { data: previousLeads } = await supabase
       .from('leads')
       .select('id')
-      .gte('created_at', previousStart.toISOString().split('T')[0])
-      .lte('created_at', previousEnd.toISOString().split('T')[0]);
+      .gte('created_at', `${previousStartISO}T00:00:00.000Z`)
+      .lte('created_at', `${previousEndISO}T23:59:59.999Z`);
 
     const previousTotal = previousLeads?.length || 0;
     const trend = previousTotal > 0 

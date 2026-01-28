@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Diensten - Almost 3000 BV',
+  title: 'Diensten - Nudge Webdesign',
   description: 'Onze diensten: websites, webshops, webapps, AI-integraties, onderhoud en marketing. Alles wat u nodig heeft voor online succes.',
 };
 

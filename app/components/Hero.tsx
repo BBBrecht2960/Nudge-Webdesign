@@ -37,7 +37,7 @@ export function Hero() {
       <div className="absolute inset-0 z-0">
         <Image
           src="/Nudge Webdesign Background Purple.jpg"
-          alt="Almost 3000 BV - Moderne webdesign"
+          alt="Nudge Webdesign - Moderne webdesign"
           fill
           className="object-cover"
           priority
@@ -53,7 +53,7 @@ export function Hero() {
         <div className="max-w-2xl min-w-0">
           {/* Badge */}
           <div className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-full mb-4 sm:mb-5 text-xs font-medium text-white border border-white/30 shadow-lg">
-            <span>📍 Hasselt, België</span>
+            <span>Hasselt, België</span>
           </div>
 
           <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 sm:mb-5 leading-[1.2] tracking-tight drop-shadow-lg break-words min-w-0">
@@ -62,7 +62,7 @@ export function Hero() {
           </h1>
           
           <p className="text-sm sm:text-base md:text-lg text-white/95 mb-6 sm:mb-7 leading-relaxed max-w-xl drop-shadow-md min-w-0 break-words">
-            Moderne websites die leads genereren. Binnen 2 weken tot 2 maanden online.
+            Websites die écht voor jou werken. Op maat gemaakt, zonder onnodige kosten. Slimme technologie die je business laat groeien.
           </p>
 
           {/* Concrete cijfers */}

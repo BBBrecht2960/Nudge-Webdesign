@@ -36,11 +36,15 @@ export async function authenticateAdmin(email: string, password: string): Promis
 
     if (error) {
       console.error('[Auth] Database error:', error.message, error.code);
+      if (error.code === 'PGRST116') {
+        console.error('[Auth] Admin user niet gevonden in database. Maak de user aan met: npx tsx scripts/create-admins.ts');
+      }
       return false;
     }
 
     if (!data || !data.password_hash) {
       console.error('[Auth] Geen data of password_hash gevonden voor:', email);
+      console.error('[Auth] Maak de admin user aan met: npx tsx scripts/create-admins.ts');
       return false;
     }
 

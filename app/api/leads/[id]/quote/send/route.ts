@@ -111,7 +111,7 @@ export async function POST(
     const quoteData = quote.quote_data;
     const businessEmail = 'brecht.leap@gmail.com';
     const businessPhone = '+32494299633';
-    const businessName = 'Almost 3000 BV';
+    const businessName = 'Nudge Webdesign';
 
     const emailHtml = `
 <!DOCTYPE html>
@@ -236,7 +236,7 @@ export async function POST(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: `Almost 3000 BV <noreply@${process.env.RESEND_DOMAIN || 'onboarding.resend.dev'}>`,
+        from: `Nudge Webdesign <noreply@${process.env.RESEND_DOMAIN || 'onboarding.resend.dev'}>`,
         to: lead.email,
         reply_to: businessEmail,
         subject: `Offerte - ${businessName}`,

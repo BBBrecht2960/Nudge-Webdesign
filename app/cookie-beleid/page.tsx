@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Cookiebeleid - Almost 3000 BV',
+  title: 'Cookiebeleid - Nudge Webdesign',
   description: 'Cookiebeleid en informatie over het gebruik van cookies op onze website.',
 };
 

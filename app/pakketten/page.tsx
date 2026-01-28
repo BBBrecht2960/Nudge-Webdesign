@@ -13,7 +13,7 @@ import {
 import { Button } from '@/app/components/Button';
 
 export const metadata: Metadata = {
-  title: 'Pakketten & Prijzen - Almost 3000 BV',
+  title: 'Pakketten & Prijzen - Nudge Webdesign',
   description: 'Bekijk onze website, webshop en webapp pakketten. Van eenvoudige one-pager tot uitgebreide KMO-website. Transparante prijzen vanaf €300.',
 };
 

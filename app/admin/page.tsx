@@ -90,8 +90,8 @@ export default function AdminLoginPage() {
 
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-muted via-white to-muted">
-      <div className="w-full max-w-md bg-white border-2 border-border rounded-2xl p-8 md:p-10 shadow-2xl">
+    <main className="min-h-screen flex items-center justify-center px-4 sm:px-6 bg-gradient-to-br from-muted via-white to-muted">
+      <div className="w-full max-w-md bg-white border-2 border-border rounded-2xl p-6 sm:p-8 md:p-10 shadow-2xl min-w-0">
         {isDebug && (
           <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs">
             <strong>Debug-modus</strong>: open DevTools (F12) → Console voor logs. Of open{' '}
@@ -101,9 +101,9 @@ export default function AdminLoginPage() {
             voor auth-status.
           </div>
         )}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold mb-2 text-foreground">Admin Login</h1>
-          <p className="text-muted-foreground text-sm">Log in op het admin dashboard</p>
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 text-foreground break-words">Admin Login</h1>
+          <p className="text-muted-foreground text-sm break-words">Log in op het admin dashboard</p>
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -165,7 +165,7 @@ export default function AdminLoginPage() {
           </div>
 
           {error && (
-            <div className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+            <div className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm break-words">
               {error}
             </div>
           )}

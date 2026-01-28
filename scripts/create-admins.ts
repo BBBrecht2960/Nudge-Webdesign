@@ -9,18 +9,30 @@ import { resolve } from 'path';
 import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
 
-// Laad .env.local
+// Laad .env.local - verbeterde versie
 const envPath = resolve(process.cwd(), '.env.local');
 if (existsSync(envPath)) {
   const content = readFileSync(envPath, 'utf8');
   for (const line of content.split('\n')) {
-    const match = line.match(/^([^#=]+)=(.*)$/);
+    // Skip comments and empty lines
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    
+    const match = trimmed.match(/^([^#=]+)=(.*)$/);
     if (match) {
       const key = match[1].trim();
-      const val = match[2].trim().replace(/^["']|["']$/g, '');
-      if (!process.env[key]) process.env[key] = val;
+      let val = match[2].trim();
+      // Remove quotes if present
+      val = val.replace(/^["']|["']$/g, '');
+      // Set value even if it exists (override)
+      if (val && !val.includes('vul_') && val !== '') {
+        process.env[key] = val;
+      }
     }
   }
+  console.log('Environment variables geladen uit .env.local');
+} else {
+  console.warn('Waarschuwing: .env.local niet gevonden');
 }
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -29,6 +41,10 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.
 if (!supabaseUrl || !supabaseServiceKey) {
   console.error('Supabase credentials ontbreken!');
   console.error('Zorg dat NEXT_PUBLIC_SUPABASE_URL en SUPABASE_SERVICE_ROLE_KEY zijn ingesteld in .env.local');
+  console.error('\nHuidige waarden:');
+  console.error(`  NEXT_PUBLIC_SUPABASE_URL: ${supabaseUrl || 'NIET INGESTELD'}`);
+  console.error(`  SUPABASE_SERVICE_ROLE_KEY: ${supabaseServiceKey ? '***INGESTELD***' : 'NIET INGESTELD'}`);
+  console.error(`  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '***INGESTELD***' : 'NIET INGESTELD'}`);
   process.exit(1);
 }
 

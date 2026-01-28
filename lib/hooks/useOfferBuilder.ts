@@ -28,6 +28,8 @@ export interface OfferBuilderState {
     type: 'percentage' | 'fixed' | null;
     value: number;
   };
+  scopeDescription: string; // Detailed scope description
+  timeline: string; // Project timeline/duration
 }
 
 export interface OfferBuilderActions {
@@ -42,6 +44,8 @@ export interface OfferBuilderActions {
   removeCustomLineItem: (id: string) => void;
   updateCustomLineItem: (id: string, name: string, price: number) => void;
   setDiscount: (type: 'percentage' | 'fixed' | null, value: number) => void;
+  setScopeDescription: (description: string) => void;
+  setTimeline: (timeline: string) => void;
   reset: () => void;
   loadState: (state: Partial<OfferBuilderState>) => void;
 }
@@ -59,6 +63,8 @@ const initialState: OfferBuilderState = {
     type: null,
     value: 0,
   },
+  scopeDescription: '',
+  timeline: '',
 };
 
 export function useOfferBuilder() {
@@ -159,6 +165,20 @@ export function useOfferBuilder() {
     }));
   }, []);
 
+  const setScopeDescription = useCallback((description: string) => {
+    setState((prev) => ({
+      ...prev,
+      scopeDescription: description,
+    }));
+  }, []);
+
+  const setTimeline = useCallback((timeline: string) => {
+    setState((prev) => ({
+      ...prev,
+      timeline: timeline,
+    }));
+  }, []);
+
   const reset = useCallback(() => {
     setState(initialState);
   }, []);
@@ -244,6 +264,8 @@ export function useOfferBuilder() {
     removeCustomLineItem,
     updateCustomLineItem,
     setDiscount,
+    setScopeDescription,
+    setTimeline,
     reset,
     loadState,
   };
