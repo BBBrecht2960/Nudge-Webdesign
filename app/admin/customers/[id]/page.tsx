@@ -27,8 +27,13 @@ import {
   History,
   Trash2,
   Download,
+  User,
+  Briefcase,
+  Paperclip,
 } from 'lucide-react';
 import { generateQuotePdfBlob, type ApprovedQuoteData } from '@/lib/quotePdf';
+
+type CustomerTabId = 'overview' | 'offerte' | 'updates' | 'activiteiten' | 'bijlagen';
 
 export default function CustomerDetailPage() {
   const params = useParams();
@@ -49,6 +54,7 @@ export default function CustomerDetailPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [activeCustomerTab, setActiveCustomerTab] = useState<CustomerTabId>('overview');
   
   // Update form state
   const [showUpdateForm, setShowUpdateForm] = useState(false);
@@ -648,9 +654,39 @@ export default function CustomerDetailPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6 min-w-0">
+      {/* Tabs */}
+      <nav className="border-b border-border mb-6" aria-label="Secties">
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide -mb-px">
+          {([
+            { id: 'overview' as CustomerTabId, label: 'Overzicht', icon: User },
+            { id: 'offerte' as CustomerTabId, label: 'Offerte', icon: FileText },
+            { id: 'updates' as CustomerTabId, label: 'Updates', icon: TrendingUp },
+            { id: 'activiteiten' as CustomerTabId, label: 'Activiteiten', icon: History },
+            { id: 'bijlagen' as CustomerTabId, label: 'Bijlagen', icon: Paperclip },
+          ]).map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveCustomerTab(tab.id)}
+                className={`flex items-center gap-2 px-3 py-2.5 font-medium border-b-2 transition-colors whitespace-nowrap text-sm ${
+                  activeCustomerTab === tab.id
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300'
+                }`}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
+      <div className="space-y-6 min-w-0">
+        {activeCustomerTab === 'overview' && (
+        <div className="space-y-6">
           {/* Cursor Prompt Section */}
           {customer.cursor_prompt && (
             <section className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0" aria-label="Cursor AI Prompt">
@@ -692,8 +728,146 @@ export default function CustomerDetailPage() {
             </section>
           )}
 
-          {/* Quote Information */}
-          {customer.approved_quote && (
+          {/* Overzicht: Klant- en projectinfo (voorheen sidebar) */}
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0">
+            <h3 className="font-semibold mb-4 break-words">Klant Informatie</h3>
+            <div className="space-y-3 text-sm">
+              <div className="min-w-0">
+                <p className="text-muted-foreground mb-1 break-words">Naam</p>
+                <p className="font-medium break-words">{customer.name}</p>
+              </div>
+              {customer.company_name && (
+                <div className="min-w-0">
+                  <p className="text-muted-foreground mb-1 break-words">Bedrijf</p>
+                  <p className="font-medium break-words">{customer.company_name}</p>
+                </div>
+              )}
+              {customer.vat_number && (
+                <div className="min-w-0">
+                  <p className="text-muted-foreground mb-1 break-words">BTW Nummer</p>
+                  <p className="font-medium break-words">{customer.vat_number}</p>
+                </div>
+              )}
+              {customer.company_address && (
+                <div className="min-w-0">
+                  <p className="text-muted-foreground mb-1 break-words">Adres</p>
+                  <p className="font-medium break-words">
+                    {customer.company_address}
+                    {customer.company_postal_code && ` ${customer.company_postal_code}`}
+                    {customer.company_city && ` ${customer.company_city}`}
+                  </p>
+                </div>
+              )}
+              {customer.company_website && (
+                <div className="min-w-0">
+                  <p className="text-muted-foreground mb-1 break-words">Website</p>
+                  <a
+                    href={customer.company_website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-primary hover:underline break-all"
+                  >
+                    {customer.company_website}
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0">
+            <h3 className="font-semibold mb-4 break-words">Project Informatie</h3>
+            <div className="space-y-3 text-sm">
+              {customer.package_interest && (
+                <div className="min-w-0">
+                  <p className="text-muted-foreground mb-1 break-words">Pakket</p>
+                  <p className="font-medium break-words">{customer.package_interest}</p>
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="text-muted-foreground mb-1 break-words">Status</p>
+                <span className={`inline-block px-2 py-1 rounded text-xs ${getStatusColor(customer.project_status)}`}>
+                  {getStatusLabel(customer.project_status)}
+                </span>
+              </div>
+              {customer.assigned_to && (
+                <div className="min-w-0">
+                  <p className="text-muted-foreground mb-1 break-words">Toegewezen aan</p>
+                  <p className="font-medium break-words">{customer.assigned_to}</p>
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="text-muted-foreground mb-1 break-words">Geconverteerd</p>
+                <p className="font-medium break-words">
+                  {new Date(customer.converted_at).toLocaleDateString('nl-BE')}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {customer.pain_points && customer.pain_points.length > 0 && (
+            <div className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0">
+              <h3 className="font-semibold mb-4 break-words">Uitdagingen</h3>
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                {customer.pain_points.map((point, i) => (
+                  <li key={i} className="break-words">{point}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {customer.message && (
+            <div className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0">
+              <h3 className="font-semibold mb-4 break-words">Bericht</h3>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
+                {customer.message}
+              </p>
+            </div>
+          )}
+
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0">
+            <h3 className="font-semibold mb-4 flex items-center gap-2 break-words">
+              <History className="w-4 h-4 text-primary shrink-0" />
+              Voortgang Geschiedenis
+            </h3>
+            {progressHistory.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4 break-words">Geen geschiedenis</p>
+            ) : (
+              <div className="space-y-3">
+                {progressHistory.map((history) => (
+                  <div
+                    key={history.id}
+                    className="border-l-4 border-primary pl-3 sm:pl-4 py-2 sm:py-3 bg-muted/30 rounded-r min-w-0"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-xs sm:text-sm font-medium break-words">
+                          {history.old_status ? `${getStatusLabel(history.old_status)} → ` : ''}
+                          {getStatusLabel(history.new_status)}
+                        </span>
+                      </div>
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        {new Date(history.created_at).toLocaleString('nl-BE')}
+                      </span>
+                    </div>
+                    {history.notes && (
+                      <p className="text-xs text-muted-foreground whitespace-pre-wrap break-words">
+                        {history.notes}
+                      </p>
+                    )}
+                    {history.changed_by && (
+                      <p className="text-xs text-muted-foreground mt-1 break-words">
+                        Door: {history.changed_by}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        )}
+
+        {activeCustomerTab === 'offerte' && customer.approved_quote && (
             <section className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0" aria-label="Goedgekeurde offerte">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Goedgekeurde offerte</p>
               <h2 className="text-lg font-bold mb-4 flex items-center gap-2 break-words">
@@ -811,9 +985,9 @@ export default function CustomerDetailPage() {
                 </div>
               )}
             </section>
-          )}
+        )}
 
-          {/* Project Updates */}
+        {activeCustomerTab === 'updates' && (
           <section className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0" aria-label="Project updates">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Project updates</p>
             <div className="flex items-center justify-between mb-4">
@@ -962,8 +1136,9 @@ export default function CustomerDetailPage() {
               </div>
             )}
           </section>
+        )}
 
-          {/* Activities */}
+        {activeCustomerTab === 'activiteiten' && (
           <section className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0" aria-label="Activiteiten">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Activiteiten</p>
             <h2 className="text-lg font-bold mb-4 break-words">Activiteiten</h2>
@@ -997,8 +1172,9 @@ export default function CustomerDetailPage() {
               </div>
             )}
           </section>
+        )}
 
-          {/* Attachments */}
+        {activeCustomerTab === 'bijlagen' && (
           <section className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0" aria-label="Bijlagen">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Bijlagen</p>
             <h2 className="text-lg font-bold mb-4 break-words">Bijlagen</h2>
@@ -1036,151 +1212,8 @@ export default function CustomerDetailPage() {
               </div>
             )}
           </section>
-        </div>
+        )}
 
-        {/* Sidebar */}
-        <div className="space-y-6 min-w-0">
-          {/* Customer Info */}
-          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0">
-            <h3 className="font-semibold mb-4 break-words">Klant Informatie</h3>
-            <div className="space-y-3 text-sm">
-              <div className="min-w-0">
-                <p className="text-muted-foreground mb-1 break-words">Naam</p>
-                <p className="font-medium break-words">{customer.name}</p>
-              </div>
-              {customer.company_name && (
-                <div className="min-w-0">
-                  <p className="text-muted-foreground mb-1 break-words">Bedrijf</p>
-                  <p className="font-medium break-words">{customer.company_name}</p>
-                </div>
-              )}
-              {customer.vat_number && (
-                <div className="min-w-0">
-                  <p className="text-muted-foreground mb-1 break-words">BTW Nummer</p>
-                  <p className="font-medium break-words">{customer.vat_number}</p>
-                </div>
-              )}
-              {customer.company_address && (
-                <div className="min-w-0">
-                  <p className="text-muted-foreground mb-1 break-words">Adres</p>
-                  <p className="font-medium break-words">
-                    {customer.company_address}
-                    {customer.company_postal_code && ` ${customer.company_postal_code}`}
-                    {customer.company_city && ` ${customer.company_city}`}
-                  </p>
-                </div>
-              )}
-              {customer.company_website && (
-                <div className="min-w-0">
-                  <p className="text-muted-foreground mb-1 break-words">Website</p>
-                  <a
-                    href={customer.company_website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-medium text-primary hover:underline break-all"
-                  >
-                    {customer.company_website}
-                  </a>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Project Info */}
-          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0">
-            <h3 className="font-semibold mb-4 break-words">Project Informatie</h3>
-            <div className="space-y-3 text-sm">
-              {customer.package_interest && (
-                <div className="min-w-0">
-                  <p className="text-muted-foreground mb-1 break-words">Pakket</p>
-                  <p className="font-medium break-words">{customer.package_interest}</p>
-                </div>
-              )}
-              <div className="min-w-0">
-                <p className="text-muted-foreground mb-1 break-words">Status</p>
-                <span className={`inline-block px-2 py-1 rounded text-xs ${getStatusColor(customer.project_status)}`}>
-                  {getStatusLabel(customer.project_status)}
-                </span>
-              </div>
-              {customer.assigned_to && (
-                <div className="min-w-0">
-                  <p className="text-muted-foreground mb-1 break-words">Toegewezen aan</p>
-                  <p className="font-medium break-words">{customer.assigned_to}</p>
-                </div>
-              )}
-              <div className="min-w-0">
-                <p className="text-muted-foreground mb-1 break-words">Geconverteerd</p>
-                <p className="font-medium break-words">
-                  {new Date(customer.converted_at).toLocaleDateString('nl-BE')}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Pain Points */}
-          {customer.pain_points && customer.pain_points.length > 0 && (
-            <div className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0">
-              <h3 className="font-semibold mb-4 break-words">Uitdagingen</h3>
-              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                {customer.pain_points.map((point, i) => (
-                  <li key={i} className="break-words">{point}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Message */}
-          {customer.message && (
-            <div className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0">
-              <h3 className="font-semibold mb-4 break-words">Bericht</h3>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
-                {customer.message}
-              </p>
-            </div>
-          )}
-
-          {/* Progress History */}
-          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0">
-            <h3 className="font-semibold mb-4 flex items-center gap-2 break-words">
-              <History className="w-4 h-4 text-primary shrink-0" />
-              Voortgang Geschiedenis
-            </h3>
-            {progressHistory.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4 break-words">Geen geschiedenis</p>
-            ) : (
-              <div className="space-y-3">
-                {progressHistory.map((history) => (
-                  <div
-                    key={history.id}
-                    className="border-l-4 border-primary pl-3 sm:pl-4 py-2 sm:py-3 bg-muted/30 rounded-r min-w-0"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2 min-w-0">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-xs sm:text-sm font-medium break-words">
-                          {history.old_status ? `${getStatusLabel(history.old_status)} → ` : ''}
-                          {getStatusLabel(history.new_status)}
-                        </span>
-                      </div>
-                      <span className="text-xs text-muted-foreground shrink-0">
-                        {new Date(history.created_at).toLocaleString('nl-BE')}
-                      </span>
-                    </div>
-                    {history.notes && (
-                      <p className="text-xs text-muted-foreground whitespace-pre-wrap break-words">
-                        {history.notes}
-                      </p>
-                    )}
-                    {history.changed_by && (
-                      <p className="text-xs text-muted-foreground mt-1 break-words">
-                        Door: {history.changed_by}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* Delete Customer Modal */}

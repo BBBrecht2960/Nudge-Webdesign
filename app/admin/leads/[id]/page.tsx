@@ -26,7 +26,13 @@ import {
   Quote,
   Trash2,
   AlertTriangle,
+  User,
+  Briefcase,
+  History,
+  Paperclip,
 } from 'lucide-react';
+
+type LeadTabId = 'overview' | 'bedrijf' | 'activiteiten' | 'offerte';
 
 // Component to load and show saved quote info
 function LoadSavedQuoteInfo({ leadId }: { leadId: string }) {
@@ -145,6 +151,9 @@ export default function LeadDetailPage() {
   const [companyCountry, setCompanyCountry] = useState('België');
   const [companyWebsite, setCompanyWebsite] = useState('');
   const [isSavingCompany, setIsSavingCompany] = useState(false);
+  const [kboLookupLoading, setKboLookupLoading] = useState(false);
+  const [kboLookupError, setKboLookupError] = useState<string | null>(null);
+  const [activeLeadTab, setActiveLeadTab] = useState<LeadTabId>('overview');
 
   useEffect(() => {
     if (leadId) {
@@ -1019,11 +1028,9 @@ export default function LeadDetailPage() {
         </div>
       )}
 
-      <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 w-full min-w-0">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Lead Header */}
-          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
+      <div className="w-full min-w-0">
+        {/* Lead Header Card with Tabs */}
+        <div className="bg-card border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">Leadgegevens</p>
             <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-4 mb-4 sm:mb-6 w-full min-w-0">
               <div className="flex-1 min-w-0">
@@ -1091,6 +1098,37 @@ export default function LeadDetailPage() {
               </div>
             </div>
 
+            {/* Tabs */}
+            <nav className="border-b border-border mb-4 -mx-4 sm:-mx-6 px-4 sm:px-6" aria-label="Secties">
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide -mb-px">
+                {([
+                  { id: 'overview' as LeadTabId, label: 'Overzicht', icon: User },
+                  { id: 'bedrijf' as LeadTabId, label: 'Bedrijfsgegevens', icon: Briefcase },
+                  { id: 'activiteiten' as LeadTabId, label: 'Activiteiten', icon: History },
+                  { id: 'offerte' as LeadTabId, label: 'Offerte & bijlagen', icon: Paperclip },
+                ]).map((tab) => {
+                  const Icon = tab.icon;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setActiveLeadTab(tab.id)}
+                      className={`flex items-center gap-2 px-3 py-2.5 font-medium border-b-2 transition-colors whitespace-nowrap text-sm ${
+                        activeLeadTab === tab.id
+                          ? 'border-primary text-primary'
+                          : 'border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4 shrink-0" />
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
+
+            {activeLeadTab === 'overview' && (
+            <div className="space-y-4">
             <div className="border-t border-border pt-4 mt-2">
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Contactgegevens</h3>
               <div className="grid sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
@@ -1145,8 +1183,91 @@ export default function LeadDetailPage() {
               </div>
             )}
 
-            {/* Company Information Section */}
-            <div className="bg-muted/50 border border-border rounded-lg p-4 sm:p-6 mt-4 sm:mt-6 w-full min-w-0">
+            {/* Aangemaakt door (alleen bij handmatig aangemaakte leads) */}
+            {lead.created_by && (
+              <div className="bg-card border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
+                <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 break-words">Aangemaakt door</h2>
+                <p className="text-sm text-muted-foreground break-words">
+                  <span className="font-medium text-foreground break-all">{lead.created_by}</span>
+                </p>
+              </div>
+            )}
+
+            {/* Toegewezen aan (in overview) */}
+            <div className="bg-card border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
+              <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 break-words">Toegewezen aan</h2>
+              <div className="space-y-3">
+                <select
+                  value={assignedTo}
+                  onChange={(e) => handleAssignTo(e.target.value)}
+                  disabled={isSaving}
+                  className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm sm:text-base"
+                >
+                  <option value="">Niet toegewezen</option>
+                  {adminUsers.map((user) => (
+                    <option key={user.email} value={user.email}>
+                      {user.email}
+                    </option>
+                  ))}
+                </select>
+                {(lead as Lead & { assigned_to?: string }).assigned_to && (
+                  <p className="text-xs sm:text-sm text-muted-foreground break-words">
+                    Huidig: <span className="font-medium break-all">{(lead as Lead & { assigned_to?: string }).assigned_to}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Attributie (in overview) */}
+            {(lead.utm_source || lead.referrer) && (
+              <div className="bg-card border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
+                <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 break-words">Attributie Data</h2>
+                <div className="space-y-2 text-xs sm:text-sm min-w-0">
+                  {lead.utm_source && (
+                    <div className="min-w-0">
+                      <span className="text-muted-foreground">UTM Source:</span>{' '}
+                      <span className="font-medium break-words">{lead.utm_source}</span>
+                    </div>
+                  )}
+                  {lead.utm_medium && (
+                    <div className="min-w-0">
+                      <span className="text-muted-foreground">UTM Medium:</span>{' '}
+                      <span className="font-medium break-words">{lead.utm_medium}</span>
+                    </div>
+                  )}
+                  {lead.utm_campaign && (
+                    <div className="min-w-0">
+                      <span className="text-muted-foreground">UTM Campaign:</span>{' '}
+                      <span className="font-medium break-words">{lead.utm_campaign}</span>
+                    </div>
+                  )}
+                  {lead.referrer && (
+                    <div className="min-w-0">
+                      <span className="text-muted-foreground">Referrer:</span>{' '}
+                      <a
+                        href={lead.referrer}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline break-all"
+                      >
+                        {lead.referrer}
+                      </a>
+                    </div>
+                  )}
+                  {lead.landing_path && (
+                    <div className="min-w-0">
+                      <span className="text-muted-foreground">Landing Path:</span>{' '}
+                      <span className="font-medium break-words">{lead.landing_path}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            </div>
+            )}
+
+            {activeLeadTab === 'bedrijf' && (
+            <div className="bg-muted/50 border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 w-full min-w-0">
                 <h2 className="text-base sm:text-lg font-bold break-words">Bedrijfsgegevens</h2>
                 <Button
@@ -1202,15 +1323,55 @@ export default function LeadDetailPage() {
               {showCompanyForm && (
                 <div className="space-y-3 sm:space-y-4 mt-3 sm:mt-4 w-full min-w-0">
                   <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex flex-col gap-1">
                       <label className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2">BTW-nummer *</label>
-                      <input
-                        type="text"
-                        value={vatNumber}
-                        onChange={(e) => setVatNumber(e.target.value)}
-                        placeholder="BE0123456789"
-                        className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-border rounded-md text-sm sm:text-base"
-                      />
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={vatNumber}
+                          onChange={(e) => { setVatNumber(e.target.value); setKboLookupError(null); }}
+                          placeholder="BE0123456789"
+                          className="flex-1 min-w-0 px-2 sm:px-3 py-1.5 sm:py-2 border border-border rounded-md text-sm sm:text-base"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={async () => {
+                            if (!vatNumber.trim()) {
+                              setKboLookupError('Vul eerst een BTW-nummer in.');
+                              return;
+                            }
+                            setKboLookupError(null);
+                            setKboLookupLoading(true);
+                            try {
+                              const res = await fetch(`/api/admin/company-lookup?vat=${encodeURIComponent(vatNumber.trim())}`);
+                              const data = await res.json().catch(() => ({}));
+                              if (!res.ok) {
+                                setKboLookupError(data.error || 'Ophalen mislukt.');
+                                return;
+                              }
+                              if (data.company_address) setCompanyAddress(data.company_address);
+                              if (data.company_postal_code) setCompanyPostalCode(data.company_postal_code);
+                              if (data.company_city) setCompanyCity(data.company_city);
+                              if (data.company_country) setCompanyCountry(data.company_country);
+                              if (data.vat_number) setVatNumber(data.vat_number);
+                            } catch {
+                              setKboLookupError('Ophalen mislukt.');
+                            } finally {
+                              setKboLookupLoading(false);
+                            }
+                          }}
+                          disabled={kboLookupLoading || !vatNumber.trim()}
+                          className="shrink-0 text-xs sm:text-sm"
+                          title="Bedrijfsgegevens ophalen uit KBO"
+                        >
+                          {kboLookupLoading ? 'Bezig...' : 'Ophalen uit KBO'}
+                        </Button>
+                      </div>
+                      {kboLookupError && (
+                        <p className="text-xs text-destructive">{kboLookupError}</p>
+                      )}
                     </div>
                     <div className="min-w-0">
                       <label className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2">Website</label>
@@ -1297,10 +1458,10 @@ export default function LeadDetailPage() {
                 </div>
               )}
             </div>
-          </div>
+            )}
 
-          {/* Activity Timeline */}
-          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
+            {activeLeadTab === 'activiteiten' && (
+            <div className="bg-card border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6 w-full min-w-0">
               <h2 className="text-lg sm:text-xl font-bold break-words">Activiteiten & Geschiedenis</h2>
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
@@ -1485,6 +1646,26 @@ export default function LeadDetailPage() {
               )}
             </div>
           </div>
+            )}
+
+            {activeLeadTab === 'offerte' && (
+            <>
+          {/* Offerte CTA */}
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
+            <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 break-words">Offerte</h2>
+            <p className="text-muted-foreground text-xs sm:text-sm mb-3 sm:mb-4 break-words">
+              Stel een offerte op maat samen voor deze lead.
+            </p>
+            <Button
+              onClick={() => router.push(`/admin/leads/${leadId}/quote`)}
+              className="w-full mb-3 text-xs sm:text-sm"
+              variant="default"
+            >
+              <Quote className="w-3 h-3 sm:w-4 sm:h-4 mr-2 shrink-0" />
+              <span className="break-words">Offerte Builder</span>
+            </Button>
+            <LoadSavedQuoteInfo leadId={leadId} />
+          </div>
 
           {/* Attachments */}
           <div className="bg-card border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
@@ -1555,97 +1736,8 @@ export default function LeadDetailPage() {
               </div>
             )}
           </div>
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-4 sm:space-y-6 w-full min-w-0">
-          {/* Assignment */}
-          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
-            <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 break-words">Toegewezen aan</h2>
-            <div className="space-y-3">
-              <select
-                value={assignedTo}
-                onChange={(e) => handleAssignTo(e.target.value)}
-                disabled={isSaving}
-                className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm sm:text-base"
-              >
-                <option value="">Niet toegewezen</option>
-                {adminUsers.map((user) => (
-                  <option key={user.email} value={user.email}>
-                    {user.email}
-                  </option>
-                ))}
-              </select>
-              {(lead as Lead & { assigned_to?: string }).assigned_to && (
-                <p className="text-xs sm:text-sm text-muted-foreground break-words">
-                  Huidig: <span className="font-medium break-all">{(lead as Lead & { assigned_to?: string }).assigned_to}</span>
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Quote Builder */}
-          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
-            <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 break-words">Offerte</h2>
-            <p className="text-muted-foreground text-xs sm:text-sm mb-3 sm:mb-4 break-words">
-              Stel een offerte op maat samen voor deze lead.
-            </p>
-            <Button
-              onClick={() => router.push(`/admin/leads/${leadId}/quote`)}
-              className="w-full mb-3 text-xs sm:text-sm"
-              variant="default"
-            >
-              <Quote className="w-3 h-3 sm:w-4 sm:h-4 mr-2 shrink-0" />
-              <span className="break-words">Offerte Builder</span>
-            </Button>
-            <LoadSavedQuoteInfo leadId={leadId} />
-          </div>
-
-          {/* Attribution Data */}
-          {(lead.utm_source || lead.referrer) && (
-            <div className="bg-card border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
-              <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 break-words">Attributie Data</h2>
-              <div className="space-y-2 text-xs sm:text-sm min-w-0">
-                {lead.utm_source && (
-                  <div className="min-w-0">
-                    <span className="text-muted-foreground">UTM Source:</span>{' '}
-                    <span className="font-medium break-words">{lead.utm_source}</span>
-                  </div>
-                )}
-                {lead.utm_medium && (
-                  <div className="min-w-0">
-                    <span className="text-muted-foreground">UTM Medium:</span>{' '}
-                    <span className="font-medium break-words">{lead.utm_medium}</span>
-                  </div>
-                )}
-                {lead.utm_campaign && (
-                  <div className="min-w-0">
-                    <span className="text-muted-foreground">UTM Campaign:</span>{' '}
-                    <span className="font-medium break-words">{lead.utm_campaign}</span>
-                  </div>
-                )}
-                {lead.referrer && (
-                  <div className="min-w-0">
-                    <span className="text-muted-foreground">Referrer:</span>{' '}
-                    <a
-                      href={lead.referrer}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline break-all"
-                    >
-                      {lead.referrer}
-                    </a>
-                  </div>
-                )}
-                {lead.landing_path && (
-                  <div className="min-w-0">
-                    <span className="text-muted-foreground">Landing Path:</span>{' '}
-                    <span className="font-medium break-words">{lead.landing_path}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+            </>
+            )}
         </div>
       </div>
 

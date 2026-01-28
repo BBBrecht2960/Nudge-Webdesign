@@ -17,20 +17,14 @@ export default function LeadsPage() {
 
   useEffect(() => {
     loadLeads();
-  }, [filter]);
+  }, []);
 
   const loadLeads = async () => {
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('leads')
         .select('*')
         .order('created_at', { ascending: false });
-
-      if (filter !== 'all') {
-        query = query.eq('status', filter);
-      }
-
-      const { data, error } = await query;
 
       if (error) throw error;
       setLeads(data || []);
@@ -123,6 +117,10 @@ export default function LeadsPage() {
             Beheer en volg alle leads
           </p>
         </div>
+        <Button onClick={() => router.push('/admin/leads/new')} className="shrink-0">
+          <Plus className="w-4 h-4 mr-2" />
+          Nieuwe lead
+        </Button>
       </div>
 
       {/* Quick Stats */}

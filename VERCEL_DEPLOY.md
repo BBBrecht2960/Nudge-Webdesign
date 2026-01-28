@@ -59,6 +59,12 @@ POSTHOG_API_KEY=jouw_posthog_api_key
 NEXT_PUBLIC_POSTHOG_PROJECT_ID=jouw_project_id
 ```
 
+#### KBO / Kruispuntbank (optioneel – voor "Ophalen uit KBO"):
+```
+KBO_PARTY_API_KEY=jouw_kbo_party_key
+```
+Of gebruik CBEAPI: `CBEAPI_KEY=jouw_cbeapi_key`
+
 **Belangrijk:** Zet deze voor alle environments (Production, Preview, Development)
 
 ### 4. Database Migrations Uitvoeren

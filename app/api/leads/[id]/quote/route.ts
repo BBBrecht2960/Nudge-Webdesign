@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
+import { requireAuth } from '@/lib/security';
 
 // GET: Fetch the latest quote for a lead
 export async function GET(
@@ -85,9 +86,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('admin_session');
-    if (!sessionCookie) {
+    const auth = await requireAuth();
+    if (!auth.authenticated) {
       return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
     }
 
@@ -172,7 +172,7 @@ export async function POST(
           total_price,
           status,
           notes: notes || null,
-          created_by: 'Admin User', // TODO: Replace with actual logged-in user
+          created_by: auth.email?.trim() || null,
         })
         .select()
         .single();

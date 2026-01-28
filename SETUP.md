@@ -126,9 +126,20 @@ NEXTAUTH_URL=http://localhost:3000
 # TEST_ADMIN_PASSWORD=TestAdmin123!
 # ENABLE_TEST_LOGIN=true
 # NEXT_PUBLIC_ENABLE_TEST_LOGIN=true
+
+# KBO / Kruispuntbank – bedrijfsgegevens ophalen op BTW-nummer (optioneel)
+# Zonder deze key werkt de knop "Ophalen uit KBO" niet; met key wel. Key nooit committen.
+# KBO_PARTY_API_KEY=jouw_key_van_kbo_party
+# Of: CBEAPI_KEY=jouw_key_van_cbeapi_be
 ```
 
 **Belangrijk:** `SUPABASE_SERVICE_ROLE_KEY` is nodig om in te loggen als admin. Zet deze alleen in `.env.local`, nooit in code of in Git.
+
+### KBO-key (optioneel): hoe laat je het werken zonder de key te committen?
+
+- **Lokaal:** Zet in `.env.local` de regel `KBO_PARTY_API_KEY=jouw_key` (of `CBEAPI_KEY=...`). Dit bestand staat in `.gitignore` en wordt nooit gecommit, dus de key blijft alleen op jouw machine.
+- **Productie (bijv. Vercel):** Ga naar je project → **Settings** → **Environment Variables** → voeg toe: naam `KBO_PARTY_API_KEY`, waarde = jouw key. Dan werkt "Ophalen uit KBO" ook na deploy.
+- **Andere machine / team:** Na `git clone` kopieer `env.local.template` naar `.env.local` en vul daar de keys in (inclusief optioneel `KBO_PARTY_API_KEY`). De code staat in Git; de keys alleen lokaal en in de hosting-omgeving.
 
 ### NEXTAUTH_SECRET genereren
 

@@ -17,20 +17,14 @@ export default function CustomersPage() {
 
   useEffect(() => {
     loadCustomers();
-  }, [filter]);
+  }, []);
 
   const loadCustomers = async () => {
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('customers')
         .select('*')
         .order('created_at', { ascending: false });
-
-      if (filter !== 'all') {
-        query = query.eq('project_status', filter);
-      }
-
-      const { data, error } = await query;
 
       if (error) {
         // Check if table doesn't exist

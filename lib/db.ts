@@ -41,6 +41,8 @@ export interface Lead {
   company_website?: string;
   created_at: string;
   updated_at: string;
+  /** E-mail van het admin-account dat deze lead heeft aangemaakt (alleen bij handmatig aanmaken). */
+  created_by?: string;
 }
 
 export interface LeadNote {
