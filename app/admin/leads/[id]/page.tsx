@@ -119,6 +119,7 @@ export default function LeadDetailPage() {
   const [adminUsers, setAdminUsers] = useState<{ email: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [hasQuote, setHasQuote] = useState(false);
   
   // Form states
   const [showActivityForm, setShowActivityForm] = useState(false);
@@ -219,6 +220,17 @@ export default function LeadDetailPage() {
         console.warn('Error loading attachments:', err);
         // Don't throw - attachments are optional
       }
+
+      // Check if quote exists (non-blocking)
+      try {
+        const quoteRes = await fetch(`/api/leads/${leadId}/quote`);
+        if (quoteRes.ok) {
+          const data = await quoteRes.json();
+          setHasQuote(!!data.quote);
+        }
+      } catch (err) {
+        console.warn('Error checking quote:', err);
+      }
     } catch (error: unknown) {
       // Enhanced error logging
       const errorObj = error instanceof Error ? error : new Error(String(error));
@@ -279,8 +291,101 @@ export default function LeadDetailPage() {
     }
   };
 
+  const getNextStatusHint = (currentStatus: string): string | null => {
+    if (currentStatus === 'new') {
+      const hasContact = activities.some(act => 
+        ['call', 'email', 'meeting'].includes(act.activity_type)
+      );
+      if (!hasContact) {
+        return 'Voeg eerst een telefoongesprek, e-mail of meeting toe';
+      }
+    }
+    if (currentStatus === 'contacted') {
+      const hasPositiveContact = activities.some(act => 
+        ['call', 'meeting'].includes(act.activity_type) && 
+        act.description && act.description.length > 20
+      );
+      if (!hasPositiveContact) {
+        return 'Voeg een telefoongesprek of meeting toe met beschrijving';
+      }
+    }
+    if (currentStatus === 'qualified') {
+      const hasQuote = activities.some(act => 
+        act.activity_type === 'quote_sent' || act.activity_type === 'contract_sent'
+      );
+      if (!hasQuote) {
+        return 'Maak eerst een offerte via de "Offerte" knop';
+      }
+    }
+    return null;
+  };
+
+  const canChangeToStatus = (currentStatus: string, newStatus: string, hasQuoteInDB: boolean = false): { allowed: boolean; reason?: string } => {
+    // Always allow staying the same or going to lost
+    if (newStatus === currentStatus || newStatus === 'lost') {
+      return { allowed: true };
+    }
+
+    // Don't allow going backwards in workflow
+    const statusOrder = ['new', 'contacted', 'qualified', 'converted'];
+    const currentIndex = statusOrder.indexOf(currentStatus);
+    const newIndex = statusOrder.indexOf(newStatus);
+    
+    if (newIndex < currentIndex) {
+      return { allowed: false, reason: 'Je kunt niet teruggaan naar een eerdere status' };
+    }
+
+    // Status-specific validations
+    if (currentStatus === 'new' && newStatus === 'contacted') {
+      const hasContact = activities.some(act => 
+        ['call', 'email', 'meeting'].includes(act.activity_type)
+      );
+      if (!hasContact) {
+        return {
+          allowed: false,
+          reason: 'Voeg eerst een telefoongesprek, e-mail of meeting toe'
+        };
+      }
+    }
+
+    if (currentStatus === 'contacted' && newStatus === 'qualified') {
+      const hasPositiveContact = activities.some(act => 
+        ['call', 'meeting'].includes(act.activity_type) && 
+        act.description && act.description.length > 20
+      );
+      if (!hasPositiveContact) {
+        return {
+          allowed: false,
+          reason: 'Voeg een telefoongesprek of meeting toe met beschrijving'
+        };
+      }
+    }
+
+    if (currentStatus === 'qualified' && newStatus === 'converted') {
+      // Check if quote exists in database or if there's a quote_sent activity
+      const hasQuoteActivity = activities.some(act => 
+        act.activity_type === 'quote_sent' || act.activity_type === 'contract_sent'
+      );
+      if (!hasQuoteInDB && !hasQuoteActivity) {
+        return {
+          allowed: false,
+          reason: 'Maak eerst een offerte via de "Offerte" knop'
+        };
+      }
+    }
+
+    return { allowed: true };
+  };
+
   const handleStatusChange = async (newStatus: string) => {
     if (!lead || lead.status === newStatus) return;
+
+    // Validate status change
+    const validation = canChangeToStatus(lead.status, newStatus, hasQuote);
+    if (!validation.allowed) {
+      alert(validation.reason || 'Deze statuswijziging is niet toegestaan.');
+      return;
+    }
 
     setIsSaving(true);
     
@@ -748,16 +853,35 @@ export default function LeadDetailPage() {
                     { status: 'qualified', name_nl: 'Gekwalificeerd' },
                     { status: 'converted', name_nl: 'Geconverteerd' },
                     { status: 'lost', name_nl: 'Verloren' },
-                  ]).map((statusDesc) => (
-                    <option key={statusDesc.status} value={statusDesc.status}>
-                      {statusDesc.name_nl}
-                    </option>
-                  ))}
+                  ]).map((statusDesc) => {
+                    const validation = canChangeToStatus(lead.status, statusDesc.status, hasQuote);
+                    return (
+                      <option 
+                        key={statusDesc.status} 
+                        value={statusDesc.status}
+                        disabled={!validation.allowed && statusDesc.status !== lead.status}
+                      >
+                        {statusDesc.name_nl}
+                        {!validation.allowed && statusDesc.status !== lead.status ? ' (niet beschikbaar)' : ''}
+                      </option>
+                    );
+                  })}
                 </select>
                 {currentStatusDesc && (
-                  <p className="text-xs text-muted-foreground max-w-xs text-left sm:text-right break-words">
-                    {currentStatusDesc.description_nl}
-                  </p>
+                  <div className="text-xs text-muted-foreground max-w-xs text-left sm:text-right break-words">
+                    <p>{currentStatusDesc.description_nl}</p>
+                    {(() => {
+                      const hint = getNextStatusHint(lead.status);
+                      if (hint && lead.status !== 'converted' && lead.status !== 'lost') {
+                        return (
+                          <p className="mt-1 text-orange-600 font-medium">
+                            💡 {hint}
+                          </p>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
                 )}
               </div>
             </div>
