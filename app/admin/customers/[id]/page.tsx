@@ -385,7 +385,7 @@ export default function CustomerDetailPage() {
       case 'on_hold':
         return 'bg-red-100 text-red-800';
       case 'canceled':
-        return 'bg-gray-100 text-gray-800 border-gray-300';
+        return 'bg-red-100 text-red-800 border-red-300 font-semibold';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -475,6 +475,27 @@ export default function CustomerDetailPage() {
         </div>
       </div>
 
+      {/* Canceled Warning Banner */}
+      {customer.project_status === 'canceled' && (
+        <div className="mb-6 bg-red-50 border-2 border-red-300 rounded-lg p-4 sm:p-6">
+          <div className="flex items-center gap-3">
+            <div className="flex-shrink-0">
+              <div className="w-10 h-10 bg-red-200 rounded-full flex items-center justify-center">
+                <span className="text-red-800 font-bold text-lg">✕</span>
+              </div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-bold text-red-900 mb-1 break-words">
+                Deze klant is geannuleerd
+              </h3>
+              <p className="text-sm text-red-700 break-words">
+                Deze klant telt niet meer mee in de omzetberekening. Alle gegevens blijven beschikbaar voor referentie.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6 min-w-0">
@@ -525,14 +546,24 @@ export default function CustomerDetailPage() {
                 <FileText className="w-5 h-5 text-primary shrink-0" />
                 Goedgekeurde Offerte
               </h2>
-              {customer.quote_total && (
+              {customer.project_status === 'canceled' ? (
+                <div className="mb-4">
+                  <p className="text-sm text-muted-foreground mb-1">Totaal:</p>
+                  <p className="text-2xl font-bold text-red-600 line-through">
+                    {customer.quote_total ? `€${customer.quote_total.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '€0,00'}
+                  </p>
+                  <p className="text-sm text-red-600 font-semibold mt-1">
+                    Geannuleerd - telt niet mee in omzet
+                  </p>
+                </div>
+              ) : customer.quote_total ? (
                 <div className="mb-4">
                   <p className="text-sm text-muted-foreground mb-1">Totaal:</p>
                   <p className="text-2xl font-bold">
                     €{customer.quote_total.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 </div>
-              )}
+              ) : null}
               {customer.approved_quote && (
                 <div className="bg-muted border border-border rounded-lg p-4">
                   <pre className="text-xs sm:text-sm whitespace-pre-wrap break-words overflow-x-auto">
