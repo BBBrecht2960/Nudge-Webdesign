@@ -23,6 +23,30 @@
   --card-foreground: #242038; /* Midnight Violet */
 }
 
+.dark {
+  --background: #1a1625;
+  --foreground: #f5f4f7;
+  --primary: #9067C6; /* Lavender Purple */
+  --primary-foreground: #ffffff;
+  --secondary: #8D86C9; /* Soft Periwinkle */
+  --secondary-foreground: #ffffff;
+  --accent: #3a3547;
+  --accent-foreground: #f5f4f7;
+  --muted: #242038; /* Darker version */
+  --muted-foreground: #CAC4CE; /* Pale Slate */
+  --border: #3a3547;
+  --card: #242038; /* Midnight Violet */
+  --card-foreground: #f5f4f7;
+}
+
+.dark html {
+  background: #1a1625;
+}
+
+.dark body {
+  background: #1a1625;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

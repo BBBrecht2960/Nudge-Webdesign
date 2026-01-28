@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Button } from '../components/Button';
-import { LogOut, LayoutDashboard, Users, BarChart3, Menu, X, Briefcase } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, BarChart3, Menu, X, Briefcase, Moon, Sun } from 'lucide-react';
 
 function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -14,6 +14,29 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const isDebug = searchParams.get('debug') === '1';
   const [isLoading, setIsLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+
+  // Load dark mode preference from localStorage
+  useEffect(() => {
+    const savedDarkMode = localStorage.getItem('adminDarkMode') === 'true';
+    setDarkMode(savedDarkMode);
+    if (savedDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
+  const toggleDarkMode = () => {
+    const newDarkMode = !darkMode;
+    setDarkMode(newDarkMode);
+    localStorage.setItem('adminDarkMode', String(newDarkMode));
+    if (newDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  };
 
   useEffect(() => {
     // httpOnly cookie is niet leesbaar via document.cookie → check via API
@@ -124,6 +147,18 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={toggleDarkMode}
+                className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                aria-label="Dark mode toggle"
+                title={darkMode ? 'Licht modus' : 'Donkere modus'}
+              >
+                {darkMode ? (
+                  <Sun className="w-5 h-5" />
+                ) : (
+                  <Moon className="w-5 h-5" />
+                )}
+              </button>
               <Button 
                 onClick={handleLogout} 
                 variant="outline" 
@@ -206,7 +241,23 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                   Analyses
                 </div>
               </a>
-              <div className="pt-2 border-t border-border mt-2">
+              <div className="pt-2 border-t border-border mt-2 space-y-2">
+                <button
+                  onClick={toggleDarkMode}
+                  className="w-full flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                >
+                  {darkMode ? (
+                    <>
+                      <Sun className="w-4 h-4 mr-2" />
+                      Licht modus
+                    </>
+                  ) : (
+                    <>
+                      <Moon className="w-4 h-4 mr-2" />
+                      Donkere modus
+                    </>
+                  )}
+                </button>
                 <Button 
                   onClick={handleLogout} 
                   variant="outline" 
