@@ -137,20 +137,38 @@ export default function CustomerDetailPage() {
         .single();
 
       if (updateError) {
-        const errorDetails = {
-          code: updateError.code,
-          message: updateError.message,
-          details: updateError.details,
-          hint: updateError.hint,
+        // Log full error object to understand structure
+        console.error('Full updateError object:', JSON.stringify(updateError, null, 2));
+        console.error('updateError type:', typeof updateError);
+        console.error('updateError keys:', Object.keys(updateError || {}));
+        
+        // Extract error information more safely
+        const errorCode = (updateError as any)?.code || (updateError as any)?.error_code;
+        const errorMessage = (updateError as any)?.message || (updateError as any)?.error_message || String(updateError);
+        const errorDetails = (updateError as any)?.details || (updateError as any)?.error_details;
+        const errorHint = (updateError as any)?.hint || (updateError as any)?.error_hint;
+        
+        const errorInfo = {
+          code: errorCode,
+          message: errorMessage,
+          details: errorDetails,
+          hint: errorHint,
+          raw: updateError,
         };
-        console.error('Error updating customer status:', errorDetails);
+        
+        console.error('Error updating customer status:', errorInfo);
         
         // Check if it's a constraint violation (e.g., canceled not in CHECK constraint)
-        if (updateError.code === '23514' || updateError.message?.includes('check constraint')) {
-          throw new Error('De status "Geannuleerd" is nog niet toegevoegd aan de database. Voer add-canceled-status.sql uit.');
+        if (errorCode === '23514' || errorMessage?.includes('check constraint') || errorMessage?.includes('CHECK constraint')) {
+          throw new Error('De status "Geannuleerd" is nog niet toegevoegd aan de database. Voer add-canceled-status.sql uit in Supabase.');
         }
         
-        throw new Error(updateError.message || 'Fout bij bijwerken status');
+        // Check if it's a null constraint or other database error
+        if (errorCode === '23502' || errorMessage?.includes('null value')) {
+          throw new Error('Een verplicht veld ontbreekt. Probeer opnieuw.');
+        }
+        
+        throw new Error(errorMessage || 'Fout bij bijwerken status');
       }
 
       // If customer is canceled, also update related lead to "lost"

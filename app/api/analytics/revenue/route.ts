@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
       .gte('converted_at', `${startISO}T00:00:00.000Z`)
       .lte('converted_at', `${endISO}T23:59:59.999Z`)
       .not('quote_total', 'is', null)
+      .neq('project_status', 'canceled')
       .order('converted_at', { ascending: true });
 
     if (customersError) {
@@ -71,7 +72,10 @@ export async function GET(request: NextRequest) {
 
     const groupedData: Record<string, { date: string; total: number; count: number; byStatus: Record<string, number> }> = {};
 
-    customers?.forEach((customer) => {
+    // Filter out canceled customers
+    const activeCustomers = customers?.filter(c => c.project_status !== 'canceled') || [];
+
+    activeCustomers.forEach((customer) => {
       const date = new Date(customer.converted_at);
       let key = '';
       
@@ -105,7 +109,7 @@ export async function GET(request: NextRequest) {
     });
 
     const timeline = Object.values(groupedData).sort((a, b) => a.date.localeCompare(b.date));
-    const totalRevenue = customers?.reduce((sum, customer) => sum + (Number(customer.quote_total) || 0), 0) || 0;
+    const totalRevenue = activeCustomers.reduce((sum, customer) => sum + (Number(customer.quote_total) || 0), 0);
 
     const periodDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     const previousEnd = new Date(start);
@@ -121,17 +125,20 @@ export async function GET(request: NextRequest) {
 
     const { data: previousCustomers } = await supabase
       .from('customers')
-      .select('quote_total')
+      .select('quote_total, project_status')
       .gte('converted_at', `${previousStartISO}T00:00:00.000Z`)
       .lte('converted_at', `${previousEndISO}T23:59:59.999Z`)
-      .not('quote_total', 'is', null);
+      .not('quote_total', 'is', null)
+      .neq('project_status', 'canceled');
 
-    const previousTotal = previousCustomers?.reduce((sum, customer) => sum + (Number(customer.quote_total) || 0), 0) || 0;
+    // Filter out canceled customers from previous period
+    const previousActiveCustomers = previousCustomers?.filter((c: any) => c.project_status !== 'canceled') || [];
+    const previousTotal = previousActiveCustomers.reduce((sum: number, customer: any) => sum + (Number(customer.quote_total) || 0), 0);
     const trend = previousTotal > 0 ? ((totalRevenue - previousTotal) / previousTotal) * 100 : (totalRevenue > 0 ? 100 : 0);
-    const averageDealSize = customers && customers.length > 0 ? totalRevenue / customers.length : 0;
+    const averageDealSize = activeCustomers.length > 0 ? totalRevenue / activeCustomers.length : 0;
 
     const byStatus: Record<string, number> = {};
-    customers?.forEach((customer) => {
+    activeCustomers.forEach((customer) => {
       const status = customer.project_status || 'new';
       const revenue = Number(customer.quote_total) || 0;
       byStatus[status] = (byStatus[status] || 0) + revenue;
@@ -140,7 +147,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       total: Math.round(totalRevenue * 100) / 100,
       trend: Math.round(trend * 10) / 10,
-      count: customers?.length || 0,
+      count: activeCustomers.length,
       averageDealSize: Math.round(averageDealSize * 100) / 100,
       timeline,
       byStatus,

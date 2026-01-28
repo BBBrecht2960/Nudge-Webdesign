@@ -73,9 +73,9 @@ export default function CustomersPage() {
     completed: customers.filter(c => c.project_status === 'completed').length,
     on_hold: customers.filter(c => c.project_status === 'on_hold').length,
     canceled: customers.filter(c => c.project_status === 'canceled').length,
-    totalRevenue: customers.reduce((sum, c) => sum + (Number(c.quote_total) || 0), 0),
-    averageDeal: customers.length > 0 
-      ? customers.reduce((sum, c) => sum + (Number(c.quote_total) || 0), 0) / customers.length 
+    totalRevenue: customers.filter(c => c.project_status !== 'canceled').reduce((sum, c) => sum + (Number(c.quote_total) || 0), 0),
+    averageDeal: customers.filter(c => c.project_status !== 'canceled').length > 0 
+      ? customers.filter(c => c.project_status !== 'canceled').reduce((sum, c) => sum + (Number(c.quote_total) || 0), 0) / customers.filter(c => c.project_status !== 'canceled').length 
       : 0,
   };
 

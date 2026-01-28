@@ -88,7 +88,7 @@ export default function DashboardPage() {
         canceled: allCustomers?.filter((c) => c.project_status === 'canceled').length || 0,
         inProgress: allCustomers?.filter((c) => c.project_status === 'in_progress').length || 0,
         inReview: allCustomers?.filter((c) => c.project_status === 'review').length || 0,
-        totalRevenue: allCustomers?.reduce((sum, c) => sum + (Number(c.quote_total) || 0), 0) || 0,
+        totalRevenue: allCustomers?.filter(c => c.project_status !== 'canceled').reduce((sum, c) => sum + (Number(c.quote_total) || 0), 0) || 0,
       };
 
       const recentCustomers = allCustomers?.slice(0, 5) || [];
