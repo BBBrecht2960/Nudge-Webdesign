@@ -123,3 +123,9 @@ input[type="checkbox"]:focus-visible {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: rgba(144, 103, 198, 0.5);
 }
+
+/* Next.js portal styling overrides */
+nextjs-portal {
+  left: unset !important;
+  top: unset !important;
+}
