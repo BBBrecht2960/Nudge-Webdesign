@@ -319,6 +319,7 @@ export default function LeadDetailPage() {
       // If status is "converted", automatically convert to customer
       if (newStatus === 'converted') {
         try {
+          console.log(`[StatusChange] Converting lead ${leadId} to customer...`);
           const convertResponse = await fetch(`/api/leads/${leadId}/convert`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -326,21 +327,26 @@ export default function LeadDetailPage() {
 
           if (convertResponse.ok) {
             const convertData = await convertResponse.json();
-            alert(`Lead succesvol geconverteerd naar customer! AI prompt is gegenereerd.`);
+            const revenue = convertData.customer?.quote_total 
+              ? `€${Number(convertData.customer.quote_total).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              : 'geen offerte';
+            console.log(`[StatusChange] Conversion successful. Revenue: ${revenue}`);
+            alert(`Lead succesvol geconverteerd naar customer! Omzet: ${revenue}. AI prompt is gegenereerd.`);
             // Optionally redirect to customer page
             // router.push(`/admin/customers/${convertData.customer.id}`);
           } else {
             const errorData = await convertResponse.json();
             // Check if customer already exists
             if (errorData.customer_id) {
+              console.log(`[StatusChange] Customer already exists for lead ${leadId}`);
               alert(`Lead is al geconverteerd naar customer.`);
             } else {
-              console.error('Error converting to customer:', errorData);
+              console.error('[StatusChange] Error converting to customer:', errorData);
               alert(`Status bijgewerkt, maar conversie naar customer mislukt: ${errorData.error || 'Onbekende fout'}`);
             }
           }
         } catch (convertError) {
-          console.error('Error converting to customer:', convertError);
+          console.error('[StatusChange] Error converting to customer:', convertError);
           alert('Status bijgewerkt, maar conversie naar customer mislukt. Probeer handmatig te converteren.');
         }
       }

@@ -121,6 +121,9 @@ export async function POST(
     if (quote) {
       approvedQuote = quote.quote_data;
       quoteTotal = quote.total_price;
+      console.log(`[Convert] Found quote for lead ${leadId}: total_price = ${quoteTotal}, status = ${quote.status}`);
+    } else {
+      console.warn(`[Convert] No quote found for lead ${leadId}. Revenue will be 0.`);
     }
 
     // Fetch all attachments
@@ -139,6 +142,11 @@ export async function POST(
 
     // Generate AI prompt for Cursor
     const cursorPrompt = await generateCursorPrompt(lead, approvedQuote, attachments || [], activities || []);
+
+    // Ensure quote_total is a number (not null/undefined)
+    const finalQuoteTotal = quoteTotal !== null && quoteTotal !== undefined ? Number(quoteTotal) : null;
+    
+    console.log(`[Convert] Creating customer for lead ${leadId} with quote_total: ${finalQuoteTotal}`);
 
     // Create customer record
     const { data: customer, error: customerError } = await supabase
@@ -161,7 +169,7 @@ export async function POST(
         current_website_status: lead.current_website_status,
         message: lead.message,
         approved_quote: approvedQuote,
-        quote_total: quoteTotal,
+        quote_total: finalQuoteTotal,
         quote_status: quote ? quote.status : 'pending',
         cursor_prompt: cursorPrompt,
         cursor_prompt_generated_at: new Date().toISOString(),
@@ -179,12 +187,14 @@ export async function POST(
       .single();
 
     if (customerError) {
-      console.error('Error creating customer:', customerError);
+      console.error('[Convert] Error creating customer:', customerError);
       return NextResponse.json(
         { error: 'Fout bij aanmaken customer', details: customerError.message },
         { status: 500 }
       );
     }
+
+    console.log(`[Convert] Customer created successfully: ${customer.id}, quote_total: ${customer.quote_total}`);
 
     // Migrate attachments
     if (attachments && attachments.length > 0) {
@@ -238,6 +248,7 @@ export async function POST(
       success: true,
       customer,
       message: 'Lead succesvol geconverteerd naar customer',
+      revenue: finalQuoteTotal,
     });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Onbekende fout';
