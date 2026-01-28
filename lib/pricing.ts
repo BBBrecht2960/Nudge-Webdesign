@@ -170,7 +170,7 @@ export const complexityOptions: PricingOption[] = [
   },
   {
     id: 'booking-system',
-    name: 'Simpel boekingssysteem',
+    name: 'Boekingssysteem',
     price: 599,
     description: 'Online boekingssysteem: klanten kunnen afspraken of reserveringen maken, kalender integratie, bevestigingsemails, en beschikbaarheidsbeheer',
     category: 'complexity',
