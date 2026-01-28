@@ -809,7 +809,7 @@ export default function LeadDetailPage() {
         case 'green':
           return 'bg-green-100 text-green-800 border-green-300';
         case 'red':
-          return 'bg-red-100 text-red-800 border-red-300';
+          return 'bg-red-100 text-red-800 border-red-300 font-semibold';
         case 'blue':
           return 'bg-blue-100 text-blue-800 border-blue-300';
         case 'yellow':
@@ -817,6 +817,10 @@ export default function LeadDetailPage() {
         default:
           return 'bg-gray-100 text-gray-800 border-gray-300';
       }
+    }
+    // Fallback for lost status
+    if (status === 'lost') {
+      return 'bg-red-100 text-red-800 border-red-300 font-semibold';
     }
     return 'bg-gray-100 text-gray-800 border-gray-300';
   };
@@ -849,6 +853,27 @@ export default function LeadDetailPage() {
         <ArrowLeft className="w-4 h-4 mr-2 shrink-0" />
         <span className="break-words">Terug naar leads</span>
       </Button>
+
+      {/* Lost Warning Banner */}
+      {lead.status === 'lost' && (
+        <div className="mb-6 bg-red-50 border-2 border-red-300 rounded-lg p-4 sm:p-6">
+          <div className="flex items-center gap-3">
+            <div className="flex-shrink-0">
+              <div className="w-10 h-10 bg-red-200 rounded-full flex items-center justify-center">
+                <span className="text-red-800 font-bold text-lg">✕</span>
+              </div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-bold text-red-900 mb-1 break-words">
+                Deze lead is verloren
+              </h3>
+              <p className="text-sm text-red-700 break-words">
+                Deze lead telt niet meer mee in de conversie statistieken. Alle gegevens blijven beschikbaar voor referentie.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 w-full min-w-0">
         {/* Main Content */}

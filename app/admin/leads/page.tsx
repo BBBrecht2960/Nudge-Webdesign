@@ -84,7 +84,7 @@ export default function LeadsPage() {
       case 'converted':
         return 'bg-green-100 text-green-800';
       case 'lost':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-100 text-red-800 border-red-300 font-semibold';
       case 'qualified':
         return 'bg-blue-100 text-blue-800';
       case 'contacted':
@@ -92,6 +92,17 @@ export default function LeadsPage() {
       default:
         return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      new: 'Nieuw',
+      contacted: 'Gecontacteerd',
+      qualified: 'Gekwalificeerd',
+      converted: 'Geconverteerd',
+      lost: 'Verloren',
+    };
+    return labels[status] || status;
   };
 
   if (isLoading) {
@@ -244,20 +255,28 @@ export default function LeadsPage() {
                   </td>
                 </tr>
               ) : (
-                filteredLeads.map((lead) => (
+                filteredLeads.map((lead) => {
+                  const isLost = lead.status === 'lost';
+                  return (
                   <tr
                     key={lead.id}
-                    className="border-t border-border hover:bg-accent/50 cursor-pointer transition-colors"
+                    className={`border-t border-border hover:bg-accent/50 cursor-pointer transition-colors ${
+                      isLost ? 'bg-gray-50 opacity-75' : ''
+                    }`}
                     onClick={() => router.push(`/admin/leads/${lead.id}`)}
                   >
                     <td className="p-3 sm:p-4 break-words min-w-0">
-                      <div className="font-medium">{lead.name}</div>
+                      <div className={`font-medium ${isLost ? 'line-through text-gray-500' : ''}`}>
+                        {lead.name}
+                      </div>
                     </td>
                     <td className="p-3 sm:p-4 break-words min-w-0">
                       <div className="flex flex-col gap-1">
                         <a
                           href={`mailto:${lead.email}`}
-                          className="text-primary hover:underline break-all text-sm flex items-center gap-1"
+                          className={`hover:underline break-all text-sm flex items-center gap-1 ${
+                            isLost ? 'line-through text-gray-400' : 'text-primary'
+                          }`}
                           onClick={(e) => e.stopPropagation()}
                         >
                           <Mail className="w-3 h-3 shrink-0" />
@@ -266,7 +285,9 @@ export default function LeadsPage() {
                         {lead.phone && (
                           <a
                             href={`tel:${lead.phone}`}
-                            className="text-primary hover:underline break-all text-sm flex items-center gap-1"
+                            className={`hover:underline break-all text-sm flex items-center gap-1 ${
+                              isLost ? 'line-through text-gray-400' : 'text-primary'
+                            }`}
                             onClick={(e) => e.stopPropagation()}
                           >
                             <Phone className="w-3 h-3 shrink-0" />
@@ -275,18 +296,20 @@ export default function LeadsPage() {
                         )}
                       </div>
                     </td>
-                    <td className="p-3 sm:p-4 break-words min-w-0">
+                    <td className={`p-3 sm:p-4 break-words min-w-0 ${isLost ? 'line-through text-gray-500' : ''}`}>
                       {lead.company_name || '-'}
                     </td>
-                    <td className="p-3 sm:p-4 break-words min-w-0">
+                    <td className={`p-3 sm:p-4 break-words min-w-0 ${isLost ? 'line-through text-gray-500' : ''}`}>
                       {lead.package_interest || '-'}
                     </td>
                     <td className="p-3 sm:p-4 min-w-0">
-                      <span className={`px-2 py-1 rounded text-xs whitespace-nowrap ${getStatusColor(lead.status)}`}>
-                        {lead.status}
+                      <span className={`px-2 py-1 rounded text-xs whitespace-nowrap font-semibold ${getStatusColor(lead.status)}`}>
+                        {getStatusLabel(lead.status)}
                       </span>
                     </td>
-                    <td className="p-3 sm:p-4 text-sm text-muted-foreground whitespace-nowrap min-w-0">
+                    <td className={`p-3 sm:p-4 text-sm whitespace-nowrap min-w-0 ${
+                      isLost ? 'line-through text-gray-400' : 'text-muted-foreground'
+                    }`}>
                       <div className="flex items-center gap-1">
                         <Clock className="w-3 h-3 shrink-0" />
                         {new Date(lead.created_at).toLocaleDateString('nl-BE')}
@@ -294,17 +317,19 @@ export default function LeadsPage() {
                     </td>
                     <td className="p-3 sm:p-4 min-w-0">
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/admin/leads/${lead.id}/quote`);
-                          }}
-                          className="text-primary hover:bg-primary/10 px-2 py-1 rounded text-xs flex items-center gap-1 transition-colors whitespace-nowrap"
-                          title="Offerte maken"
-                        >
-                          <FileText className="w-3 h-3" />
-                          Offerte
-                        </button>
+                        {!isLost && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/admin/leads/${lead.id}/quote`);
+                            }}
+                            className="text-primary hover:bg-primary/10 px-2 py-1 rounded text-xs flex items-center gap-1 transition-colors whitespace-nowrap"
+                            title="Offerte maken"
+                          >
+                            <FileText className="w-3 h-3" />
+                            Offerte
+                          </button>
+                        )}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -317,7 +342,8 @@ export default function LeadsPage() {
                       </div>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
