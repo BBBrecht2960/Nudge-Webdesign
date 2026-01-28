@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { use, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase, type Customer, type CustomerActivity, type CustomerAttachment, type CustomerUpdate, type CustomerProgressHistory } from '@/lib/db';
 import { Button } from '@/app/components/Button';
 import {
@@ -35,10 +35,10 @@ import { generateQuotePdfBlob, type ApprovedQuoteData } from '@/lib/quotePdf';
 
 type CustomerTabId = 'overview' | 'offerte' | 'updates' | 'activiteiten' | 'bijlagen';
 
-export default function CustomerDetailPage() {
-  const params = useParams();
+export default function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const router = useRouter();
-  const customerId = params.id as string;
+  const customerId = id;
 
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [activities, setActivities] = useState<CustomerActivity[]>([]);

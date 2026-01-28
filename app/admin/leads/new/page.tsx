@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/app/components/Button';
 import { packages } from '@/lib/pricing';
@@ -15,6 +15,7 @@ const PACKAGE_OPTIONS = packages.map((p) => ({ id: p.id, name: p.name }));
 
 export default function NewLeadPage() {
   const router = useRouter();
+  const errorRef = useRef<HTMLDivElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [adminUsers, setAdminUsers] = useState<{ email: string }[]>([]);
@@ -45,7 +46,7 @@ export default function NewLeadPage() {
     setLookupError(null);
     setLookupLoading(true);
     try {
-      const res = await fetch(`/api/admin/company-lookup?vat=${encodeURIComponent(vat)}`);
+      const res = await fetch(`/api/admin/company-lookup?vat=${encodeURIComponent(vat)}`, { credentials: 'include' });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setLookupError(data.error || 'Ophalen mislukt.');
@@ -65,11 +66,17 @@ export default function NewLeadPage() {
   };
 
   useEffect(() => {
-    fetch('/api/admin/users')
+    fetch('/api/admin/users', { credentials: 'include' })
       .then((res) => res.ok ? res.json() : { users: [] })
       .then((data) => setAdminUsers(data.users || []))
       .catch(() => setAdminUsers([]));
   }, []);
+
+  useEffect(() => {
+    if (error && errorRef.current) {
+      errorRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [error]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,6 +100,7 @@ export default function NewLeadPage() {
     try {
       const res = await fetch('/api/admin/leads', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: trimmedName,
@@ -119,11 +127,13 @@ export default function NewLeadPage() {
         return;
       }
 
-      if (data.lead_id) {
-        router.push(`/admin/leads/${data.lead_id}`);
+      const leadId = data.lead_id ?? data.id;
+      if (leadId != null && String(leadId).trim()) {
+        router.push(`/admin/leads/${String(leadId).trim()}`);
+        router.refresh();
         return;
       }
-      setError('Geen lead_id ontvangen.');
+      setError('Geen lead_id ontvangen van de server.');
     } catch (err) {
       console.error(err);
       setError('Versturen mislukt. Probeer het opnieuw.');
@@ -151,7 +161,7 @@ export default function NewLeadPage() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
-          <div className="bg-destructive/10 border border-destructive/30 text-destructive rounded-lg px-4 py-3 text-sm">
+          <div ref={errorRef} role="alert" className="bg-destructive/10 border border-destructive/30 text-destructive rounded-lg px-4 py-3 text-sm">
             {error}
           </div>
         )}

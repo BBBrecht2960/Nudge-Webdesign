@@ -2,26 +2,45 @@ import { cookies } from 'next/headers';
 import { generateSessionToken, verifySessionToken } from './security';
 import { createClient } from '@supabase/supabase-js';
 
+export type AdminSessionCookieOptions = {
+  httpOnly: boolean;
+  secure: boolean;
+  sameSite: 'lax';
+  maxAge: number;
+  path: string;
+};
+
 /**
- * Create a secure admin session
+ * Create a secure admin session. Returns token and cookie options so the caller
+ * can set the cookie on the response (ensures cookie is sent with the response).
  */
-export async function createAdminSession(email: string, rememberMe: boolean = false): Promise<string> {
+export async function createAdminSession(
+  email: string,
+  rememberMe: boolean = false
+): Promise<{ token: string; cookieOptions: AdminSessionCookieOptions }> {
   const token = generateSessionToken();
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + (rememberMe ? 30 : 7)); // 30 days or 7 days
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  
+
+  const cookieOptions: AdminSessionCookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24 * 7,
+    path: '/',
+  };
+
   if (!supabaseUrl || !serviceKey) {
     throw new Error('Database not configured');
   }
 
   const supabase = createClient(supabaseUrl, serviceKey, {
-    auth: { persistSession: false }
+    auth: { persistSession: false },
   });
 
-  // Store session in database
   const { error } = await supabase
     .from('admin_sessions')
     .insert({
@@ -32,26 +51,14 @@ export async function createAdminSession(email: string, rememberMe: boolean = fa
     });
 
   if (error) {
-    // If table doesn't exist, log warning but continue (sessions will be validated differently)
     if (error.code === '42P01') {
       console.warn('[Auth] admin_sessions table does not exist. Run create-admin-sessions-table.sql');
-      // Fallback to simple token (less secure but functional)
-      return token;
+      return { token, cookieOptions };
     }
     throw error;
   }
 
-  // Set HTTP-only cookie
-  const cookieStore = await cookies();
-  cookieStore.set('admin_session', token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24 * 7,
-    path: '/',
-  });
-
-  return token;
+  return { token, cookieOptions };
 }
 
 /**

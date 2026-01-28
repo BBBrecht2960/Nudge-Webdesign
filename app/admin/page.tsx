@@ -34,7 +34,7 @@ export default function AdminLoginPage() {
   }, []);
 
   useEffect(() => {
-    fetch('/api/auth/session')
+    fetch('/api/auth/session', { credentials: 'include' })
       .then((res) => {
         if (isDebug) console.log('[Admin Login] session check', res.status, res.ok ? '-> redirect dashboard' : '-> blijf op login');
         if (res.ok) router.replace('/admin/dashboard');
@@ -52,6 +52,7 @@ export default function AdminLoginPage() {
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },

@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { use, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase, type Lead, type LeadActivity, type LeadAttachment, type LeadStatusDescription } from '@/lib/db';
 import { Button } from '../../../components/Button';
 import {
@@ -113,10 +113,10 @@ function LoadSavedQuoteInfo({ leadId }: { leadId: string }) {
   );
 }
 
-export default function LeadDetailPage() {
-  const params = useParams();
+export default function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const router = useRouter();
-  const leadId = params.id as string;
+  const leadId = id;
 
   const [lead, setLead] = useState<Lead | null>(null);
   const [activities, setActivities] = useState<LeadActivity[]>([]);

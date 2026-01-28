@@ -12,9 +12,9 @@ const loginSchema = z.object({
 }).strict();
 
 export async function POST(request: NextRequest) {
-  // Rate limiting: 5 attempts per 15 minutes per IP
+  // Rate limiting: 10 attempts per 15 minutes per IP
   const clientIP = getClientIP(request);
-  const rateLimit = checkRateLimit(`login:${clientIP}`, 5, 15 * 60 * 1000);
+  const rateLimit = checkRateLimit(`login:${clientIP}`, 10, 15 * 60 * 1000);
   
   if (!rateLimit.allowed) {
     return NextResponse.json(
@@ -66,20 +66,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create secure session
+    let sessionToken: string | null = null;
+    let cookieOptions: { httpOnly: boolean; secure: boolean; sameSite: 'lax'; maxAge: number; path: string } | null = null;
     try {
-      await createAdminSession(normalizedEmail, rememberMe);
+      const session = await createAdminSession(normalizedEmail, rememberMe);
+      sessionToken = session.token;
+      cookieOptions = session.cookieOptions;
     } catch (sessionError) {
       console.error('[Login] Session creation error:', sessionError);
-      // Fallback: continue with basic session if table doesn't exist
-      // This allows the system to work even if admin_sessions table is not created yet
     }
 
     console.log('[Login] Succesvol ingelogd:', normalizedEmail, rememberMe ? '(onthouden)' : '');
-    return NextResponse.json(
+    const response = NextResponse.json(
       { success: true },
       { headers: getRateLimitHeaders(rateLimit.remaining, rateLimit.resetTime) }
     );
+    if (sessionToken && cookieOptions) {
+      response.cookies.set('admin_session', sessionToken, cookieOptions);
+    }
+    return response;
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(

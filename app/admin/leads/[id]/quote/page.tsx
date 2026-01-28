@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { use, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase, type Lead } from '@/lib/db';
 import { Button } from '../../../../components/Button';
 import {
@@ -41,10 +41,10 @@ import { OfferSummary } from '@/app/components/OfferSummary';
 import { presets, applyPreset } from '@/lib/presets';
 import { exportQuoteAsJSON, downloadQuoteAsJSON } from '@/lib/quoteExport';
 
-export default function QuoteBuilderPage() {
-  const params = useParams();
+export default function QuoteBuilderPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const router = useRouter();
-  const leadId = params.id as string;
+  const leadId = id;
 
   const [lead, setLead] = useState<Lead | null>(null);
   const [isLoading, setIsLoading] = useState(true);

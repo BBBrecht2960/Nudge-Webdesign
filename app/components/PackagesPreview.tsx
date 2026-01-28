@@ -29,24 +29,24 @@ export function PackagesPreview() {
   };
 
   return (
-    <section id="packages" className="snap-start min-h-[70vh] flex items-center py-14 sm:py-20 md:py-24 px-5 sm:px-6 lg:px-8 bg-gradient-to-b from-muted to-white relative overflow-visible w-full min-w-0">
+    <section id="packages" className="snap-start min-h-0 flex items-center py-10 sm:py-12 md:py-16 px-5 sm:px-6 lg:px-8 bg-gradient-to-b from-muted to-white relative overflow-visible w-full min-w-0">
       {/* Decoratieve achtergrond */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -mr-48 -mt-48" />
       
       <div className="max-w-7xl mx-auto relative z-10 w-full min-w-0">
-        <div className="mb-10 sm:mb-12 md:mb-16 text-center">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4 leading-tight px-1">
+        <div className="mb-6 sm:mb-8 md:mb-10 text-center">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 sm:mb-3 leading-tight px-1">
             Pakketten
           </h2>
-          <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto px-1">
+          <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-1">
             Kies het pakket dat bij je bedrijf past
           </p>
         </div>
 
         {/* Variatie in card hoogtes met foto's */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6 md:gap-8 mb-8 sm:mb-10 md:mb-12 items-stretch">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5 md:gap-6 mb-6 sm:mb-8 items-stretch">
           <div className="bg-white border-2 border-border rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all group min-w-0 flex flex-col">
-            <div className="relative h-40 w-full hidden md:block">
+            <div className="relative h-28 sm:h-32 w-full hidden md:block">
               <Image
                 src="/Design Nudge Webdesign Hasselt.jpg"
                 alt="Mini website – één pagina, helder en simpel"
@@ -59,11 +59,11 @@ export function PackagesPreview() {
                 <FileText className="w-5 h-5 text-white" />
               </div>
             </div>
-            <div className="p-5 sm:p-6 md:p-8 min-w-0 flex flex-col flex-1 overflow-visible">
-              <h3 className="text-lg sm:text-xl font-bold mb-2 break-words">Mini Website</h3>
-              <p className="text-sm text-muted-foreground mb-2 break-words">Onepager – supersnel leverbaar, ideaal voor starters.</p>
-              <p className="text-xl sm:text-2xl font-bold text-primary mb-4">Vanaf €399</p>
-              <ul className="space-y-2 mb-6 text-sm text-muted-foreground break-words flex-1">
+            <div className="p-4 sm:p-5 md:p-6 min-w-0 flex flex-col flex-1 overflow-visible">
+              <h3 className="text-lg font-bold mb-1.5 break-words">Mini Website</h3>
+              <p className="text-sm text-muted-foreground mb-1.5 break-words">Onepager – supersnel leverbaar, ideaal voor starters.</p>
+              <p className="text-lg sm:text-xl font-bold text-primary mb-3">Vanaf €399</p>
+              <ul className="space-y-1.5 mb-4 text-sm text-muted-foreground break-words flex-1">
                 <li className="flex items-start gap-2">
                   <span className="text-primary shrink-0">✓</span>
                   <span>1 pagina met essentiële info</span>
@@ -99,11 +99,11 @@ export function PackagesPreview() {
             </div>
           </div>
 
-          <div className="bg-white border-2 border-primary rounded-2xl overflow-visible shadow-2xl hover:shadow-2xl transition-all group relative md:-mt-6 min-w-0 order-first md:order-none flex flex-col h-full">
-            <div className="absolute top-3 right-3 bg-primary text-white px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg z-10">
+          <div className="bg-white border-2 border-primary rounded-2xl overflow-visible shadow-2xl hover:shadow-2xl transition-all group relative md:-mt-4 min-w-0 order-first md:order-none flex flex-col h-full">
+            <div className="absolute top-2.5 right-2.5 bg-primary text-white px-2.5 py-1 rounded-full text-xs font-semibold shadow-lg z-10">
               Populair
             </div>
-            <div className="relative h-40 w-full hidden md:block shrink-0">
+            <div className="relative h-28 sm:h-32 w-full hidden md:block shrink-0">
               <Image
                 src="/Business foto Nudge Webdesign & Marketing.jpg"
                 alt="Standard business website – professionele uitstraling"
@@ -116,11 +116,11 @@ export function PackagesPreview() {
                 <Building2 className="w-6 h-6 text-white" />
               </div>
             </div>
-            <div className="p-5 sm:p-6 md:p-8 min-w-0 flex flex-col flex-1 overflow-visible">
-              <h3 className="text-lg sm:text-xl font-bold mb-2 break-words">Standard Website</h3>
-              <p className="text-sm text-muted-foreground mb-2 break-words">4–6 pagina&apos;s, standaard structuur, veelgevraagd.</p>
-              <p className="text-xl sm:text-2xl font-bold text-primary mb-4">Vanaf €699</p>
-              <ul className="space-y-2 mb-6 text-sm text-muted-foreground break-words flex-1">
+            <div className="p-4 sm:p-5 md:p-6 min-w-0 flex flex-col flex-1 overflow-visible">
+              <h3 className="text-lg font-bold mb-1.5 break-words">Standard Website</h3>
+              <p className="text-sm text-muted-foreground mb-1.5 break-words">4–6 pagina&apos;s, standaard structuur, veelgevraagd.</p>
+              <p className="text-lg sm:text-xl font-bold text-primary mb-3">Vanaf €699</p>
+              <ul className="space-y-1.5 mb-4 text-sm text-muted-foreground break-words flex-1">
                 <li className="flex items-start gap-2">
                   <span className="text-primary shrink-0">✓</span>
                   <span>4-6 pagina&apos;s (Home, Over ons, Diensten, Contact)</span>
@@ -160,7 +160,7 @@ export function PackagesPreview() {
           </div>
 
           <div className="bg-white border-2 border-border rounded-2xl overflow-visible shadow-lg hover:shadow-2xl transition-all group min-w-0 flex flex-col h-full">
-            <div className="relative h-40 w-full hidden md:block shrink-0">
+            <div className="relative h-28 sm:h-32 w-full hidden md:block shrink-0">
               <Image
                 src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80"
                 alt="Extended KMO – custom website op maat"
@@ -173,11 +173,11 @@ export function PackagesPreview() {
                 <Rocket className="w-5 h-5 text-white" />
               </div>
             </div>
-            <div className="p-5 sm:p-6 md:p-8 min-w-0 flex flex-col flex-1 overflow-visible">
-              <h3 className="text-lg sm:text-xl font-bold mb-2 break-words">Extended Website</h3>
-              <p className="text-sm text-muted-foreground mb-2 break-words">Op maat voor KMO&apos;s, multi-language, CRM, blog inbegrepen.</p>
-              <p className="text-xl sm:text-2xl font-bold text-primary mb-4">Vanaf €2.499</p>
-              <ul className="space-y-2 mb-6 text-sm text-muted-foreground break-words flex-1">
+            <div className="p-4 sm:p-5 md:p-6 min-w-0 flex flex-col flex-1 overflow-visible">
+              <h3 className="text-lg font-bold mb-1.5 break-words">Extended Website</h3>
+              <p className="text-sm text-muted-foreground mb-1.5 break-words">Op maat voor KMO&apos;s, multi-language, CRM, blog inbegrepen.</p>
+              <p className="text-lg sm:text-xl font-bold text-primary mb-3">Vanaf €2.499</p>
+              <ul className="space-y-1.5 mb-4 text-sm text-muted-foreground break-words flex-1">
                 <li className="flex items-start gap-2">
                   <span className="text-primary shrink-0">✓</span>
                   <span>Onbeperkt pagina&apos;s</span>
@@ -222,8 +222,8 @@ export function PackagesPreview() {
           </div>
         </div>
 
-        <div className="bg-muted p-5 sm:p-6 rounded-xl border border-border text-center min-w-0 overflow-hidden">
-          <p className="text-sm sm:text-base mb-4 break-words px-1">
+        <div className="bg-muted p-4 sm:p-5 rounded-xl border border-border text-center min-w-0 overflow-hidden">
+          <p className="text-sm sm:text-base mb-3 break-words px-1">
             <strong className="text-foreground">Webshops</strong> vanaf €1.499 • <strong className="text-foreground">Webapps</strong> vanaf €4.999 (intake gesprek)
           </p>
           <Button onClick={handleViewAll} variant="outline" size="sm" className="w-full sm:w-auto">
