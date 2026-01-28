@@ -80,8 +80,8 @@ Na de eerste deploy, voer deze SQL scripts uit in Supabase:
 3. **Quotes table** (als nog niet gedaan):
    - Run `supabase-quotes-table.sql`
 
-4. **Company fields** (nieuw):
-   - Run `add-company-fields.sql`
+4. **Leads-schema (bedrijfsvelden)**:
+   - Run `scripts/migrate-leads-schema.sql` in Supabase SQL Editor (of `npm run migrate-leads` lokaal met DATABASE_URL)
 
 ### 5. Supabase Storage Bucket Aanmaken
 

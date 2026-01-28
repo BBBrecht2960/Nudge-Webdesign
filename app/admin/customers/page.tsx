@@ -142,7 +142,7 @@ export default function CustomersPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
+    <div className="p-4 sm:p-6 lg:p-8 w-full min-w-0 max-w-full overflow-x-hidden box-border">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-2">
@@ -333,19 +333,19 @@ export default function CustomersPage() {
       {/* Customers Table */}
       <section aria-label="Overzicht klanten">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Overzicht klanten</h2>
-      <div className="bg-card border border-border rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="bg-card border border-border rounded-lg overflow-hidden w-full min-w-0">
+        <div className="overflow-x-auto w-full max-w-full">
           <table className="w-full min-w-[640px]">
             <thead className="bg-muted/80">
-              <tr>
-                <th className="p-3 sm:p-4 text-left text-sm font-semibold">Klant</th>
-                <th className="p-3 sm:p-4 text-left text-sm font-semibold">Bedrijf</th>
-                <th className="p-3 sm:p-4 text-left text-sm font-semibold">Pakket</th>
-                <th className="p-3 sm:p-4 text-left text-sm font-semibold">Omzet</th>
-                <th className="p-3 sm:p-4 text-left text-sm font-semibold">Status</th>
-                <th className="p-3 sm:p-4 text-left text-sm font-semibold">Toegewezen</th>
-                <th className="p-3 sm:p-4 text-left text-sm font-semibold">Geconverteerd</th>
-                <th className="p-3 sm:p-4 text-left text-sm font-semibold">Acties</th>
+              <tr className="h-12">
+                <th className="p-3 sm:p-4 text-left text-sm font-semibold whitespace-nowrap">Klant</th>
+                <th className="p-3 sm:p-4 text-left text-sm font-semibold whitespace-nowrap">Bedrijf</th>
+                <th className="p-3 sm:p-4 text-left text-sm font-semibold whitespace-nowrap">Pakket</th>
+                <th className="p-3 sm:p-4 text-left text-sm font-semibold whitespace-nowrap">Omzet</th>
+                <th className="p-3 sm:p-4 text-left text-sm font-semibold whitespace-nowrap">Status</th>
+                <th className="p-3 sm:p-4 text-left text-sm font-semibold whitespace-nowrap">Toegewezen</th>
+                <th className="p-3 sm:p-4 text-left text-sm font-semibold whitespace-nowrap">Geconverteerd</th>
+                <th className="p-3 sm:p-4 text-left text-sm font-semibold whitespace-nowrap">Acties</th>
               </tr>
             </thead>
             <tbody>
@@ -361,30 +361,30 @@ export default function CustomersPage() {
                   return (
                   <tr
                     key={customer.id}
-                    className={`border-b border-border hover:bg-accent/50 cursor-pointer transition-colors ${
+                    className={`border-b border-border hover:bg-accent/50 cursor-pointer transition-colors h-14 ${
                       isCanceled ? 'bg-gray-50 dark:bg-gray-800/50 opacity-75' : ''
                     }`}
                     onClick={() => router.push(`/admin/customers/${customer.id}`)}
                   >
-                    <td className="p-3 sm:p-4 break-words min-w-0">
-                      <div className={`font-medium ${isCanceled ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>
+                    <td className="p-3 sm:p-4 min-w-0 align-middle overflow-hidden">
+                      <div className={`font-medium truncate ${isCanceled ? 'line-through text-gray-500 dark:text-gray-400' : ''}`} title={customer.name}>
                         {customer.name}
                       </div>
-                      <div className={`text-xs break-all ${isCanceled ? 'line-through text-gray-400 dark:text-gray-500' : 'text-muted-foreground'}`}>
+                      <div className={`text-xs truncate ${isCanceled ? 'line-through text-gray-400 dark:text-gray-500' : 'text-muted-foreground'}`} title={customer.email}>
                         {customer.email}
                       </div>
                     </td>
-                    <td className={`p-3 sm:p-4 break-words min-w-0 ${isCanceled ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>
-                      {customer.company_name || '-'}
+                    <td className={`p-3 sm:p-4 min-w-0 align-middle overflow-hidden ${isCanceled ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>
+                      <div className="truncate" title={customer.company_name || undefined}>{customer.company_name || '-'}</div>
                     </td>
-                    <td className={`p-3 sm:p-4 break-words min-w-0 ${isCanceled ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>
-                      {customer.package_interest || '-'}
+                    <td className={`p-3 sm:p-4 min-w-0 align-middle overflow-hidden ${isCanceled ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>
+                      <div className="truncate" title={customer.package_interest || undefined}>{customer.package_interest || '-'}</div>
                     </td>
-                    <td className="p-3 sm:p-4 min-w-0">
+                    <td className="p-3 sm:p-4 min-w-0 align-middle overflow-hidden">
                       {isCanceled ? (
                         <span className="text-muted-foreground text-sm italic">Geannuleerd</span>
                       ) : customer.quote_total ? (
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 whitespace-nowrap">
                           <Euro className="w-3 h-3 text-primary shrink-0" />
                           <span className="font-semibold">
                             {customer.quote_total.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -394,21 +394,21 @@ export default function CustomersPage() {
                         <span className="text-muted-foreground text-sm">-</span>
                       )}
                     </td>
-                    <td className="p-3 sm:p-4 min-w-0">
+                    <td className="p-3 sm:p-4 min-w-0 align-middle overflow-hidden">
                       <span className={`px-2 py-1 rounded text-xs whitespace-nowrap font-semibold ${getStatusColor(customer.project_status)}`}>
                         {getStatusLabel(customer.project_status)}
                       </span>
                     </td>
-                    <td className={`p-3 sm:p-4 break-words min-w-0 ${isCanceled ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>
-                      {customer.assigned_to || <span className="text-muted-foreground text-sm">-</span>}
+                    <td className={`p-3 sm:p-4 min-w-0 align-middle overflow-hidden ${isCanceled ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>
+                      <div className="truncate" title={customer.assigned_to || undefined}>{customer.assigned_to || <span className="text-muted-foreground text-sm">-</span>}</div>
                     </td>
-                    <td className={`p-3 sm:p-4 text-sm whitespace-nowrap min-w-0 ${isCanceled ? 'line-through text-gray-400 dark:text-gray-500' : 'text-muted-foreground'}`}>
+                    <td className={`p-3 sm:p-4 text-sm whitespace-nowrap min-w-0 align-middle ${isCanceled ? 'line-through text-gray-400 dark:text-gray-500' : 'text-muted-foreground'}`}>
                       <div className="flex items-center gap-1">
                         <Clock className="w-3 h-3 shrink-0" />
                         {new Date(customer.converted_at).toLocaleDateString('nl-BE')}
                       </div>
                     </td>
-                    <td className="p-3 sm:p-4 min-w-0">
+                    <td className="p-3 sm:p-4 min-w-0 align-middle">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();

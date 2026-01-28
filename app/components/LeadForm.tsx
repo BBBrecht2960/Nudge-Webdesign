@@ -189,7 +189,7 @@ export function LeadForm() {
               {...register('first_name')}
               type="text"
               id="first_name"
-              className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm sm:text-base"
+              className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-base"
               placeholder="Jan"
             />
             {errors.first_name && (
@@ -205,7 +205,7 @@ export function LeadForm() {
               {...register('last_name')}
               type="text"
               id="last_name"
-              className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm sm:text-base"
+              className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-base"
               placeholder="Janssen"
             />
             {errors.last_name && (
@@ -222,7 +222,7 @@ export function LeadForm() {
             {...register('email')}
             type="email"
             id="email"
-            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm sm:text-base"
+            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-base"
             placeholder="jan@voorbeeld.be"
           />
           {errors.email && (
@@ -238,7 +238,7 @@ export function LeadForm() {
             {...register('phone')}
             type="tel"
             id="phone"
-            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm sm:text-base"
+            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-base"
             placeholder="0491234567"
           />
           {errors.phone && (
@@ -254,22 +254,27 @@ export function LeadForm() {
             {...register('message')}
             id="message"
             rows={3}
-            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none text-sm sm:text-base"
+            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none text-base"
             placeholder="Vertel ons meer over je project of vraag..."
           />
         </div>
 
         <div className="bg-muted/50 rounded-xl p-3 sm:p-4">
-          <label className="flex items-start gap-2 sm:gap-3 cursor-pointer">
+          <label className="flex items-start gap-2 sm:gap-3 cursor-pointer min-h-[44px] py-2 sm:py-0 sm:min-h-0">
             <input
               {...register('gdpr_consent')}
               type="checkbox"
-              className="mt-0.5 sm:mt-1 w-4 h-4 sm:w-5 sm:h-5 shrink-0 text-primary focus:outline-none rounded border-2 border-border cursor-pointer"
+              className="mt-0.5 sm:mt-1 w-5 h-5 shrink-0 text-primary focus:outline-none rounded border-2 border-border cursor-pointer"
+              aria-label="Akkoord met privacybeleid"
             />
             <span className="text-xs sm:text-sm leading-relaxed">
               Ik ga akkoord met het{' '}
               <a href="/privacy" className="text-primary hover:underline font-medium" target="_blank">
                 privacybeleid
+              </a>
+              , de{' '}
+              <a href="/algemene-voorwaarden" className="text-primary hover:underline font-medium" target="_blank">
+                algemene voorwaarden
               </a>{' '}
               en geef toestemming voor het verwerken van mijn gegevens. *
             </span>
@@ -283,7 +288,7 @@ export function LeadForm() {
       <Button
         type="submit"
         disabled={isSubmitting}
-        className="w-full py-2.5 sm:py-3 text-sm sm:text-base font-semibold"
+        className="w-full min-h-[48px] py-3 text-base font-semibold"
       >
         {isSubmitting ? 'Verzenden...' : 'Verstuur aanvraag'}
       </Button>

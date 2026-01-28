@@ -73,6 +73,12 @@ export default function CookieBeleidPage() {
             Laatst bijgewerkt: {new Date().toLocaleDateString('nl-BE')}
           </p>
         </section>
+
+        <div className="mt-10 pt-6 border-t border-border flex flex-wrap gap-4">
+          <a href="/contact" className="text-primary hover:underline font-medium">Contact</a>
+          <a href="/privacy" className="text-muted-foreground hover:text-foreground">Privacybeleid</a>
+          <a href="/algemene-voorwaarden" className="text-muted-foreground hover:text-foreground">Algemene voorwaarden</a>
+        </div>
       </div>
     </main>
   );

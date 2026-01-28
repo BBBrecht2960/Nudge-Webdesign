@@ -14,6 +14,7 @@
    - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
    - **anon public** (onder “Project API keys”) → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - **service_role** (onder “Project API keys”, verborgen – klik “Reveal”) → `SUPABASE_SERVICE_ROLE_KEY` *(nodig voor admin-login en het aanmaken van admin-gebruikers)*
+8. **Leads-schema (admin lead aanmaken):** Ga naar **Settings** → **Database** → **Connection string** (URI). Kopieer de connection string naar `.env.local` als `DATABASE_URL`. Voer daarna eenmalig uit in de projectmap: `npm run migrate-leads`. Daarmee worden de kolommen `company_address`, `vat_number`, `created_by`, enz. op de `leads`-tabel toegevoegd. Zonder deze stap geeft "Lead aanmaken" een schema-fout.
 
 ### Neon (Alternatief)
 

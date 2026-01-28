@@ -143,7 +143,7 @@ export default function NewLeadPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto w-full min-w-0 max-w-full overflow-x-hidden box-border">
       <Button
         variant="outline"
         size="sm"

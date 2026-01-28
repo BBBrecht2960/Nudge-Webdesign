@@ -26,7 +26,7 @@ export function OfferSummary({
   };
 
   return (
-    <div className="bg-white border-2 border-border rounded-lg p-6 shadow-sm">
+    <div className="bg-card border-2 border-border rounded-lg p-6 shadow-sm">
       <h3 className="text-lg font-semibold mb-4 text-foreground">Offerte Overzicht</h3>
       
       <div className="space-y-3 mb-4">
@@ -64,7 +64,7 @@ export function OfferSummary({
         </div>
         
         <div className="border-t border-border pt-3 mt-3">
-          <div className="flex justify-between text-base font-semibold">
+          <div className="flex justify-between text-base font-semibold text-foreground">
             <span>Totaal (incl. BTW)</span>
             <span className="text-primary">{formatPrice(total)}</span>
           </div>

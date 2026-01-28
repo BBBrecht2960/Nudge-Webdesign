@@ -855,7 +855,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       if (error) {
         // Check if columns don't exist
         if (error.message?.includes('schema cache') || error.message?.includes('column')) {
-          alert('De bedrijfsgegevens kolommen bestaan nog niet. Voer het SQL script uit: add-company-fields.sql');
+          alert('De bedrijfsgegevens kolommen bestaan nog niet. Voer het SQL script uit: scripts/migrate-leads-schema.sql (in Supabase SQL Editor).');
           return;
         }
         throw error;
@@ -994,10 +994,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     );
   }
 
-  const currentStatusDesc = getStatusDescription(lead.status);
-
   return (
-    <div className="p-3 sm:p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden">
+    <div className="p-3 sm:p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full min-w-0 max-w-full overflow-x-hidden box-border">
       <Button
         onClick={() => router.push('/admin/leads')}
         variant="outline"
@@ -1079,22 +1077,17 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                     );
                   })}
                 </select>
-                {currentStatusDesc && (
-                  <div className="text-xs text-muted-foreground max-w-xs text-left sm:text-right break-words">
-                    <p>{currentStatusDesc.description_nl}</p>
-                    {(() => {
-                      const hint = getNextStatusHint(lead.status);
-                      if (hint && lead.status !== 'converted' && lead.status !== 'lost') {
-                        return (
-                          <p className="mt-1 text-orange-600 font-medium">
-                            💡 {hint}
-                          </p>
-                        );
-                      }
-                      return null;
-                    })()}
-                  </div>
-                )}
+                {(() => {
+                  const hint = getNextStatusHint(lead.status);
+                  if (hint && lead.status !== 'converted' && lead.status !== 'lost') {
+                    return (
+                      <p className="text-xs text-muted-foreground text-left sm:text-right" title={hint}>
+                        Tip: voeg een activiteit toe
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             </div>
 
@@ -1743,8 +1736,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 max-w-md w-full shadow-xl min-w-0">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-auto">
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 max-w-md w-full max-w-[calc(100vw-2rem)] shadow-xl min-w-0 overflow-x-hidden">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
                 <AlertTriangle className="w-6 h-6 text-destructive" />
@@ -1793,8 +1786,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
       {/* Delete Lead Modal */}
       {showDeleteLeadModal && lead && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 max-w-md w-full shadow-xl min-w-0">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-auto">
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 max-w-md w-full max-w-[calc(100vw-2rem)] shadow-xl min-w-0 overflow-x-hidden">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
                 <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />

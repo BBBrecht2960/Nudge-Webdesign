@@ -108,7 +108,7 @@ export default function LeadsPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
+    <div className="p-4 sm:p-6 lg:p-8 w-full min-w-0 max-w-full overflow-x-hidden box-border">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
@@ -245,18 +245,18 @@ export default function LeadsPage() {
       {/* Leads Table */}
       <section aria-label="Overzicht leads">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Overzicht leads</h2>
-      <div className="bg-card border border-border rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="bg-card border border-border rounded-lg overflow-hidden w-full min-w-0">
+        <div className="overflow-x-auto overflow-y-visible -mx-0 w-full" style={{ maxWidth: '100%' }}>
           <table className="w-full min-w-[640px]">
             <thead className="bg-muted/80 sticky top-0 z-10">
-              <tr>
-                <th className="text-left p-3 sm:p-4 text-sm font-semibold">Naam</th>
-                <th className="text-left p-3 sm:p-4 text-sm font-semibold">Contact</th>
-                <th className="text-left p-3 sm:p-4 text-sm font-semibold">Bedrijf</th>
-                <th className="text-left p-3 sm:p-4 text-sm font-semibold">Pakket</th>
-                <th className="text-left p-3 sm:p-4 text-sm font-semibold">Status</th>
-                <th className="text-left p-3 sm:p-4 text-sm font-semibold">Datum</th>
-                <th className="text-left p-3 sm:p-4 text-sm font-semibold">Acties</th>
+              <tr className="h-12">
+                <th className="text-left p-3 sm:p-4 text-sm font-semibold whitespace-nowrap">Naam</th>
+                <th className="text-left p-3 sm:p-4 text-sm font-semibold whitespace-nowrap">Contact</th>
+                <th className="text-left p-3 sm:p-4 text-sm font-semibold whitespace-nowrap">Bedrijf</th>
+                <th className="text-left p-3 sm:p-4 text-sm font-semibold whitespace-nowrap">Pakket</th>
+                <th className="text-left p-3 sm:p-4 text-sm font-semibold whitespace-nowrap">Status</th>
+                <th className="text-left p-3 sm:p-4 text-sm font-semibold whitespace-nowrap">Datum</th>
+                <th className="text-left p-3 sm:p-4 text-sm font-semibold whitespace-nowrap">Acties</th>
               </tr>
             </thead>
             <tbody>
@@ -272,74 +272,74 @@ export default function LeadsPage() {
                   return (
                   <tr
                     key={lead.id}
-                    className={`border-t border-border hover:bg-accent/50 cursor-pointer transition-colors ${
+                    className={`border-t border-border hover:bg-accent/50 cursor-pointer transition-colors h-14 ${
                       isLost ? 'bg-gray-50 dark:bg-gray-800/50 opacity-75' : ''
                     }`}
                     onClick={() => router.push(`/admin/leads/${lead.id}`)}
                   >
-                    <td className="p-3 sm:p-4 break-words min-w-0">
-                      <div className={`font-medium ${isLost ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>
+                    <td className="p-3 sm:p-4 min-w-0 align-middle overflow-hidden">
+                      <div className={`font-medium truncate ${isLost ? 'line-through text-gray-500 dark:text-gray-400' : ''}`} title={lead.name}>
                         {lead.name}
                       </div>
                     </td>
-                    <td className="p-3 sm:p-4 break-words min-w-0">
-                      <div className="flex flex-col gap-1">
+                    <td className="p-3 sm:p-4 min-w-0 align-middle overflow-hidden">
+                      <div className="flex flex-col gap-0.5 min-w-0 max-w-full overflow-hidden">
                         <a
                           href={`mailto:${lead.email}`}
-                          className={`hover:underline break-all text-sm flex items-center gap-1 ${
+                          className={`hover:underline truncate text-sm flex items-center gap-1 min-w-0 ${
                             isLost ? 'line-through text-gray-400 dark:text-gray-500' : 'text-primary'
                           }`}
                           onClick={(e) => e.stopPropagation()}
+                          title={lead.email}
                         >
                           <Mail className="w-3 h-3 shrink-0" />
-                          {lead.email}
+                          <span className="truncate">{lead.email}</span>
                         </a>
                         {lead.phone && (
                           <a
                             href={`tel:${lead.phone}`}
-                            className={`hover:underline break-all text-sm flex items-center gap-1 ${
+                            className={`hover:underline truncate text-xs flex items-center gap-1 min-w-0 ${
                               isLost ? 'line-through text-gray-400 dark:text-gray-500' : 'text-primary'
                             }`}
                             onClick={(e) => e.stopPropagation()}
+                            title={lead.phone}
                           >
                             <Phone className="w-3 h-3 shrink-0" />
-                            {lead.phone}
+                            <span className="truncate">{lead.phone}</span>
                           </a>
                         )}
                       </div>
                     </td>
-                    <td className={`p-3 sm:p-4 break-words min-w-0 ${isLost ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>
-                      {lead.company_name || '-'}
+                    <td className={`p-3 sm:p-4 min-w-0 align-middle overflow-hidden ${isLost ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>
+                      <div className="truncate" title={lead.company_name || undefined}>{lead.company_name || '-'}</div>
                     </td>
-                    <td className={`p-3 sm:p-4 break-words min-w-0 ${isLost ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>
-                      {lead.package_interest || '-'}
+                    <td className={`p-3 sm:p-4 min-w-0 align-middle overflow-hidden ${isLost ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>
+                      <div className="truncate" title={lead.package_interest || undefined}>{lead.package_interest || '-'}</div>
                     </td>
-                    <td className="p-3 sm:p-4 min-w-0">
+                    <td className="p-3 sm:p-4 min-w-0 align-middle overflow-hidden">
                       <span className={`px-2 py-1 rounded text-xs whitespace-nowrap font-semibold ${getStatusColor(lead.status)}`}>
                         {getStatusLabel(lead.status)}
                       </span>
                     </td>
-                    <td className={`p-3 sm:p-4 text-sm whitespace-nowrap min-w-0 ${
-                      isLost ? 'line-through text-gray-400 dark:text-gray-500' : 'text-muted-foreground'
-                    }`}>
+                    <td className={`p-3 sm:p-4 text-sm whitespace-nowrap min-w-0 align-middle ${isLost ? 'line-through text-gray-400 dark:text-gray-500' : 'text-muted-foreground'}`}>
                       <div className="flex items-center gap-1">
                         <Clock className="w-3 h-3 shrink-0" />
                         {new Date(lead.created_at).toLocaleDateString('nl-BE')}
                       </div>
                     </td>
-                    <td className="p-3 sm:p-4 min-w-0">
-                      <div className="flex items-center gap-2">
+                    <td className="p-3 sm:p-4 min-w-0 align-middle">
+                      <div className="flex flex-nowrap items-center gap-2 shrink-0">
                         {!isLost && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               router.push(`/admin/leads/${lead.id}/quote`);
                             }}
-                            className="text-primary hover:bg-primary/10 px-2 py-1 rounded text-xs flex items-center gap-1 transition-colors whitespace-nowrap"
+                            className="text-primary hover:bg-primary/10 px-2 py-1 rounded text-xs flex items-center gap-1 transition-colors whitespace-nowrap shrink-0 h-8"
                             title="Offerte maken"
                           >
-                            <FileText className="w-3 h-3" />
-                            Offerte
+                            <FileText className="w-3 h-3 shrink-0" />
+                            <span className="truncate">Offerte</span>
                           </button>
                         )}
                         <button
@@ -347,7 +347,7 @@ export default function LeadsPage() {
                             e.stopPropagation();
                             router.push(`/admin/leads/${lead.id}`);
                           }}
-                          className="text-primary hover:underline text-sm whitespace-nowrap font-medium"
+                          className="text-primary hover:underline text-sm whitespace-nowrap font-medium shrink-0 h-8 flex items-center"
                         >
                           Openen →
                         </button>

@@ -5,6 +5,8 @@ import {
   complexityOptions,
   growthOptions,
   maintenanceOptions,
+  getOptionsForPackage,
+  isOptionIncludedInPackage,
   type PricingPackage,
   type PricingOption,
 } from '@/lib/pricing';
@@ -71,7 +73,14 @@ export function useOfferBuilder() {
   const [state, setState] = useState<OfferBuilderState>(initialState);
 
   const setSelectedPackage = useCallback((pkg: PricingPackage | null) => {
-    setState((prev) => ({ ...prev, selectedPackage: pkg }));
+    setState((prev) => {
+      const packageOptions = pkg ? getOptionsForPackage(pkg) : [];
+      return {
+        ...prev,
+        selectedPackage: pkg,
+        selectedOptions: packageOptions,
+      };
+    });
   }, []);
 
   const toggleOption = useCallback((option: PricingOption) => {
@@ -196,6 +205,9 @@ export function useOfferBuilder() {
     }
 
     state.selectedOptions.forEach((option) => {
+      if (isOptionIncludedInPackage(option, state.selectedPackage)) {
+        return;
+      }
       const price = state.customPrices[option.id] ?? option.price;
       if (price > 0) {
         total += price;

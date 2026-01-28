@@ -96,6 +96,13 @@ h1, h2, h3, h4, h5, h6 {
   border-color: var(--border);
 }
 
+/* Mobile: reduce tap highlight, keep touch targets usable */
+@media (hover: none) and (pointer: coarse) {
+  a, button {
+    -webkit-tap-highlight-color: rgba(144, 103, 198, 0.15);
+  }
+}
+
 /* Better focus styles */
 *:focus-visible {
   outline: 2px solid var(--primary);

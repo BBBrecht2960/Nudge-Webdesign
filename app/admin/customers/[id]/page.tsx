@@ -30,6 +30,8 @@ import {
   User,
   Briefcase,
   Paperclip,
+  Pencil,
+  FilePlus,
 } from 'lucide-react';
 import { generateQuotePdfBlob, type ApprovedQuoteData } from '@/lib/quotePdf';
 
@@ -55,6 +57,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [activeCustomerTab, setActiveCustomerTab] = useState<CustomerTabId>('overview');
+  const [isQuoteActionLoading, setIsQuoteActionLoading] = useState(false);
   
   // Update form state
   const [showUpdateForm, setShowUpdateForm] = useState(false);
@@ -140,6 +143,47 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
       alert('Fout bij het laden van customer data');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  /** Open offerte builder: ensure lead, optionally copy approved_quote to draft, then redirect. */
+  const openQuoteBuilder = async (forEdit: boolean) => {
+    if (!customer) return;
+    setIsQuoteActionLoading(true);
+    try {
+      const res = await fetch(`/api/admin/customers/${customerId}/lead`, { credentials: 'include' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Kon geen lead ophalen');
+      }
+      const { lead_id } = await res.json();
+      if (!lead_id) throw new Error('Geen lead_id ontvangen');
+
+      if (forEdit && customer.approved_quote && customer.quote_total != null) {
+        // Copy current approved quote to lead_quotes as draft so builder loads it
+        const saveRes = await fetch(`/api/leads/${lead_id}/quote`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            quote_data: customer.approved_quote,
+            total_price: Number(customer.quote_total),
+            status: 'draft',
+          }),
+        });
+        if (!saveRes.ok) {
+          const err = await saveRes.json().catch(() => ({}));
+          console.warn('Quote als concept opslaan mislukt:', err);
+          // Still redirect so user can build from scratch
+        }
+      }
+
+      router.push(`/admin/leads/${lead_id}/quote`);
+    } catch (e) {
+      console.error('openQuoteBuilder:', e);
+      alert(e instanceof Error ? e.message : 'Kon offerte builder niet openen');
+    } finally {
+      setIsQuoteActionLoading(false);
     }
   };
 
@@ -575,7 +619,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   }
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden">
+    <div className="p-3 sm:p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full min-w-0 max-w-full overflow-x-hidden box-border">
       {/* Back + Header */}
       <div className="mb-8">
         <Button
@@ -867,36 +911,67 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
         </div>
         )}
 
-        {activeCustomerTab === 'offerte' && customer.approved_quote && (
-            <section className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0" aria-label="Goedgekeurde offerte">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Goedgekeurde offerte</p>
-              <h2 className="text-lg font-bold mb-4 flex items-center gap-2 break-words">
-                <FileText className="w-5 h-5 text-primary shrink-0" />
-                Offerte
-              </h2>
-              {customer.project_status === 'canceled' ? (
-                <div className="mb-4">
-                  <p className="text-sm text-muted-foreground mb-1">Totaal:</p>
-                  <p className="text-2xl font-bold text-red-600 line-through">
-                    {customer.quote_total ? `€${Number(customer.quote_total).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '€0,00'}
+        {activeCustomerTab === 'offerte' && (
+            <>
+              {!customer.approved_quote ? (
+                <section className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0" aria-label="Offerte">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Offerte</p>
+                  <h2 className="text-lg font-bold mb-4 flex items-center gap-2 break-words">
+                    <FileText className="w-5 h-5 text-primary shrink-0" />
+                    Nog geen offerte
+                  </h2>
+                  <p className="text-muted-foreground mb-4">
+                    Maak een offerte met de offerte builder. Je kunt pakketten, opties en extra kosten samenstellen en daarna de offerte versturen of als PDF downloaden.
                   </p>
-                  <p className="text-sm text-red-600 font-semibold mt-1">
-                    Geannuleerd - telt niet mee in omzet
-                  </p>
-                </div>
-              ) : customer.quote_total != null ? (
-                <div className="mb-4">
-                  <p className="text-sm text-muted-foreground mb-1">Totaal:</p>
-                  <p className="text-2xl font-bold">
-                    €{Number(customer.quote_total).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
-                </div>
-              ) : null}
-              <div className="flex flex-wrap gap-2 mb-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={isGeneratingPdf}
+                  <Button
+                    onClick={() => openQuoteBuilder(false)}
+                    disabled={isQuoteActionLoading}
+                    className="inline-flex items-center gap-2"
+                  >
+                    <FilePlus className="w-4 h-4" />
+                    {isQuoteActionLoading ? 'Bezig...' : 'Offerte maken met Offerte Builder'}
+                  </Button>
+                </section>
+              ) : (
+                <section className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0" aria-label="Goedgekeurde offerte">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Goedgekeurde offerte</p>
+                  <h2 className="text-lg font-bold mb-4 flex items-center gap-2 break-words">
+                    <FileText className="w-5 h-5 text-primary shrink-0" />
+                    Offerte
+                  </h2>
+                  {customer.project_status === 'canceled' ? (
+                    <div className="mb-4">
+                      <p className="text-sm text-muted-foreground mb-1">Totaal:</p>
+                      <p className="text-2xl font-bold text-red-600 line-through">
+                        {customer.quote_total ? `€${Number(customer.quote_total).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '€0,00'}
+                      </p>
+                      <p className="text-sm text-red-600 font-semibold mt-1">
+                        Geannuleerd - telt niet mee in omzet
+                      </p>
+                    </div>
+                  ) : customer.quote_total != null ? (
+                    <div className="mb-4">
+                      <p className="text-sm text-muted-foreground mb-1">Totaal:</p>
+                      <p className="text-2xl font-bold">
+                        €{Number(customer.quote_total).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  ) : null}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isQuoteActionLoading}
+                      onClick={() => openQuoteBuilder(true)}
+                      title="Offerte aanpassen (extra functie of kost toevoegen) en nieuwe versie sturen"
+                    >
+                      <Pencil className="w-4 h-4 mr-2" />
+                      Offerte aanpassen
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isGeneratingPdf}
                   onClick={async () => {
                     const q = customer.approved_quote as ApprovedQuoteData;
                     if (!q?.selectedPackage || customer.quote_total == null) return;
@@ -984,7 +1059,9 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                   />
                 </div>
               )}
-            </section>
+                </section>
+              )}
+            </>
         )}
 
         {activeCustomerTab === 'updates' && (
@@ -1218,8 +1295,8 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
 
       {/* Delete Customer Modal */}
       {showDeleteCustomerModal && customer && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 max-w-md w-full shadow-xl min-w-0">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-auto">
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 max-w-md w-full max-w-[calc(100vw-2rem)] shadow-xl min-w-0 overflow-x-hidden">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
                 <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />

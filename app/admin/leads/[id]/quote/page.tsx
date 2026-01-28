@@ -26,13 +26,15 @@ import {
   Percent,
   Euro,
 } from 'lucide-react';
-import jsPDF from 'jspdf';
+import { generateQuotePdfBlob } from '@/lib/quotePdf';
 import {
   packages,
   scopeOptions,
   complexityOptions,
   growthOptions,
   maintenanceOptions,
+  getDisplayFeatures,
+  isOptionIncludedInPackage,
   type PricingPackage,
   type PricingOption,
 } from '@/lib/pricing';
@@ -496,599 +498,42 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quote/page.tsx:488',message:'Starting PDF generation',data:{leadId,packageId:selectedPackage.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
       // #endregion
-      
-      // Load logo as base64
-      let logoBase64: string | null = null;
-      try {
-        const logoResponse = await fetch('/Nudge websdesign & marketing Hasselt logo.png');
-        if (logoResponse.ok) {
-          const logoBlob = await logoResponse.blob();
-          logoBase64 = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              if (typeof reader.result === 'string') {
-                resolve(reader.result);
-              } else {
-                reject(new Error('Failed to convert logo to base64'));
-              }
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(logoBlob);
-          });
-        }
-      } catch (logoError) {
-        console.warn('Could not load logo:', logoError);
-      }
 
-      const doc = new jsPDF();
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 20;
-      const contentWidth = pageWidth - (margin * 2);
-      const lineHeight = 7;
-      const sectionSpacing = 12;
-      
-      let yPos = margin;
-      const businessName = 'Nudge Webdesign';
-      const businessEmail = 'brecht.leap@gmail.com';
-      const businessPhone = '+32494299633';
-      const businessAddress = 'Herkenrodesingel 19C/4.2, 3500 Hasselt, België';
-
-      // Helper function to check if new page is needed
-      const checkNewPage = (requiredSpace: number) => {
-        if (yPos + requiredSpace > pageHeight - 40) {
-          doc.addPage();
-          yPos = margin;
-          return true;
-        }
-        return false;
+      const clientInfo = {
+        name: lead.name,
+        email: lead.email ?? undefined,
+        phone: lead.phone ?? undefined,
+        company_name: lead.company_name ?? undefined,
+        vat_number: lead.vat_number ?? undefined,
+        company_address: lead.company_address ?? undefined,
+        company_postal_code: lead.company_postal_code ?? undefined,
+        company_city: lead.company_city ?? undefined,
+        company_country: lead.company_country ?? undefined,
+        company_website: lead.company_website ?? undefined,
       };
-
-      // Helper function to add text with proper wrapping
-      const addText = (text: string, x: number, y: number, maxWidth: number, fontSize: number = 11, fontStyle: 'normal' | 'bold' = 'normal') => {
-        doc.setFontSize(fontSize);
-        doc.setFont('helvetica', fontStyle);
-        const lines = doc.splitTextToSize(text, maxWidth);
-        lines.forEach((line: string) => {
-          if (y > pageHeight - 40) {
-            doc.addPage();
-            return margin;
-          }
-          doc.text(line, x, y);
-          y += lineHeight;
-        });
-        return y;
+      const approvedQuote = {
+        selectedPackage: { id: selectedPackage.id, name: selectedPackage.name, basePrice: selectedPackage.basePrice },
+        selectedOptions: state.selectedOptions.map((opt) => ({ id: opt.id, name: opt.name, price: getOptionPrice(opt) })),
+        optionNotes: state.optionNotes,
+        extraPages: state.extraPages,
+        contentPages: state.contentPages,
+        selectedMaintenance: state.selectedMaintenance ? { id: state.selectedMaintenance.id, name: state.selectedMaintenance.name, price: state.selectedMaintenance.price } : null,
+        customLineItems: state.customLineItems,
+        discount: state.discount.type ? { type: state.discount.type, value: state.discount.value } : null,
       };
+      const blob = await generateQuotePdfBlob(clientInfo, approvedQuote, calculations.total);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Offerte_${lead.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
 
-      // Enhanced Header with gradient effect
-      const headerHeight = 70;
-      doc.setFillColor(144, 103, 198); // Primary purple
-      doc.rect(0, 0, pageWidth, headerHeight, 'F');
-      
-      // Subtle gradient effect (darker bottom)
-      doc.setFillColor(120, 85, 170);
-      doc.rect(0, headerHeight - 10, pageWidth, 10, 'F');
-      
-      // Logo with transparent background
-      const logoSize = 45;
-      const logoX = pageWidth - margin - logoSize;
-      const logoY = margin;
-      
-      if (logoBase64) {
-        try {
-          // Add logo image with transparent background
-          doc.addImage(logoBase64, 'PNG', logoX, logoY, logoSize, logoSize, undefined, 'FAST');
-        } catch (imageError) {
-          console.warn('Could not add logo image:', imageError);
-          // Fallback to text if image fails
-          doc.setFontSize(7);
-          doc.setTextColor(255, 255, 255);
-          doc.setFont('helvetica', 'normal');
-          doc.text('Nudge', logoX + logoSize / 2, logoY + logoSize / 2, { align: 'center' });
-        }
-      } else {
-        // Fallback to text if logo not loaded
-        doc.setFontSize(7);
-        doc.setTextColor(255, 255, 255);
-        doc.setFont('helvetica', 'normal');
-        doc.text('Nudge', logoX + logoSize / 2, logoY + logoSize / 2, { align: 'center' });
-      }
-      
-      // Company name and title with better typography
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(24);
-      doc.setFont('helvetica', 'bold');
-      doc.text(businessName, margin, margin + 18);
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(255, 255, 255);
-      doc.text('Offerte', margin, margin + 30);
-      
-      // Date with better styling - positioned to avoid logo overlap
-      const today = new Date();
-      const dateStr = today.toLocaleDateString('nl-BE', { day: '2-digit', month: 'long', year: 'numeric' });
-      doc.setFontSize(10);
-      doc.setTextColor(255, 255, 255);
-      doc.setFont('helvetica', 'normal');
-      // Place date to the left of the logo with 10px spacing
-      const dateX = logoX - 10;
-      doc.text(`Datum: ${dateStr}`, dateX, margin + 20, { align: 'right' });
-
-      // Reset for content
-      doc.setTextColor(0, 0, 0);
-      yPos = headerHeight + 20;
-
-      // Enhanced Client information section
-      let clientInfoHeight = 35;
-      let clientInfoLines = 4; // Base: naam, email, phone, company
-      if (lead.company_name) clientInfoLines++;
-      if (lead.vat_number) clientInfoLines++;
-      if (lead.company_address) clientInfoLines++;
-      if (lead.company_postal_code || lead.company_city) clientInfoLines++;
-      if (lead.company_country) clientInfoLines++;
-      if (lead.company_website) clientInfoLines++;
-      clientInfoHeight = Math.max(40, 12 + (clientInfoLines * (lineHeight + 1)) + 8);
-      
-      // Background with subtle border
-      doc.setFillColor(248, 248, 252);
-      doc.setDrawColor(144, 103, 198);
-      doc.setLineWidth(1.5);
-      doc.rect(margin, yPos, contentWidth, clientInfoHeight, 'FD');
-      
-      yPos += 10;
-      doc.setFontSize(13);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(144, 103, 198);
-      doc.text('Klantgegevens', margin + 8, yPos);
-      doc.setTextColor(0, 0, 0);
-      yPos += 10;
-      
-      // Divider line
-      doc.setDrawColor(220, 220, 230);
-      doc.setLineWidth(0.5);
-      doc.line(margin + 8, yPos - 2, pageWidth - margin - 8, yPos - 2);
-      yPos += 3;
-      
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(50, 50, 50);
-      
-      // Name with label styling
-      doc.setFont('helvetica', 'bold');
-      doc.text('Naam:', margin + 8, yPos);
-      doc.setFont('helvetica', 'normal');
-      doc.text(lead.name, margin + 30, yPos);
-      yPos += lineHeight + 2;
-      
-      if (lead.company_name) {
-        doc.setFont('helvetica', 'bold');
-        doc.text('Bedrijf:', margin + 8, yPos);
-        doc.setFont('helvetica', 'normal');
-        doc.text(lead.company_name, margin + 30, yPos);
-        yPos += lineHeight + 2;
-      }
-      
-      if (lead.vat_number) {
-        doc.setFont('helvetica', 'bold');
-        doc.text('BTW-nummer:', margin + 8, yPos);
-        doc.setFont('helvetica', 'normal');
-        doc.text(lead.vat_number, margin + 30, yPos);
-        yPos += lineHeight + 2;
-      }
-      
-      if (lead.company_address) {
-        doc.setFont('helvetica', 'bold');
-        doc.text('Adres:', margin + 8, yPos);
-        doc.setFont('helvetica', 'normal');
-        doc.text(lead.company_address, margin + 30, yPos);
-        yPos += lineHeight + 2;
-      }
-      
-      if (lead.company_postal_code || lead.company_city) {
-        const postalCity = [lead.company_postal_code, lead.company_city].filter(Boolean).join(' ');
-        doc.setFont('helvetica', 'bold');
-        doc.text('Postcode & Stad:', margin + 8, yPos);
-        doc.setFont('helvetica', 'normal');
-        doc.text(postalCity, margin + 30, yPos);
-        yPos += lineHeight + 2;
-      }
-      
-      if (lead.company_country) {
-        doc.setFont('helvetica', 'bold');
-        doc.text('Land:', margin + 8, yPos);
-        doc.setFont('helvetica', 'normal');
-        doc.text(lead.company_country, margin + 30, yPos);
-        yPos += lineHeight + 2;
-      }
-      
-      if (lead.email) {
-        doc.setFont('helvetica', 'bold');
-        doc.text('E-mail:', margin + 8, yPos);
-        doc.setFont('helvetica', 'normal');
-        doc.text(lead.email, margin + 30, yPos);
-        yPos += lineHeight + 2;
-      }
-      
-      if (lead.phone) {
-        doc.setFont('helvetica', 'bold');
-        doc.text('Telefoon:', margin + 8, yPos);
-        doc.setFont('helvetica', 'normal');
-        doc.text(lead.phone, margin + 30, yPos);
-        yPos += lineHeight + 2;
-      }
-      
-      if (lead.company_website) {
-        doc.setFont('helvetica', 'bold');
-        doc.text('Website:', margin + 8, yPos);
-        doc.setFont('helvetica', 'normal');
-        doc.text(lead.company_website, margin + 30, yPos);
-        yPos += lineHeight + 2;
-      }
-      
-      yPos += 5;
-      
-      // Project Details (Scope & Timeline)
-      if (state.timeline || state.scopeDescription) {
-        // Add spacing before project details
-        yPos += 5;
-        
-        // Check if we need a new page
-        checkNewPage(15);
-        
-        // Project Details section
-        doc.setFontSize(13);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(144, 103, 198);
-        doc.text('Project Details', margin + 8, yPos);
-        doc.setTextColor(0, 0, 0);
-        yPos += 8;
-        
-        // Divider line
-        doc.setDrawColor(220, 220, 230);
-        doc.setLineWidth(0.5);
-        doc.line(margin + 8, yPos - 2, pageWidth - margin - 8, yPos - 2);
-        yPos += 5;
-        
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        
-        if (state.timeline) {
-          doc.setFont('helvetica', 'bold');
-          doc.text('Levertijd:', margin + 8, yPos);
-          doc.setFont('helvetica', 'normal');
-          doc.text(state.timeline, margin + 30, yPos);
-          yPos += lineHeight + 3;
-        }
-        
-        if (state.scopeDescription) {
-          doc.setFont('helvetica', 'bold');
-          doc.text('Scope Beschrijving:', margin + 8, yPos);
-          yPos += lineHeight + 2;
-          doc.setFont('helvetica', 'normal');
-          
-          // Split scope description into lines that fit the page width
-          const scopeLines = doc.splitTextToSize(state.scopeDescription, contentWidth - 16);
-          scopeLines.forEach((line: string) => {
-            checkNewPage(5);
-            doc.text(line, margin + 8, yPos);
-            yPos += lineHeight + 1;
-          });
-          yPos += 3;
-        }
-        
-        yPos += 5;
-      }
-
-      doc.setTextColor(0, 0, 0);
-      yPos += sectionSpacing + 5;
-
-      // Enhanced Quote items section header
-      checkNewPage(30);
-      doc.setFontSize(16);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(144, 103, 198);
-      doc.text('Geselecteerde Items', margin, yPos);
-      doc.setTextColor(0, 0, 0);
-      yPos += 12;
-
-      // Enhanced Table header with gradient
-      doc.setFillColor(144, 103, 198);
-      doc.rect(margin, yPos, contentWidth, 10, 'F');
-      doc.setDrawColor(120, 85, 170);
-      doc.setLineWidth(0.5);
-      doc.rect(margin, yPos, contentWidth, 10, 'S');
-      
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(255, 255, 255);
-      doc.text('Omschrijving', margin + 5, yPos + 7);
-      doc.text('Bedrag', pageWidth - margin - 5, yPos + 7, { align: 'right' });
-      doc.setTextColor(0, 0, 0);
-      yPos += 12;
-
-      // Enhanced Package row with alternating background
-      checkNewPage(10);
-      doc.setFillColor(252, 250, 255);
-      doc.setDrawColor(230, 230, 240);
-      doc.setLineWidth(0.5);
-      doc.rect(margin, yPos - 1, contentWidth, 9, 'FD');
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10);
-      doc.setTextColor(30, 30, 30);
-      const packageName = doc.splitTextToSize(selectedPackage.name, contentWidth - 70);
-      doc.text(packageName[0], margin + 5, yPos + 6);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(144, 103, 198);
-      doc.text(`€ ${selectedPackage.basePrice.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 5, yPos + 6, { align: 'right' });
-      doc.setTextColor(0, 0, 0);
-      yPos += 11;
-
-      // Enhanced Options rows with alternating backgrounds
-      let rowIndex = 0;
-      selectedOptions.forEach((option) => {
-        const price = getOptionPrice(option);
-        if (price > 0) {
-          checkNewPage(15);
-          const isEven = rowIndex % 2 === 0;
-          if (isEven) {
-            doc.setFillColor(255, 255, 255);
-          } else {
-            doc.setFillColor(250, 248, 255);
-          }
-          doc.setDrawColor(235, 235, 245);
-          doc.setLineWidth(0.5);
-          doc.rect(margin, yPos - 1, contentWidth, 9, 'FD');
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(10);
-          doc.setTextColor(50, 50, 50);
-          
-          let optionText = option.name;
-          if (optionNotes[option.id]) {
-            optionText += ` (${optionNotes[option.id]})`;
-          }
-          
-          const optionLines = doc.splitTextToSize(optionText, contentWidth - 70);
-          doc.text(optionLines[0], margin + 5, yPos + 6);
-          doc.setFont('helvetica', 'bold');
-          doc.setTextColor(144, 103, 198);
-          doc.text(`€ ${price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 5, yPos + 6, { align: 'right' });
-          doc.setTextColor(0, 0, 0);
-          
-          // If option text wraps, add extra lines
-          if (optionLines.length > 1) {
-            for (let i = 1; i < optionLines.length; i++) {
-              yPos += 6;
-              checkNewPage(10);
-              doc.setFont('helvetica', 'normal');
-              doc.text(optionLines[i], margin + 5, yPos + 6);
-            }
-            yPos += 2;
-          }
-          
-          rowIndex++;
-          yPos += 11;
-        }
-      });
-
-      // Extra pages
-      if (extraPages > 0) {
-        checkNewPage(10);
-        const extraPagesPrice = scopeOptions.find((o) => o.id === 'extra-pages')!.price * extraPages;
-        const isEven = rowIndex % 2 === 0;
-        if (isEven) {
-          doc.setFillColor(255, 255, 255);
-        } else {
-          doc.setFillColor(250, 248, 255);
-        }
-        doc.setDrawColor(235, 235, 245);
-        doc.setLineWidth(0.5);
-        doc.rect(margin, yPos - 1, contentWidth, 9, 'FD');
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
-        doc.setTextColor(50, 50, 50);
-        doc.text(`Extra pagina's (${extraPages}x)`, margin + 5, yPos + 6);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(144, 103, 198);
-        doc.text(`€ ${extraPagesPrice.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 5, yPos + 6, { align: 'right' });
-        doc.setTextColor(0, 0, 0);
-        rowIndex++;
-        yPos += 11;
-      }
-
-      // Content pages
-      if (contentPages > 0) {
-        checkNewPage(10);
-        const contentPrice = growthOptions.find((o) => o.id === 'content-creation')!.price * contentPages;
-        const isEven = rowIndex % 2 === 0;
-        if (isEven) {
-          doc.setFillColor(255, 255, 255);
-        } else {
-          doc.setFillColor(250, 248, 255);
-        }
-        doc.setDrawColor(235, 235, 245);
-        doc.setLineWidth(0.5);
-        doc.rect(margin, yPos - 1, contentWidth, 9, 'FD');
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
-        doc.setTextColor(50, 50, 50);
-        doc.text(`Content creatie (${contentPages}x pagina's)`, margin + 5, yPos + 6);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(144, 103, 198);
-        doc.text(`€ ${contentPrice.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 5, yPos + 6, { align: 'right' });
-        doc.setTextColor(0, 0, 0);
-        rowIndex++;
-        yPos += 11;
-      }
-
-      // Custom line items
-      if (state.customLineItems.length > 0) {
-        state.customLineItems.forEach((item) => {
-          checkNewPage(10);
-          const isEven = rowIndex % 2 === 0;
-          if (isEven) {
-            doc.setFillColor(255, 255, 255);
-          } else {
-            doc.setFillColor(250, 248, 255);
-          }
-          doc.setDrawColor(235, 235, 245);
-          doc.setLineWidth(0.5);
-          doc.rect(margin, yPos - 1, contentWidth, 9, 'FD');
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(10);
-          doc.setTextColor(50, 50, 50);
-          const itemLines = doc.splitTextToSize(item.name, contentWidth - 70);
-          doc.text(itemLines[0], margin + 5, yPos + 6);
-          doc.setFont('helvetica', 'bold');
-          doc.setTextColor(144, 103, 198);
-          doc.text(`€ ${item.price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 5, yPos + 6, { align: 'right' });
-          doc.setTextColor(0, 0, 0);
-          if (itemLines.length > 1) {
-            for (let i = 1; i < itemLines.length; i++) {
-              yPos += 6;
-              checkNewPage(10);
-              doc.setFont('helvetica', 'normal');
-              doc.text(itemLines[i], margin + 5, yPos + 6);
-            }
-            yPos += 2;
-          }
-          rowIndex++;
-          yPos += 11;
-        });
-      }
-
-      // Discount
-      if (state.discount.type && state.discount.value) {
-        checkNewPage(10);
-        doc.setFillColor(255, 245, 245);
-        doc.setDrawColor(240, 200, 200);
-        doc.setLineWidth(0.5);
-        doc.rect(margin, yPos - 1, contentWidth, 9, 'FD');
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
-        doc.setTextColor(50, 50, 50);
-        const discountText = state.discount.type === 'percentage' 
-          ? `Korting (${state.discount.value}%)`
-          : `Korting (€ ${state.discount.value.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
-        doc.text(discountText, margin + 5, yPos + 6);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(200, 0, 0);
-        doc.text(`-€ ${calculations.discountAmount.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 5, yPos + 6, { align: 'right' });
-        doc.setTextColor(0, 0, 0);
-        yPos += 11;
-      }
-
-      yPos += 8;
-
-      // Enhanced Totals section with highlight box
-      checkNewPage(50);
-      
-      // Background box for totals
-      const totalsBoxHeight = 50;
-      doc.setFillColor(252, 250, 255);
-      doc.setDrawColor(144, 103, 198);
-      doc.setLineWidth(1.5);
-      doc.rect(margin, yPos, contentWidth, totalsBoxHeight, 'FD');
-      
-      yPos += 12;
-      
-      // Subtotal
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(80, 80, 80);
-      doc.text('Subtotaal (excl. BTW)', margin + 8, yPos);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 30, 30);
-      doc.text(`€ ${calculations.subtotal.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 8, yPos, { align: 'right' });
-      yPos += 10;
-
-      // VAT
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(80, 80, 80);
-      doc.text('BTW (21%)', margin + 8, yPos);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 30, 30);
-      doc.text(`€ ${calculations.vat.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 8, yPos, { align: 'right' });
-      yPos += 12;
-
-      // Divider line
-      doc.setDrawColor(200, 190, 220);
-      doc.setLineWidth(1);
-      doc.line(margin + 8, yPos, pageWidth - margin - 8, yPos);
-      yPos += 10;
-
-      // Total - highlighted
-      doc.setFontSize(16);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(144, 103, 198);
-      doc.text('Totaal (incl. BTW)', margin + 8, yPos);
-      doc.setFontSize(18);
-      doc.text(`€ ${calculations.total.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 8, yPos, { align: 'right' });
-      doc.setTextColor(0, 0, 0);
-      yPos += 15;
-
-      // Enhanced Maintenance if selected
-      if (selectedMaintenance) {
-        checkNewPage(15);
-        doc.setFillColor(240, 238, 250);
-        doc.setDrawColor(144, 103, 198);
-        doc.setLineWidth(1);
-        doc.rect(margin, yPos, contentWidth, 14, 'FD');
-        yPos += 10;
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(144, 103, 198);
-        doc.text('Onderhoud (per maand)', margin + 8, yPos);
-        doc.setFontSize(12);
-        doc.text(`€ ${selectedMaintenance.price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, pageWidth - margin - 8, yPos, { align: 'right' });
-        doc.setTextColor(0, 0, 0);
-        yPos += 15;
-      }
-
-      // Enhanced Footer on last page
-      const footerY = pageHeight - 55;
-      
-      // Footer background
-      doc.setFillColor(248, 248, 252);
-      doc.rect(0, footerY - 5, pageWidth, pageHeight - footerY + 5, 'F');
-      
-      // Footer top border
-      doc.setDrawColor(144, 103, 198);
-      doc.setLineWidth(1);
-      doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
-      
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(144, 103, 198);
-      doc.text('Contactgegevens', margin, footerY + 5);
-      doc.setTextColor(0, 0, 0);
-      
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(60, 60, 60);
-      doc.text(businessEmail, margin, footerY + 12);
-      doc.text(businessPhone, margin, footerY + 19);
-      doc.text(businessAddress, margin, footerY + 26);
-      
-      doc.setFontSize(7);
-      doc.setTextColor(120, 120, 120);
-      doc.setFont('helvetica', 'italic');
-      const footerText = 'Dit is een automatisch gegenereerde offerte. Voor vragen, neem contact op via bovenstaande gegevens.';
-      doc.text(footerText, margin, footerY + 35, { maxWidth: contentWidth });
-
-      // Generate filename
-      const fileName = `Offerte_${lead.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
-      
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quote/page.tsx:1079',message:'PDF generation completed, saving file',data:{fileName},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
-      // #endregion
-      
-      // Save PDF
-      doc.save(fileName);
-      
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quote/page.tsx:1084',message:'PDF download successful',data:{fileName},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quote/page.tsx:1084',message:'PDF download successful',data:{fileName:a.download},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
       // #endregion
     } catch (error) {
+
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quote/page.tsx:1087',message:'PDF generation error',data:{error:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
       // #endregion
@@ -1343,17 +788,17 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
 
   return (
     <>
-      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto relative">
-      <div className="mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold mb-2">Offerte Builder</h1>
-            <p className="text-muted-foreground">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto relative w-full min-w-0 max-w-full overflow-x-hidden box-border">
+      <div className="mb-6 min-w-0">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 min-w-0">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2 break-words">Offerte Builder</h1>
+            <p className="text-muted-foreground break-words text-sm sm:text-base">
               Voor: <span className="font-medium">{lead.name}</span>
               {lead.company_name && ` - ${lead.company_name}`}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-shrink-0 flex-wrap sm:flex-nowrap">
             <Button
               onClick={() => router.push(`/admin/leads/${leadId}`)}
               variant="outline"
@@ -1373,23 +818,23 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid lg:grid-cols-3 gap-6 min-w-0 w-full">
         {/* Main Content */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="lg:col-span-2 space-y-4 min-w-0">
           {/* Step 1: Package Selection */}
           <div className="bg-card border border-border rounded-lg overflow-hidden">
             <button
               onClick={() => toggleSection('packages')}
-              className="w-full p-6 flex items-center justify-between hover:bg-accent/50 transition-colors"
+              className="w-full p-4 sm:p-6 flex items-center justify-between hover:bg-accent/50 transition-colors min-w-0"
             >
-              <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${selectedPackage ? 'bg-primary text-white' : 'bg-muted'}`}>
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center ${selectedPackage ? 'bg-primary text-white' : 'bg-muted'}`}>
                   {selectedPackage ? <Check className="w-5 h-5" /> : '1'}
                 </div>
-                <div className="text-left">
-                  <h2 className="text-xl font-bold">Basis Pakket</h2>
+                <div className="text-left min-w-0">
+                  <h2 className="text-base sm:text-xl font-bold break-words">Basis Pakket</h2>
                   {selectedPackage && (
-                    <p className="text-sm text-muted-foreground">{selectedPackage.name} - €{selectedPackage.basePrice.toLocaleString('nl-BE')}</p>
+                    <p className="text-sm text-muted-foreground break-words truncate sm:whitespace-normal">{selectedPackage.name} – Vanaf €{selectedPackage.basePrice.toLocaleString('nl-BE')}</p>
                   )}
                 </div>
               </div>
@@ -1401,9 +846,9 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
             </button>
 
             {expandedSections.has('packages') && (
-              <div className="px-6 pb-6 space-y-4 relative">
+              <div className="px-4 sm:px-6 pb-6 space-y-4 relative min-w-0 overflow-x-hidden">
                 {/* Category Tabs */}
-                <div className="flex gap-2 border-b border-border">
+                <div className="flex gap-2 border-b border-border overflow-x-auto scrollbar-hide -mb-px min-w-0">
                   <button
                     onClick={() => setPackageCategory('website')}
                     className={`px-4 py-2 font-medium border-b-2 transition-colors ${
@@ -1461,7 +906,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                           <div className="flex-1">
                             <h3 className="font-bold text-lg mb-1">{pkg.name}</h3>
                             <p className="text-2xl font-bold text-primary">
-                              €{pkg.basePrice.toLocaleString('nl-BE')}
+                              Vanaf €{pkg.basePrice.toLocaleString('nl-BE')}
                             </p>
                           </div>
                           {state.selectedPackage?.id === pkg.id && (
@@ -1470,26 +915,47 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                         </div>
                         <p className="text-sm text-muted-foreground mb-3 flex-1">{pkg.description}</p>
                         <div className="text-xs text-muted-foreground">
-                          {pkg.features.join(' • ')}
+                          {getDisplayFeatures(pkg).join(' • ')}
                         </div>
                       </button>
                     </div>
                   ))}
                 </div>
+
+                {/* Inbegrepen in dit pakket – cumulatief: goedkopere opties + dit pakket, geen dubbels */}
+                {selectedPackage && (
+                  <div className="mt-6 p-4 rounded-lg border-2 border-primary/20 bg-primary/5">
+                    <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <Check className="w-4 h-4 text-primary shrink-0" />
+                      Inbegrepen in {selectedPackage.name}
+                    </h3>
+                    <ul className="space-y-2">
+                      {getDisplayFeatures(selectedPackage).map((feature, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <span className="text-primary shrink-0">✓</span>
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border">
+                      Je kunt hieronder extra scope, complexiteit of onderhoud toevoegen om de offerte uit te breiden.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
 
           {/* Project Details - Scope & Timeline */}
           {selectedPackage && (
-            <div className="bg-card border border-border rounded-lg overflow-hidden">
+            <div className="bg-card border border-border rounded-lg overflow-hidden min-w-0">
               <button
                 onClick={() => toggleSection('project-details')}
-                className="w-full p-6 flex items-center justify-between hover:bg-accent/50 transition-colors"
+                className="w-full p-4 sm:p-6 flex items-center justify-between hover:bg-accent/50 transition-colors min-w-0"
               >
-                <div className="flex items-center gap-3">
-                  <FileText className="w-5 h-5 text-primary" />
-                  <h2 className="text-xl font-bold">Project Details</h2>
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <FileText className="w-5 h-5 text-primary shrink-0" />
+                  <h2 className="text-base sm:text-xl font-bold break-words text-left">Project Details</h2>
                   {(state.scopeDescription || state.timeline) && (
                     <span className="text-sm bg-primary/10 text-primary px-2 py-1 rounded">
                       Ingevuld
@@ -1544,14 +1010,14 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
           {selectedPackage && (
             <>
               {/* Scope Options */}
-              <div className="bg-card border border-border rounded-lg overflow-hidden">
+              <div className="bg-card border border-border rounded-lg overflow-hidden min-w-0">
                 <button
                   onClick={() => toggleSection('scope')}
-                  className="w-full p-6 flex items-center justify-between hover:bg-accent/50 transition-colors"
+                  className="w-full p-4 sm:p-6 flex items-center justify-between hover:bg-accent/50 transition-colors min-w-0"
                 >
-                  <div className="flex items-center gap-3">
-                    <Settings className="w-5 h-5 text-primary" />
-                    <h2 className="text-xl font-bold">Scope Uitbreidingen</h2>
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <Settings className="w-5 h-5 text-primary shrink-0" />
+                    <h2 className="text-base sm:text-xl font-bold break-words text-left">Scope Uitbreidingen</h2>
                       {state.selectedOptions.filter((o) => o.category === 'scope').length > 0 && (
                       <span className="text-sm bg-primary/10 text-primary px-2 py-1 rounded">
                         {selectedOptions.filter((o) => o.category === 'scope').length} geselecteerd
@@ -1571,7 +1037,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                     <div className="flex items-center justify-between p-4 border-2 border-border rounded-lg bg-muted/30">
                       <div>
                         <div className="font-semibold mb-1">Extra pagina&apos;s</div>
-                        <div className="text-sm text-muted-foreground">€100 per pagina</div>
+                        <div className="text-sm text-muted-foreground">Vanaf €100 per pagina</div>
                       </div>
                       <div className="flex items-center gap-3">
                         <button
@@ -1590,7 +1056,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                         </button>
                         {state.extraPages > 0 && (
                           <span className="ml-2 font-semibold text-primary">
-                            €{(state.extraPages * 100).toLocaleString('nl-BE')}
+                            Vanaf €{(state.extraPages * 100).toLocaleString('nl-BE')}
                           </span>
                         )}
                       </div>
@@ -1598,6 +1064,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
 
                     {scopeOptions.filter((o) => o.id !== 'extra-pages').map((option) => {
                       const isSelected = state.selectedOptions.some((o) => o.id === option.id);
+                      const isIncludedInPackage = selectedPackage && isOptionIncludedInPackage(option, selectedPackage);
                       return (
                         <div
                           key={option.id}
@@ -1613,15 +1080,24 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                           >
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex-1">
-                                <div className="font-semibold mb-1">{option.name}</div>
+                                <div className="font-semibold mb-1 flex items-center gap-2">
+                                  {option.name}
+                                  {isSelected && isIncludedInPackage && (
+                                    <span className="text-xs font-normal bg-primary/15 text-primary px-2 py-0.5 rounded">
+                                      Inbegrepen in pakket
+                                    </span>
+                                  )}
+                                </div>
                                 {option.description && (
                                   <div className="text-sm text-muted-foreground">{option.description}</div>
                                 )}
                               </div>
                               <div className="flex items-center gap-3 ml-4">
-                                {option.price > 0 ? (
+                                {isSelected && isIncludedInPackage ? (
+                                  <span className="text-xs text-muted-foreground">Inbegrepen</span>
+                                ) : option.price > 0 ? (
                                   <span className="font-bold text-primary">
-                                    €{option.price.toLocaleString('nl-BE')}
+                                    Vanaf €{option.price.toLocaleString('nl-BE')}
                                   </span>
                                 ) : isSelected ? (
                                   <div className="flex items-center gap-2">
@@ -1710,14 +1186,14 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
               </div>
 
               {/* Complexity Options */}
-              <div className="bg-card border border-border rounded-lg overflow-hidden">
+              <div className="bg-card border border-border rounded-lg overflow-hidden min-w-0">
                 <button
                   onClick={() => toggleSection('complexity')}
-                  className="w-full p-6 flex items-center justify-between hover:bg-accent/50 transition-colors"
+                  className="w-full p-4 sm:p-6 flex items-center justify-between hover:bg-accent/50 transition-colors min-w-0"
                 >
-                  <div className="flex items-center gap-3">
-                    <Rocket className="w-5 h-5 text-primary" />
-                    <h2 className="text-xl font-bold">Complexiteit</h2>
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <Rocket className="w-5 h-5 text-primary shrink-0" />
+                    <h2 className="text-base sm:text-xl font-bold break-words text-left">Complexiteit</h2>
                     {state.selectedOptions.filter((o) => o.category === 'complexity').length > 0 && (
                       <span className="text-sm bg-primary/10 text-primary px-2 py-1 rounded">
                         {selectedOptions.filter((o) => o.category === 'complexity').length} geselecteerd
@@ -1735,6 +1211,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                   <div className="px-6 pb-6 space-y-3">
                     {complexityOptions.map((option) => {
                       const isSelected = state.selectedOptions.some((o) => o.id === option.id);
+                      const isIncludedInPackage = selectedPackage && isOptionIncludedInPackage(option, selectedPackage);
                       return (
                         <div
                           key={option.id}
@@ -1750,15 +1227,24 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                           >
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex-1">
-                                <div className="font-semibold mb-1">{option.name}</div>
+                                <div className="font-semibold mb-1 flex items-center gap-2">
+                                  {option.name}
+                                  {isSelected && isIncludedInPackage && (
+                                    <span className="text-xs font-normal bg-primary/15 text-primary px-2 py-0.5 rounded">
+                                      Inbegrepen in pakket
+                                    </span>
+                                  )}
+                                </div>
                                 {option.description && (
                                   <div className="text-sm text-muted-foreground">{option.description}</div>
                                 )}
                               </div>
                               <div className="flex items-center gap-3 ml-4">
-                                {option.price > 0 ? (
+                                {isSelected && isIncludedInPackage ? (
+                                  <span className="text-xs text-muted-foreground">Inbegrepen</span>
+                                ) : option.price > 0 ? (
                                   <span className="font-bold text-primary">
-                                    €{option.price.toLocaleString('nl-BE')}
+                                    Vanaf €{option.price.toLocaleString('nl-BE')}
                                   </span>
                                 ) : isSelected ? (
                                   <div className="flex items-center gap-2">
@@ -1847,14 +1333,14 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
               </div>
 
               {/* Growth Options */}
-              <div className="bg-card border border-border rounded-lg overflow-hidden">
+              <div className="bg-card border border-border rounded-lg overflow-hidden min-w-0">
                 <button
                   onClick={() => toggleSection('growth')}
-                  className="w-full p-6 flex items-center justify-between hover:bg-accent/50 transition-colors"
+                  className="w-full p-4 sm:p-6 flex items-center justify-between hover:bg-accent/50 transition-colors min-w-0"
                 >
-                  <div className="flex items-center gap-3">
-                    <TrendingUp className="w-5 h-5 text-primary" />
-                    <h2 className="text-xl font-bold">Growth & Marketing</h2>
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <TrendingUp className="w-5 h-5 text-primary shrink-0" />
+                    <h2 className="text-base sm:text-xl font-bold break-words text-left">Growth & Marketing</h2>
                     {state.selectedOptions.filter((o) => o.category === 'growth').length > 0 && (
                       <span className="text-sm bg-primary/10 text-primary px-2 py-1 rounded">
                         {selectedOptions.filter((o) => o.category === 'growth').length} geselecteerd
@@ -1876,7 +1362,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                     >
                       <div>
                         <div className="font-semibold mb-1">Content creatie</div>
-                        <div className="text-sm text-muted-foreground">€125 per pagina</div>
+                        <div className="text-sm text-muted-foreground">Vanaf €125 per pagina</div>
                         <div className="text-xs text-muted-foreground/80 mt-1">
                           Professionele tekst schrijven voor pagina&apos;s of blog posts
                         </div>
@@ -1898,7 +1384,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                         </button>
                         {state.contentPages > 0 && (
                           <span className="ml-2 font-semibold text-primary">
-                            €{(state.contentPages * 125).toLocaleString('nl-BE')}
+                            Vanaf €{(state.contentPages * 125).toLocaleString('nl-BE')}
                           </span>
                         )}
                       </div>
@@ -1906,6 +1392,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
 
                     {growthOptions.filter((o) => o.id !== 'content-creation').map((option) => {
                       const isSelected = state.selectedOptions.some((o) => o.id === option.id);
+                      const isIncludedInPackage = selectedPackage && isOptionIncludedInPackage(option, selectedPackage);
                       return (
                         <div
                           key={option.id}
@@ -1921,15 +1408,24 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                           >
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex-1">
-                                <div className="font-semibold mb-1">{option.name}</div>
+                                <div className="font-semibold mb-1 flex items-center gap-2">
+                                  {option.name}
+                                  {isSelected && isIncludedInPackage && (
+                                    <span className="text-xs font-normal bg-primary/15 text-primary px-2 py-0.5 rounded">
+                                      Inbegrepen in pakket
+                                    </span>
+                                  )}
+                                </div>
                                 {option.description && (
                                   <div className="text-sm text-muted-foreground">{option.description}</div>
                                 )}
                               </div>
                               <div className="flex items-center gap-3 ml-4">
-                                {option.price > 0 ? (
+                                {isSelected && isIncludedInPackage ? (
+                                  <span className="text-xs text-muted-foreground">Inbegrepen</span>
+                                ) : option.price > 0 ? (
                                   <span className="font-bold text-primary">
-                                    €{option.price.toLocaleString('nl-BE')}
+                                    Vanaf €{option.price.toLocaleString('nl-BE')}
                                   </span>
                                 ) : isSelected ? (
                                   <div className="flex items-center gap-2">
@@ -2021,11 +1517,11 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
               <div className="bg-card border border-border rounded-lg overflow-hidden">
                 <button
                   onClick={() => toggleSection('maintenance')}
-                  className="w-full p-6 flex items-center justify-between hover:bg-accent/50 transition-colors"
+                  className="w-full p-4 sm:p-6 flex items-center justify-between hover:bg-accent/50 transition-colors min-w-0"
                 >
-                  <div className="flex items-center gap-3">
-                    <Wrench className="w-5 h-5 text-primary" />
-                    <h2 className="text-xl font-bold">Onderhoud & Analytics (maandelijks)</h2>
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <Wrench className="w-5 h-5 text-primary shrink-0" />
+                    <h2 className="text-base sm:text-xl font-bold break-words text-left">Onderhoud & Analytics (maandelijks)</h2>
                     {selectedMaintenance && (
                       <span className="text-sm bg-primary/10 text-primary px-2 py-1 rounded">
                         Geselecteerd
@@ -2066,7 +1562,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                               </div>
                               <div className="flex items-center gap-3 ml-4">
                                 <span className="font-bold text-primary">
-                                  €{option.price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/maand
+                                  Vanaf €{option.price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/maand
                                 </span>
                                 {isSelected && (
                                   <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center">
@@ -2105,7 +1601,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                               </div>
                               <div className="flex items-center gap-3 ml-4">
                                 <span className="font-bold text-primary">
-                                  €{option.price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/maand
+                                  Vanaf €{option.price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/maand
                                 </span>
                                 {isSelected && (
                                   <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center">
@@ -2126,12 +1622,12 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
         </div>
 
         {/* Sidebar - Summary */}
-        <div className="space-y-6">
-          <div className="sticky top-6 space-y-6">
+        <div className="space-y-6 min-w-0">
+          <div className="sticky top-6 space-y-6 min-w-0">
             {/* Custom Line Items Section - Above Summary */}
-            <div className="bg-white border-2 border-border rounded-lg p-4 space-y-3">
+            <div className="bg-card border-2 border-border rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Extra Kosten</h3>
+                <h3 className="text-sm font-semibold text-foreground">Extra Kosten</h3>
                 <Button
                   onClick={(e) => {
                     e.preventDefault();
@@ -2154,7 +1650,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                   {state.customLineItems.map((item) => (
                     <div key={item.id} className="flex items-center justify-between p-2 bg-muted rounded text-sm">
                       <span className="flex-1 truncate">{item.name}</span>
-                      <span className="font-medium mr-2">€{item.price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <span className="font-medium mr-2">Vanaf €{item.price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       <button
                         onClick={(e) => {
                           e.preventDefault();
@@ -2175,8 +1671,8 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
             </div>
 
             {/* Discount Section - Above Summary */}
-            <div className="bg-white border-2 border-border rounded-lg p-4 space-y-3">
-              <h3 className="text-sm font-semibold">Korting</h3>
+            <div className="bg-card border-2 border-border rounded-lg p-4 space-y-3">
+              <h3 className="text-sm font-semibold text-foreground">Korting</h3>
               <div className="space-y-2">
                 <div className="flex gap-2">
                   <select
@@ -2185,7 +1681,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                       const type = e.target.value as 'percentage' | 'fixed' | '';
                       actions.setDiscount(type === '' ? null : type, state.discount.value);
                     }}
-                    className="flex-1 px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="flex-1 px-3 py-2 border border-border rounded-lg text-sm bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <option value="">Geen korting</option>
                     <option value="percentage">Percentage</option>
@@ -2210,7 +1706,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                       placeholder={state.discount.type === 'percentage' ? '10' : '100'}
                       min="0"
                       max={state.discount.type === 'percentage' ? 100 : undefined}
-                      className="flex-1 px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="flex-1 px-3 py-2 border border-border rounded-lg text-sm bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                     {state.discount.type === 'percentage' && (
                       <span className="text-sm text-muted-foreground shrink-0">%</span>
@@ -2267,8 +1763,8 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
 
       {/* Review Modal */}
       {showReview && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-card border border-border rounded-lg p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-auto">
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 max-w-3xl w-full max-w-[calc(100vw-2rem)] max-h-[90vh] overflow-y-auto overflow-x-hidden min-w-0">
             <h2 className="text-2xl font-bold mb-6">Offerte Overzicht</h2>
             
             <div className="space-y-6 mb-6">
@@ -2348,7 +1844,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                           <div className="text-xs text-muted-foreground mt-1">{selectedPackage.description}</div>
                         </div>
                         <div className="ml-4 font-bold text-primary">
-                          € {selectedPackage.basePrice.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          Vanaf € {selectedPackage.basePrice.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                       </div>
                     </div>
@@ -2375,7 +1871,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                             )}
                           </div>
                           <div className="ml-4 font-bold text-primary">
-                            € {getOptionPrice(option).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            Vanaf € {getOptionPrice(option).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </div>
                         </div>
                       </div>
@@ -2387,7 +1883,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                       <div className="flex justify-between items-center">
                         <div className="font-medium">Extra pagina&apos;s ({state.extraPages}x)</div>
                         <div className="font-bold text-primary">
-                          € {(state.extraPages * 100).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          Vanaf € {(state.extraPages * 100).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                       </div>
                     </div>
@@ -2399,7 +1895,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                       <div className="flex justify-between items-center">
                         <div className="font-medium">Content creatie ({state.contentPages}x pagina&apos;s)</div>
                         <div className="font-bold text-primary">
-                          € {(state.contentPages * 125).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          Vanaf € {(state.contentPages * 125).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                       </div>
                     </div>
@@ -2413,7 +1909,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                           <div className="flex justify-between items-center">
                             <div className="font-medium">{item.name}</div>
                             <div className="font-bold text-primary">
-                              € {item.price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              Vanaf € {item.price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </div>
                           </div>
                         </div>
@@ -2467,11 +1963,11 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
 
                 {/* Maintenance */}
                 {selectedMaintenance && (
-                  <div className="border-t border-primary/30 pt-2 mt-2">
+                    <div className="border-t border-primary/30 pt-2 mt-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Onderhoud (per maand)</span>
                       <span className="font-medium text-primary">
-                        € {selectedMaintenance.price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        Vanaf € {selectedMaintenance.price.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
                   </div>
@@ -2508,7 +2004,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
       {/* Custom Line Item Modal */}
       {showCustomLineItemModal && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-auto"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setShowCustomLineItemModal(false);
@@ -2518,13 +2014,13 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
           }}
         >
           <div 
-            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 space-y-4"
+            className="bg-card border border-border rounded-lg shadow-xl max-w-md w-full max-w-[calc(100vw-2rem)] p-4 sm:p-6 space-y-4 overflow-x-hidden min-w-0"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold">Extra Kost Toevoegen</h3>
+            <h3 className="text-lg font-bold text-foreground">Extra Kost Toevoegen</h3>
             
             <div className="space-y-2">
-              <label className="block text-sm font-medium">
+              <label className="block text-sm font-medium text-foreground">
                 Naam van de extra kost
               </label>
               <input
@@ -2532,7 +2028,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                 value={customLineItemName}
                 onChange={(e) => setCustomLineItemName(e.target.value)}
                 placeholder="Bijv. Extra ontwikkeling, Setup kosten, etc."
-                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border border-border rounded-lg bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') {
@@ -2545,7 +2041,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium">
+              <label className="block text-sm font-medium text-foreground">
                 Bedrag (excl. BTW)
               </label>
               <div className="flex items-center gap-2">
@@ -2557,7 +2053,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                   placeholder="0.00"
                   min="0"
                   step="0.01"
-                  className="flex-1 px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="flex-1 px-3 py-2 border border-border rounded-lg bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && customLineItemName.trim() && customLineItemPrice) {
                       const price = parseFloat(customLineItemPrice.replace(',', '.')) || 0;

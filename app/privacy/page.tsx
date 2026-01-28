@@ -161,12 +161,18 @@ export default function PrivacyPage() {
           </p>
         </section>
 
-        <div className="mt-10 pt-6 border-t border-border">
+        <div className="mt-10 pt-6 border-t border-border flex flex-wrap gap-4">
           <Link 
             href="/contact" 
             className="inline-block text-primary hover:underline font-medium"
           >
             ← Terug naar contact
+          </Link>
+          <Link href="/algemene-voorwaarden" className="inline-block text-muted-foreground hover:text-foreground">
+            Algemene voorwaarden
+          </Link>
+          <Link href="/cookie-beleid" className="inline-block text-muted-foreground hover:text-foreground">
+            Cookiebeleid
           </Link>
         </div>
       </div>

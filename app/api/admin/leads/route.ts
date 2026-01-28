@@ -97,6 +97,15 @@ export async function POST(request: NextRequest) {
           { status: 409 }
         );
       }
+      if (error.code === 'PGRST204') {
+        return NextResponse.json(
+          {
+            error: 'Database-schema voor leads ontbreekt. Voer eenmalig uit: npm run migrate-leads (zie SETUP.md, DATABASE_URL in .env.local).',
+            code: 'SCHEMA_MIGRATION_REQUIRED',
+          },
+          { status: 503 }
+        );
+      }
       return NextResponse.json(
         { error: error.message || 'Fout bij aanmaken lead' },
         { status: 500 }

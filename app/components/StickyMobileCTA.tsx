@@ -80,7 +80,7 @@ export function StickyMobileCTA() {
 
   return (
     <div 
-      className={`fixed bottom-0 left-0 right-0 z-[9999] bg-white border-t-2 border-primary shadow-lg transition-all duration-300 w-full min-w-0 ${
+      className={`fixed bottom-0 left-0 right-0 z-[9999] bg-white border-t-2 border-primary shadow-lg transition-all duration-300 w-full min-w-0 pb-[env(safe-area-inset-bottom)] ${
         show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full pointer-events-none'
       }`}
     >
