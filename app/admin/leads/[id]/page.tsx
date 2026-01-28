@@ -132,6 +132,9 @@ export default function LeadDetailPage() {
   const [assignedTo, setAssignedTo] = useState('');
   const [deletingAttachmentId, setDeletingAttachmentId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [showDeleteLeadModal, setShowDeleteLeadModal] = useState(false);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Company information form state
   const [showCompanyForm, setShowCompanyForm] = useState(false);
@@ -681,6 +684,46 @@ export default function LeadDetailPage() {
     }
   };
 
+  const handleDeleteLead = async () => {
+    if (!lead || !leadId) return;
+    
+    if (deleteConfirmName !== lead.name) {
+      alert('De naam komt niet overeen. Typ de exacte naam om te bevestigen.');
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      
+      const response = await fetch(`/api/leads/${leadId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Fout bij verwijderen';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (parseError) {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      // Redirect to leads list
+      router.push('/admin/leads');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Fout bij verwijderen van lead';
+      console.error('Error deleting lead:', {
+        error,
+        message: errorMessage,
+        leadId,
+      });
+      alert(errorMessage);
+      setIsDeleting(false);
+    }
+  };
+
   const handleSaveCompanyInfo = async () => {
     if (!lead || !leadId) return;
 
@@ -891,6 +934,14 @@ export default function LeadDetailPage() {
                 )}
               </div>
               <div className="flex flex-col items-start sm:items-end gap-2 w-full sm:w-auto min-w-0">
+                <button
+                  onClick={() => setShowDeleteLeadModal(true)}
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5"
+                  title="Lead verwijderen"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Verwijderen
+                </button>
                 <select
                   value={lead.status}
                   onChange={(e) => handleStatusChange(e.target.value)}
@@ -1527,6 +1578,73 @@ export default function LeadDetailPage() {
                 disabled={deletingAttachmentId !== null}
               >
                 {deletingAttachmentId === showDeleteConfirm ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                    Verwijderen...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Verwijderen
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Lead Modal */}
+      {showDeleteLeadModal && lead && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 max-w-md w-full shadow-xl min-w-0">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold">Lead verwijderen?</h3>
+                <p className="text-sm text-muted-foreground">
+                  Deze actie kan niet ongedaan worden gemaakt.
+                </p>
+              </div>
+            </div>
+            
+            <p className="text-sm text-muted-foreground mb-4">
+              Weet je zeker dat je deze lead wilt verwijderen? De lead en eventuele bijbehorende klant worden permanent verwijderd.
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">
+                Typ <strong>{lead.name}</strong> om te bevestigen:
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmName}
+                onChange={(e) => setDeleteConfirmName(e.target.value)}
+                placeholder={lead.name}
+                className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                disabled={isDeleting}
+              />
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <Button
+                onClick={() => {
+                  setShowDeleteLeadModal(false);
+                  setDeleteConfirmName('');
+                }}
+                variant="outline"
+                disabled={isDeleting}
+              >
+                Annuleren
+              </Button>
+              <Button
+                onClick={handleDeleteLead}
+                variant="destructive"
+                disabled={isDeleting || deleteConfirmName !== lead.name}
+              >
+                {isDeleting ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
                     Verwijderen...

@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   Edit,
   History,
+  Trash2,
 } from 'lucide-react';
 
 export default function CustomerDetailPage() {
@@ -41,6 +42,9 @@ export default function CustomerDetailPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [projectStatus, setProjectStatus] = useState<string>('');
+  const [showDeleteCustomerModal, setShowDeleteCustomerModal] = useState(false);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Update form state
   const [showUpdateForm, setShowUpdateForm] = useState(false);
@@ -266,6 +270,47 @@ export default function CustomerDetailPage() {
     }
   };
 
+  const handleDeleteCustomer = async () => {
+    if (!customer || !customerId) return;
+    
+    const customerDisplayName = customer.company_name || customer.name;
+    if (deleteConfirmName !== customerDisplayName) {
+      alert('De naam komt niet overeen. Typ de exacte naam om te bevestigen.');
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      
+      const response = await fetch(`/api/customers/${customerId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Fout bij verwijderen';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (parseError) {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      // Redirect to customers list
+      router.push('/admin/customers');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Fout bij verwijderen van klant';
+      console.error('Error deleting customer:', {
+        error,
+        message: errorMessage,
+        customerId,
+      });
+      alert(errorMessage);
+      setIsDeleting(false);
+    }
+  };
+
   const handleAddUpdate = async () => {
     if (!updateTitle.trim() || !updateDescription.trim()) {
       alert('Titel en beschrijving zijn verplicht');
@@ -458,6 +503,14 @@ export default function CustomerDetailPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2 min-w-0">
+            <button
+              onClick={() => setShowDeleteCustomerModal(true)}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5"
+              title="Klant verwijderen"
+            >
+              <Trash2 className="w-4 h-4" />
+              Verwijderen
+            </button>
             <select
               value={projectStatus}
               onChange={(e) => handleStatusChange(e.target.value)}
@@ -940,6 +993,73 @@ export default function CustomerDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Delete Customer Modal */}
+      {showDeleteCustomerModal && customer && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 max-w-md w-full shadow-xl min-w-0">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold">Klant verwijderen?</h3>
+                <p className="text-sm text-muted-foreground">
+                  Deze actie kan niet ongedaan worden gemaakt.
+                </p>
+              </div>
+            </div>
+            
+            <p className="text-sm text-muted-foreground mb-4">
+              Weet je zeker dat je deze klant wilt verwijderen? De klant en eventuele bijbehorende lead worden permanent verwijderd.
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">
+                Typ <strong>{customer.company_name || customer.name}</strong> om te bevestigen:
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmName}
+                onChange={(e) => setDeleteConfirmName(e.target.value)}
+                placeholder={customer.company_name || customer.name}
+                className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                disabled={isDeleting}
+              />
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <Button
+                onClick={() => {
+                  setShowDeleteCustomerModal(false);
+                  setDeleteConfirmName('');
+                }}
+                variant="outline"
+                disabled={isDeleting}
+              >
+                Annuleren
+              </Button>
+              <Button
+                onClick={handleDeleteCustomer}
+                variant="destructive"
+                disabled={isDeleting || deleteConfirmName !== (customer.company_name || customer.name)}
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                    Verwijderen...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Verwijderen
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
