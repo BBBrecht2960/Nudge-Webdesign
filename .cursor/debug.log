@@ -1,0 +1,7 @@
+{"location":"customers/[id]/page.tsx:128","message":"Customer status change initiated","data":{"customerId":"ed2e2eff-b30a-4814-99e5-6f46f1d76fd4","currentStatus":"new","newStatus":"review","isSaving":false},"timestamp":1769615965705,"sessionId":"debug-session","runId":"run1","hypothesisId":"G"}
+{"location":"analytics/page.tsx:86","message":"Fetching analytics data","data":{"days":30},"timestamp":1769616708704,"sessionId":"debug-session","runId":"run1","hypothesisId":"M"}
+{"location":"analytics/page.tsx:86","message":"Fetching analytics data","data":{"days":30},"timestamp":1769616708708,"sessionId":"debug-session","runId":"run1","hypothesisId":"M"}
+{"location":"analytics/page.tsx:92","message":"Analytics response received","data":{"status":200,"ok":true},"timestamp":1769616708842,"sessionId":"debug-session","runId":"run1","hypothesisId":"M"}
+{"location":"analytics/page.tsx:98","message":"Analytics data loaded","data":{"hasData":true,"hasEvents":true},"timestamp":1769616708843,"sessionId":"debug-session","runId":"run1","hypothesisId":"M"}
+{"location":"analytics/page.tsx:92","message":"Analytics response received","data":{"status":200,"ok":true},"timestamp":1769616709008,"sessionId":"debug-session","runId":"run1","hypothesisId":"M"}
+{"location":"analytics/page.tsx:98","message":"Analytics data loaded","data":{"hasData":true,"hasEvents":true},"timestamp":1769616709009,"sessionId":"debug-session","runId":"run1","hypothesisId":"M"}
