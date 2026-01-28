@@ -172,13 +172,13 @@ export default function AnalyticsPage() {
     { id: 'overview' as TabType, label: 'Overzicht', icon: BarChart3 },
     { id: 'leads' as TabType, label: 'Leads', icon: Users },
     { id: 'revenue' as TabType, label: 'Omzet', icon: Euro },
-    { id: 'info' as TabType, label: 'Info', icon: FileText },
+    { id: 'info' as TabType, label: 'Informatie', icon: FileText },
   ];
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
       <div className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-2 break-words">Analytics Dashboard</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-2 break-words">Analyses Dashboard</h1>
         <p className="text-muted-foreground text-sm sm:text-base">
           Overzicht van website performance en gebruikersgedrag
         </p>
@@ -220,7 +220,7 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {/* Overview Tab */}
+      {/* Overzicht Tab */}
       {activeTab === 'overview' && (
         <>
           {loading ? (
@@ -246,26 +246,26 @@ export default function AnalyticsPage() {
           {/* Key Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <MetricCard
-              title="Pageviews"
+              title="Paginaweergaven"
               value={data?.pageviews.count || 0}
               trend={data?.pageviews.trend}
               icon={<Eye className="w-5 h-5" />}
             />
             <MetricCard
-              title="CTA Clicks"
+              title="CTA Klikken"
               value={data?.events.cta_click.count || 0}
               trend={data?.events.cta_click.trend}
               icon={<MousePointerClick className="w-5 h-5" />}
             />
             <MetricCard
-              title="Form Submissions"
+              title="Formulierinzendingen"
               value={data?.events.form_submitted.count || 0}
               trend={data?.events.form_submitted.trend}
               subtitle="Leads gegenereerd"
               icon={<FileText className="w-5 h-5" />}
             />
             <MetricCard
-              title="Package Views"
+              title="Pakketweergaven"
               value={data?.events.package_card_click.count || 0}
               trend={data?.events.package_card_click.trend}
               icon={<ShoppingCart className="w-5 h-5" />}
@@ -275,17 +275,17 @@ export default function AnalyticsPage() {
           {/* Event Charts */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <EventChart
-              title="CTA Clicks"
+              title="CTA Klikken"
               eventName="cta_click"
               days={days}
             />
             <EventChart
-              title="Form Submissions"
+              title="Formulierinzendingen"
               eventName="form_submitted"
               days={days}
             />
             <EventChart
-              title="Package Card Clicks"
+              title="Pakket Kaart Klikken"
               eventName="package_card_click"
               days={days}
             />
@@ -568,10 +568,10 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {/* Revenue Tab */}
+      {/* Omzet Tab */}
       {activeTab === 'revenue' && (
         <div>
-          {/* Revenue Date Range Selector */}
+          {/* Omzet Datumbereik Selector */}
           <div className="bg-card border border-border rounded-lg p-4 mb-6">
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-2">
@@ -642,7 +642,7 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-            {/* Revenue Metrics */}
+            {/* Omzet Metrieken */}
             {revenueLoading ? (
               <div className="text-center py-12">
                 <div className="text-muted-foreground">Laden...</div>
@@ -667,7 +667,7 @@ export default function AnalyticsPage() {
                     icon={<TrendingUp className="w-5 h-5" />}
                   />
                   <MetricCard
-                    title="Conversie Rate"
+                    title="Conversiepercentage"
                     value={leadData && leadData.total > 0
                       ? `${((revenueData.count / leadData.total) * 100).toFixed(1)}%`
                       : '0%'}
@@ -675,7 +675,7 @@ export default function AnalyticsPage() {
                   />
                 </div>
 
-                {/* Revenue Timeline Chart */}
+                {/* Omzet Tijdlijn Grafiek */}
                 <div className="mb-6">
                   <RevenueChart
                     title="Omzet Over Tijd"
@@ -685,7 +685,7 @@ export default function AnalyticsPage() {
                   />
                 </div>
 
-                {/* Revenue by Status */}
+                {/* Omzet per Status */}
                 <div className="bg-card border border-border rounded-lg p-6 mb-8">
                   <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                     <BarChart3 className="w-5 h-5 text-primary" />
@@ -730,34 +730,34 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {/* Info Tab */}
+      {/* Informatie Tab */}
       {activeTab === 'info' && (
         <div className="space-y-6 sm:space-y-8">
           {/* Tracked Events Info */}
           <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
-            <h2 className="text-lg sm:text-xl font-bold mb-4 break-words">Tracked Events</h2>
+            <h2 className="text-lg sm:text-xl font-bold mb-4 break-words">Gevolgde Events</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <h3 className="font-semibold mb-2 text-sm sm:text-base">Custom Events:</h3>
+                <h3 className="font-semibold mb-2 text-sm sm:text-base">Aangepaste Events:</h3>
                 <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm text-muted-foreground break-words">
-                  <li>cta_click - CTA button clicks</li>
+                  <li>cta_click - CTA knop klikken</li>
                   <li>form_started - Form interactie gestart</li>
                   <li>form_submitted - Form succesvol verzonden</li>
-                  <li>package_card_click - Package card interacties</li>
+                  <li>package_card_click - Pakket kaart interacties</li>
                   <li>faq_expanded - FAQ items uitgeklapt</li>
                   <li>scroll_depth - Scroll diepte tracking</li>
-                  <li>sticky_cta_click - Mobile sticky CTA clicks</li>
-                  <li>phone_click - Telefoon nummer clicks</li>
+                  <li>sticky_cta_click - Mobiele sticky CTA klikken</li>
+                  <li>phone_click - Telefoonnummer klikken</li>
                 </ul>
               </div>
               <div>
-                <h3 className="font-semibold mb-2 text-sm sm:text-base">User Properties:</h3>
+                <h3 className="font-semibold mb-2 text-sm sm:text-base">Gebruikerseigenschappen:</h3>
                 <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm text-muted-foreground break-words">
                   <li>UTM parameters (source, medium, campaign, etc.)</li>
-                  <li>Referrer</li>
-                  <li>Landing path</li>
-                  <li>Package interest</li>
-                  <li>Company size</li>
+                  <li>Verwijzer</li>
+                  <li>Landingspad</li>
+                  <li>Pakket interesse</li>
+                  <li>Bedrijfsgrootte</li>
                 </ul>
               </div>
             </div>

@@ -73,8 +73,8 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                   className="object-contain shrink-0"
                   style={{ background: 'transparent' }}
                 />
-                <h1 className="text-lg sm:text-xl font-bold break-words hidden sm:block">Admin Dashboard</h1>
-                <h1 className="text-base font-bold break-words sm:hidden">Admin</h1>
+                <h1 className="text-lg sm:text-xl font-bold break-words hidden sm:block">Beheerpaneel</h1>
+                <h1 className="text-base font-bold break-words sm:hidden">Beheer</h1>
               </div>
               <div className="hidden lg:ml-6 lg:flex lg:space-x-4 xl:space-x-8">
                 <a
@@ -86,7 +86,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                   }`}
                 >
                   <LayoutDashboard className="w-4 h-4 mr-2 shrink-0" />
-                  Dashboard
+                  Overzicht
                 </a>
                 <Link
                   href="/admin/leads"
@@ -119,7 +119,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                   }`}
                 >
                   <BarChart3 className="w-4 h-4 mr-2 shrink-0" />
-                  Analytics
+                  Analyses
                 </a>
               </div>
             </div>
@@ -136,7 +136,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="lg:hidden p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
-                aria-label="Toggle menu"
+                aria-label="Menu openen/sluiten"
               >
                 {mobileMenuOpen ? (
                   <X className="w-5 h-5" />
@@ -161,7 +161,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
               >
                 <div className="flex items-center">
                   <LayoutDashboard className="w-4 h-4 mr-2" />
-                  Dashboard
+                  Overzicht
                 </div>
               </a>
               <Link
@@ -203,7 +203,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
               >
                 <div className="flex items-center">
                   <BarChart3 className="w-4 h-4 mr-2" />
-                  Analytics
+                  Analyses
                 </div>
               </a>
               <div className="pt-2 border-t border-border mt-2">
