@@ -131,7 +131,7 @@ export default function DashboardPage() {
       {/* Stats Cards - Leads */}
       <div className="mb-6 sm:mb-8">
         <h2 className="text-lg sm:text-xl font-semibold mb-4 text-muted-foreground">Leads</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 gap-4 sm:gap-6">
           <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -151,33 +151,13 @@ export default function DashboardPage() {
               <Mail className="w-6 h-6 sm:w-8 sm:h-8 text-primary shrink-0" />
             </div>
           </div>
-
-          <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm text-muted-foreground mb-1">Geconverteerd</p>
-                <p className="text-2xl sm:text-3xl font-bold text-green-600">{stats.leadsByStatus.converted}</p>
-              </div>
-              <CheckCircle className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 shrink-0" />
-            </div>
-          </div>
-
-          <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm text-muted-foreground mb-1">Nieuw</p>
-                <p className="text-2xl sm:text-3xl font-bold text-yellow-600">{stats.leadsByStatus.new}</p>
-              </div>
-              <Clock className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-600 shrink-0" />
-            </div>
-          </div>
         </div>
       </div>
 
       {/* Stats Cards - Customers */}
       <div className="mb-6 sm:mb-8">
         <h2 className="text-lg sm:text-xl font-semibold mb-4 text-muted-foreground">Klanten</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 gap-4 sm:gap-6">
           <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -185,36 +165,6 @@ export default function DashboardPage() {
                 <p className="text-2xl sm:text-3xl font-bold">{stats.customers.total}</p>
               </div>
               <Briefcase className="w-6 h-6 sm:w-8 sm:h-8 text-primary shrink-0" />
-            </div>
-          </div>
-
-          <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm text-muted-foreground mb-1">Actief</p>
-                <p className="text-2xl sm:text-3xl font-bold text-purple-600">{stats.customers.active}</p>
-              </div>
-              <PlayCircle className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600 shrink-0" />
-            </div>
-          </div>
-
-          <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm text-muted-foreground mb-1">Afgewerkt</p>
-                <p className="text-2xl sm:text-3xl font-bold text-green-600">{stats.customers.completed}</p>
-              </div>
-              <CheckCircle className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 shrink-0" />
-            </div>
-          </div>
-
-          <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm text-muted-foreground mb-1">On Hold</p>
-                <p className="text-2xl sm:text-3xl font-bold text-red-600">{stats.customers.onHold}</p>
-              </div>
-              <PauseCircle className="w-6 h-6 sm:w-8 sm:h-8 text-red-600 shrink-0" />
             </div>
           </div>
 
