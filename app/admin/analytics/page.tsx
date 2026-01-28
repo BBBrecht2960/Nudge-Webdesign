@@ -775,7 +775,7 @@ export default function AnalyticsPage() {
               rel="noopener noreferrer"
               className="inline-block px-4 sm:px-6 py-2 sm:py-3 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm sm:text-base"
             >
-              Open PostHog Dashboard →
+              PostHog Dashboard openen →
             </a>
           </div>
         </div>
