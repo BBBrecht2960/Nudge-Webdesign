@@ -177,60 +177,72 @@ export default function CustomersPage() {
       )}
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 sm:gap-4 mb-6">
-        <div 
-          className="bg-card border border-border rounded-lg p-3 sm:p-4 cursor-pointer hover:bg-accent transition-colors"
-          onClick={() => setFilter('all')}
-        >
-          <div className="text-xs sm:text-sm text-muted-foreground mb-1">Totaal</div>
-          <div className="text-xl sm:text-2xl font-bold">{stats.total}</div>
+      <section className="mb-8" aria-label="Statistieken">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Statistieken</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 sm:gap-4">
+          <button
+            type="button"
+            onClick={() => setFilter('all')}
+            className={`bg-card border-2 rounded-lg p-3 sm:p-4 text-left hover:bg-accent transition-colors ${filter === 'all' ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
+          >
+            <div className="text-xs sm:text-sm text-muted-foreground mb-1">Totaal</div>
+            <div className="text-xl sm:text-2xl font-bold">{stats.total}</div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter('new')}
+            className={`bg-card border-2 rounded-lg p-3 sm:p-4 text-left hover:bg-accent transition-colors ${filter === 'new' ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
+          >
+            <div className="text-xs sm:text-sm text-muted-foreground mb-1">Nieuw</div>
+            <div className="text-xl sm:text-2xl font-bold text-blue-600">{stats.new}</div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter('in_progress')}
+            className={`bg-card border-2 rounded-lg p-3 sm:p-4 text-left hover:bg-accent transition-colors ${filter === 'in_progress' ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
+          >
+            <div className="text-xs sm:text-sm text-muted-foreground mb-1">In Uitvoering</div>
+            <div className="text-xl sm:text-2xl font-bold text-purple-600">{stats.in_progress}</div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter('review')}
+            className={`bg-card border-2 rounded-lg p-3 sm:p-4 text-left hover:bg-accent transition-colors ${filter === 'review' ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
+          >
+            <div className="text-xs sm:text-sm text-muted-foreground mb-1">In Review</div>
+            <div className="text-xl sm:text-2xl font-bold text-yellow-600">{stats.review}</div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter('completed')}
+            className={`bg-card border-2 rounded-lg p-3 sm:p-4 text-left hover:bg-accent transition-colors ${filter === 'completed' ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
+          >
+            <div className="text-xs sm:text-sm text-muted-foreground mb-1">Voltooid</div>
+            <div className="text-xl sm:text-2xl font-bold text-green-600">{stats.completed}</div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter('on_hold')}
+            className={`bg-card border-2 rounded-lg p-3 sm:p-4 text-left hover:bg-accent transition-colors ${filter === 'on_hold' ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
+          >
+            <div className="text-xs sm:text-sm text-muted-foreground mb-1">On Hold</div>
+            <div className="text-xl sm:text-2xl font-bold text-red-600">{stats.on_hold}</div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter('canceled')}
+            className={`bg-card border-2 rounded-lg p-3 sm:p-4 text-left hover:bg-accent transition-colors ${filter === 'canceled' ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
+          >
+            <div className="text-xs sm:text-sm text-muted-foreground mb-1">Geannuleerd</div>
+            <div className="text-xl sm:text-2xl font-bold text-gray-600">{stats.canceled}</div>
+          </button>
         </div>
-        <div 
-          className="bg-card border border-border rounded-lg p-3 sm:p-4 cursor-pointer hover:bg-accent transition-colors"
-          onClick={() => setFilter('new')}
-        >
-          <div className="text-xs sm:text-sm text-muted-foreground mb-1">Nieuw</div>
-          <div className="text-xl sm:text-2xl font-bold text-blue-600">{stats.new}</div>
-        </div>
-        <div 
-          className="bg-card border border-border rounded-lg p-3 sm:p-4 cursor-pointer hover:bg-accent transition-colors"
-          onClick={() => setFilter('in_progress')}
-        >
-          <div className="text-xs sm:text-sm text-muted-foreground mb-1">In Uitvoering</div>
-          <div className="text-xl sm:text-2xl font-bold text-purple-600">{stats.in_progress}</div>
-        </div>
-        <div 
-          className="bg-card border border-border rounded-lg p-3 sm:p-4 cursor-pointer hover:bg-accent transition-colors"
-          onClick={() => setFilter('review')}
-        >
-          <div className="text-xs sm:text-sm text-muted-foreground mb-1">In Review</div>
-          <div className="text-xl sm:text-2xl font-bold text-yellow-600">{stats.review}</div>
-        </div>
-        <div 
-          className="bg-card border border-border rounded-lg p-3 sm:p-4 cursor-pointer hover:bg-accent transition-colors"
-          onClick={() => setFilter('completed')}
-        >
-          <div className="text-xs sm:text-sm text-muted-foreground mb-1">Voltooid</div>
-          <div className="text-xl sm:text-2xl font-bold text-green-600">{stats.completed}</div>
-        </div>
-        <div 
-          className="bg-card border border-border rounded-lg p-3 sm:p-4 cursor-pointer hover:bg-accent transition-colors"
-          onClick={() => setFilter('on_hold')}
-        >
-          <div className="text-xs sm:text-sm text-muted-foreground mb-1">On Hold</div>
-          <div className="text-xl sm:text-2xl font-bold text-red-600">{stats.on_hold}</div>
-        </div>
-        <div 
-          className="bg-card border border-border rounded-lg p-3 sm:p-4 cursor-pointer hover:bg-accent transition-colors"
-          onClick={() => setFilter('canceled')}
-        >
-          <div className="text-xs sm:text-sm text-muted-foreground mb-1">Geannuleerd</div>
-          <div className="text-xl sm:text-2xl font-bold text-gray-600">{stats.canceled}</div>
-        </div>
-      </div>
+      </section>
 
       {/* Revenue Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+      <section className="mb-8" aria-label="Omzet">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Omzet</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-lg p-4 sm:p-6">
           <div className="flex items-center justify-between mb-2">
             <div className="text-sm text-muted-foreground">Totaal Omzet</div>
@@ -256,9 +268,12 @@ export default function CustomersPage() {
           </div>
         </div>
       </div>
+      </section>
 
       {/* Filters and Search */}
-      <div className="bg-card border border-border rounded-lg p-4 mb-6">
+      <section className="mb-6" aria-label="Zoeken en filteren">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Zoeken & filteren</h2>
+        <div className="bg-card border border-border rounded-lg p-4">
         <div className="flex flex-col lg:flex-row gap-4">
           {/* Search */}
           <div className="flex-1 min-w-0">
@@ -318,13 +333,16 @@ export default function CustomersPage() {
             </button>
           </div>
         </div>
-      </div>
+        </div>
+      </section>
 
       {/* Customers Table */}
+      <section aria-label="Overzicht klanten">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Overzicht klanten</h2>
       <div className="bg-card border border-border rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px]">
-            <thead className="bg-muted">
+            <thead className="bg-muted/80">
               <tr>
                 <th className="p-3 sm:p-4 text-left text-sm font-semibold">Klant</th>
                 <th className="p-3 sm:p-4 text-left text-sm font-semibold">Bedrijf</th>
@@ -415,6 +433,7 @@ export default function CustomersPage() {
           </table>
         </div>
       </div>
+      </section>
 
       {/* Footer Stats */}
       <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-muted-foreground">

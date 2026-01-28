@@ -85,16 +85,31 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     const fetchData = async () => {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'analytics/page.tsx:86',message:'Fetching analytics data',data:{days},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'M'})}).catch(()=>{});
+      // #endregion
+      
       try {
         setLoading(true);
         const response = await fetch(`/api/analytics/events?days=${days}`);
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'analytics/page.tsx:92',message:'Analytics response received',data:{status:response.status,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'M'})}).catch(()=>{});
+        // #endregion
+        
         if (!response.ok) {
           throw new Error('Failed to fetch analytics');
         }
         const result = await response.json();
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'analytics/page.tsx:98',message:'Analytics data loaded',data:{hasData:!!result,hasEvents:!!result?.events},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'M'})}).catch(()=>{});
+        // #endregion
         setData(result);
         setError(null);
       } catch (err: unknown) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'analytics/page.tsx:103',message:'Analytics fetch error',data:{error:err instanceof Error ? err.message : String(err)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
         const errorMessage = err instanceof Error ? err.message : 'Fout bij ophalen analytics';
         console.error('Error fetching analytics:', err);
         setError(errorMessage);

@@ -126,53 +126,64 @@ export default function LeadsPage() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-6">
-        <div 
-          className="bg-card border border-border rounded-lg p-3 sm:p-4 cursor-pointer hover:bg-accent transition-colors"
-          onClick={() => setFilter('all')}
-        >
-          <div className="text-xs sm:text-sm text-muted-foreground mb-1">Totaal</div>
-          <div className="text-xl sm:text-2xl font-bold">{stats.total}</div>
+      <section className="mb-8" aria-label="Statistieken">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Statistieken</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+          <button
+            type="button"
+            onClick={() => setFilter('all')}
+            className={`bg-card border-2 rounded-lg p-3 sm:p-4 text-left hover:bg-accent transition-colors ${filter === 'all' ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
+          >
+            <div className="text-xs sm:text-sm text-muted-foreground mb-1">Totaal</div>
+            <div className="text-xl sm:text-2xl font-bold">{stats.total}</div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter('new')}
+            className={`bg-card border-2 rounded-lg p-3 sm:p-4 text-left hover:bg-accent transition-colors ${filter === 'new' ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
+          >
+            <div className="text-xs sm:text-sm text-muted-foreground mb-1">Nieuw</div>
+            <div className="text-xl sm:text-2xl font-bold text-blue-600">{stats.new}</div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter('contacted')}
+            className={`bg-card border-2 rounded-lg p-3 sm:p-4 text-left hover:bg-accent transition-colors ${filter === 'contacted' ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
+          >
+            <div className="text-xs sm:text-sm text-muted-foreground mb-1">Gecontacteerd</div>
+            <div className="text-xl sm:text-2xl font-bold text-yellow-600">{stats.contacted}</div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter('qualified')}
+            className={`bg-card border-2 rounded-lg p-3 sm:p-4 text-left hover:bg-accent transition-colors ${filter === 'qualified' ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
+          >
+            <div className="text-xs sm:text-sm text-muted-foreground mb-1">Gekwalificeerd</div>
+            <div className="text-xl sm:text-2xl font-bold text-purple-600">{stats.qualified}</div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter('converted')}
+            className={`bg-card border-2 rounded-lg p-3 sm:p-4 text-left hover:bg-accent transition-colors ${filter === 'converted' ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
+          >
+            <div className="text-xs sm:text-sm text-muted-foreground mb-1">Geconverteerd</div>
+            <div className="text-xl sm:text-2xl font-bold text-green-600">{stats.converted}</div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter('lost')}
+            className={`bg-card border-2 rounded-lg p-3 sm:p-4 text-left hover:bg-accent transition-colors ${filter === 'lost' ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
+          >
+            <div className="text-xs sm:text-sm text-muted-foreground mb-1">Verloren</div>
+            <div className="text-xl sm:text-2xl font-bold text-red-600">{stats.lost}</div>
+          </button>
         </div>
-        <div 
-          className="bg-card border border-border rounded-lg p-3 sm:p-4 cursor-pointer hover:bg-accent transition-colors"
-          onClick={() => setFilter('new')}
-        >
-          <div className="text-xs sm:text-sm text-muted-foreground mb-1">Nieuw</div>
-          <div className="text-xl sm:text-2xl font-bold text-blue-600">{stats.new}</div>
-        </div>
-        <div 
-          className="bg-card border border-border rounded-lg p-3 sm:p-4 cursor-pointer hover:bg-accent transition-colors"
-          onClick={() => setFilter('contacted')}
-        >
-          <div className="text-xs sm:text-sm text-muted-foreground mb-1">Gecontacteerd</div>
-          <div className="text-xl sm:text-2xl font-bold text-yellow-600">{stats.contacted}</div>
-        </div>
-        <div 
-          className="bg-card border border-border rounded-lg p-3 sm:p-4 cursor-pointer hover:bg-accent transition-colors"
-          onClick={() => setFilter('qualified')}
-        >
-          <div className="text-xs sm:text-sm text-muted-foreground mb-1">Gekwalificeerd</div>
-          <div className="text-xl sm:text-2xl font-bold text-purple-600">{stats.qualified}</div>
-        </div>
-        <div 
-          className="bg-card border border-border rounded-lg p-3 sm:p-4 cursor-pointer hover:bg-accent transition-colors"
-          onClick={() => setFilter('converted')}
-        >
-          <div className="text-xs sm:text-sm text-muted-foreground mb-1">Geconverteerd</div>
-          <div className="text-xl sm:text-2xl font-bold text-green-600">{stats.converted}</div>
-        </div>
-        <div 
-          className="bg-card border border-border rounded-lg p-3 sm:p-4 cursor-pointer hover:bg-accent transition-colors"
-          onClick={() => setFilter('lost')}
-        >
-          <div className="text-xs sm:text-sm text-muted-foreground mb-1">Verloren</div>
-          <div className="text-xl sm:text-2xl font-bold text-red-600">{stats.lost}</div>
-        </div>
-      </div>
+      </section>
 
       {/* Filters and Search */}
-      <div className="bg-card border border-border rounded-lg p-4 mb-6">
+      <section className="mb-6" aria-label="Zoeken en filteren">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Zoeken & filteren</h2>
+        <div className="bg-card border border-border rounded-lg p-4">
         <div className="flex flex-col lg:flex-row gap-4">
           {/* Search */}
           <div className="flex-1 min-w-0">
@@ -230,13 +241,16 @@ export default function LeadsPage() {
             </button>
           </div>
         </div>
-      </div>
+        </div>
+      </section>
 
       {/* Leads Table */}
+      <section aria-label="Overzicht leads">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Overzicht leads</h2>
       <div className="bg-card border border-border rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px]">
-            <thead className="bg-muted">
+            <thead className="bg-muted/80 sticky top-0 z-10">
               <tr>
                 <th className="text-left p-3 sm:p-4 text-sm font-semibold">Naam</th>
                 <th className="text-left p-3 sm:p-4 text-sm font-semibold">Contact</th>
@@ -349,6 +363,7 @@ export default function LeadsPage() {
           </table>
         </div>
       </div>
+      </section>
 
       {/* Footer Stats */}
       <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-muted-foreground">

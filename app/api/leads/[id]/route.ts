@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
+import { secureAdminRoute } from '@/lib/api-security';
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('admin_session');
-    if (!sessionCookie) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
+    // Security check: authentication, rate limiting, UUID validation
+    const { id: leadId } = await params;
+    const securityError = await secureAdminRoute(request, { id: leadId }, { maxRequests: 20, windowMs: 60000 });
+    if (securityError) return securityError;
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -24,7 +23,6 @@ export async function DELETE(
     }
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
-    const { id: leadId } = await params;
 
     // First, check if there's a related customer
     const { data: relatedCustomer } = await supabase

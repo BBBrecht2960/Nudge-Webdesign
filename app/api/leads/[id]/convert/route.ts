@@ -265,14 +265,18 @@ async function generateCursorPrompt(
   lead: any,
   quote: any,
   attachments: any[],
-  activities: any[]
+  activities: any[],
+  quoteTotal: number | null = null
 ): Promise<string> {
+  // Use quoteTotal if available, otherwise fallback to quote.total_price
+  const displayTotal = quoteTotal !== null && quoteTotal !== undefined ? quoteTotal : (quote?.total_price || 0);
+  
   try {
     // Check if OpenAI API key is configured
     const openaiApiKey = process.env.OPENAI_API_KEY;
     if (!openaiApiKey) {
       // Return a basic prompt if AI is not configured
-      return generateBasicPrompt(lead, quote, attachments, activities);
+      return generateBasicPrompt(lead, quote, attachments, activities, quoteTotal);
     }
 
     // Analyze attachments (especially images/moodboards)
@@ -400,7 +404,9 @@ Als het een andere afbeelding is, beschrijf wat je ziet en hoe het relevant is v
     if (quote) {
       context += `## Goedgekeurde Offerte - Technische Requirements\n`;
       context += `- Pakket Type: ${quote.selectedPackage?.name || 'Niet gespecificeerd'}\n`;
-      context += `- Totaal Budget: €${quote.total_price?.toLocaleString('nl-BE') || '0'}\n`;
+      // Use quoteTotal parameter if available, otherwise fallback to quote.total_price
+      const contextTotal = quoteTotal !== null && quoteTotal !== undefined ? quoteTotal : (quote.total_price || 0);
+      context += `- Totaal Budget: €${Number(contextTotal).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
       
       if (quote.selectedOptions && quote.selectedOptions.length > 0) {
         context += `\n### Functionaliteiten (Verplicht):\n`;
@@ -482,62 +488,35 @@ Als het een andere afbeelding is, beschrijf wat je ziet en hoe het relevant is v
         messages: [
           {
             role: 'system',
-            content: `Je bent een expert web developer die SUPER GEDETAILLEERDE, COMPLETE project prompts genereert voor Cursor AI.
+            content: `Je bent een expert web developer die DIRECT BRUIKBARE Cursor AI prompts genereert.
 
-De prompt die je genereert moet ZO COMPLEET zijn dat een developer in Cursor:
-- Direct kan beginnen met coden zonder extra vragen te stellen
-- Alle design details kent (kleuren, fonts, spacing, etc.)
-- Alle functionaliteiten begrijpt
-- De exacte tech stack weet
-- Alle requirements heeft
+BELANGRIJK: Je genereert GEEN opsomming of project brief. Je genereert een DIRECTE PROMPT die een developer kan copy-pasten in Cursor om direct te beginnen met coden.
 
-De prompt MOET bevatten:
-1. **Design Specificaties** (uit moodboards/designs):
-   - Exacte kleuren (hex codes)
-   - Typografie (fonts, sizes, weights)
-   - Spacing en layout (padding, margins, grid)
-   - Component stijlen (buttons, cards, forms)
-   - Responsive breakpoints
-   - Animations en transitions
+De prompt moet:
+1. Direct instructies geven aan Cursor (gebruik "Maak...", "Implementeer...", "Creëer...")
+2. Een complete project setup beschrijven
+3. Alle technische details bevatten (tech stack, structuur, regels)
+4. Design specificaties bevatten (kleuren, fonts, stijl)
+5. Functionaliteiten in detail beschrijven
+6. Code structuur en best practices definiëren
 
-2. **Technische Stack**:
-   - Framework (Next.js, React, etc.)
-   - Styling (Tailwind CSS, CSS modules, etc.)
-   - Database (Supabase, etc.)
-   - Authentication
-   - Deployment
-
-3. **Functionaliteiten** (uit offerte):
-   - Alle features in detail
-   - User flows
-   - API endpoints nodig
-   - Data modellen
-
-4. **Project Structuur**:
-   - Folder structuur
-   - Component organisatie
-   - File naming conventions
-
-5. **Specifieke Requirements**:
-   - Performance targets
-   - SEO requirements
-   - Accessibility
-   - Security
-
-Format: Markdown met duidelijke secties. De prompt moet direct copy-paste klaar zijn voor Cursor.`,
+Format: Begin direct met instructies. Geen "Project Brief" of opsommingen. Directe, actieve instructies voor Cursor.`,
           },
           {
             role: 'user',
-            content: `Genereer een SUPER GEDETAILLEERDE, COMPLETE Cursor AI prompt voor dit project. 
+            content: `Genereer een DIRECTE, ACTIEVE Cursor prompt voor dit project. 
 
-De prompt moet ALLES bevatten wat nodig is om direct te beginnen met coden. Analyseer alle informatie zorgvuldig en genereer een prompt die:
-- Alle design details bevat (kleuren, fonts, spacing uit moodboards)
-- Alle functionaliteiten specificeert
-- De exacte tech stack definieert
-- Complete project structuur beschrijft
-- Geen vragen meer overlaat
+GEEN opsomming. GEEN project brief. DIRECTE instructies die Cursor kan uitvoeren.
 
-Project informatie:\n\n${context}\n\nGenereer nu de complete, gedetailleerde Cursor prompt.`,
+De prompt moet beginnen met concrete instructies zoals:
+"Maak een [project type] met de volgende specificaties:
+- Tech stack: [exacte stack]
+- Design: [kleuren, fonts, stijl]
+- Functionaliteiten: [lijst met details]
+- Project structuur: [folder layout]
+- Code regels: [best practices]"
+
+Analyseer deze project informatie en genereer een directe, actieve prompt:\n\n${context}`,
           },
         ],
         temperature: 0.7,
@@ -548,7 +527,7 @@ Project informatie:\n\n${context}\n\nGenereer nu de complete, gedetailleerde Cur
     if (!response.ok) {
       const errorText = await response.text();
       console.error('OpenAI API error:', errorText);
-      return generateBasicPrompt(lead, quote, attachments, activities);
+      return generateBasicPrompt(lead, quote, attachments, activities, quoteTotal);
     }
 
     const data = await response.json();
@@ -558,10 +537,10 @@ Project informatie:\n\n${context}\n\nGenereer nu de complete, gedetailleerde Cur
       return aiPrompt;
     }
 
-    return generateBasicPrompt(lead, quote, attachments, activities);
+    return generateBasicPrompt(lead, quote, attachments, activities, quoteTotal);
   } catch (error) {
     console.error('Error generating AI prompt:', error);
-    return generateBasicPrompt(lead, quote, attachments, activities);
+    return generateBasicPrompt(lead, quote, attachments, activities, quoteTotal);
   }
 }
 
@@ -570,109 +549,138 @@ function generateBasicPrompt(
   lead: any,
   quote: any,
   attachments: any[],
-  activities: any[]
+  activities: any[],
+  quoteTotal: number | null = null
 ): string {
-  let prompt = `# Project Brief: ${lead.company_name || lead.name}\n\n`;
+  // Determine project type from package
+  const packageName = quote?.selectedPackage?.name || lead.package_interest || 'Website';
+  const isWebshop = packageName.toLowerCase().includes('webshop') || packageName.toLowerCase().includes('e-commerce');
+  const isMultiLang = quote?.selectedOptions?.some((opt: any) => opt.name?.toLowerCase().includes('multi-language') || opt.name?.toLowerCase().includes('meertalig'));
   
-  prompt += `## Klant Informatie\n`;
-  prompt += `- Naam: ${lead.name}\n`;
-  prompt += `- Email: ${lead.email}\n`;
-  prompt += `- Telefoon: ${lead.phone || 'Niet opgegeven'}\n`;
-  prompt += `- Bedrijf: ${lead.company_name || 'Niet opgegeven'}\n`;
-  prompt += `- Bedrijfsgrootte: ${lead.company_size || 'Niet opgegeven'}\n`;
-  prompt += `- BTW: ${lead.vat_number || 'Niet opgegeven'}\n`;
-  prompt += `- Adres: ${lead.company_address || ''} ${lead.company_postal_code || ''} ${lead.company_city || ''} ${lead.company_country || ''}\n`;
-  prompt += `- Website: ${lead.company_website || 'Niet opgegeven'}\n`;
-  if (lead.assigned_to) {
-    prompt += `- Toegewezen aan: ${lead.assigned_to}\n`;
-  }
-  prompt += '\n';
+  // Get total price - prioritize quoteTotal from database, fallback to quote.total_price
+  const totalPrice = quoteTotal !== null && quoteTotal !== undefined ? quoteTotal : (quote?.total_price || 0);
+  const formattedPrice = Number(totalPrice).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  
+  let prompt = `Maak een ${isWebshop ? 'webshop' : 'website'} project voor ${lead.company_name || lead.name} met de volgende specificaties:\n\n`;
 
-  if (lead.package_interest) {
-    prompt += `## Interesse in Pakket\n${lead.package_interest}\n\n`;
+  // Tech Stack
+  prompt += `## Tech Stack\n`;
+  prompt += `- Framework: Next.js 16+ (App Router)\n`;
+  prompt += `- Styling: Tailwind CSS\n`;
+  prompt += `- Database: Supabase (PostgreSQL)\n`;
+  prompt += `- Authentication: Supabase Auth (indien nodig)\n`;
+  prompt += `- Deployment: Vercel\n`;
+  if (isMultiLang) {
+    prompt += `- Internationalisatie: next-intl of i18next\n`;
   }
+  prompt += `\n`;
 
-  if (lead.current_website_status) {
-    prompt += `## Huidige Website Status\n${lead.current_website_status}\n\n`;
+  // Design & Stijl
+  prompt += `## Design & Stijl\n`;
+  prompt += `- Kleuren: Gebruik een modern, professioneel kleurenschema\n`;
+  prompt += `- Typografie: System fonts (Inter, -apple-system, sans-serif)\n`;
+  prompt += `- Layout: Responsive, mobile-first design\n`;
+  prompt += `- Componenten: Herbruikbare React componenten met Tailwind CSS\n`;
+  if (attachments && attachments.some((att: any) => att.file_type?.startsWith('image/'))) {
+    prompt += `- Design referenties: Zie bijgevoegde moodboards/designs voor specifieke kleuren en stijl\n`;
   }
+  prompt += `\n`;
 
+  // Functionaliteiten
+  prompt += `## Functionaliteiten\n`;
+  if (quote?.selectedPackage) {
+    prompt += `- Basis pakket: ${quote.selectedPackage.name}\n`;
+  }
+  
+  if (quote?.selectedOptions && quote.selectedOptions.length > 0) {
+    prompt += `- Extra features:\n`;
+    quote.selectedOptions.forEach((opt: any) => {
+      prompt += `  - ${opt.name}`;
+      if (opt.description) prompt += `: ${opt.description}`;
+      prompt += `\n`;
+    });
+  }
+  
+  if (quote?.extraPages && quote.extraPages > 0) {
+    prompt += `- Extra pagina's: ${quote.extraPages} extra pagina's\n`;
+  }
+  
+  if (quote?.contentPages && quote.contentPages.length > 0) {
+    prompt += `- Content pagina's: ${quote.contentPages.join(', ')}\n`;
+  }
+  
+  if (quote?.customItems && quote.customItems.length > 0) {
+    prompt += `- Aangepaste features:\n`;
+    quote.customItems.forEach((item: any) => {
+      prompt += `  - ${item.name}\n`;
+    });
+  }
+  
+  if (isWebshop) {
+    prompt += `- Webshop functionaliteiten: Product catalogus, winkelwagen, checkout, betaling integratie\n`;
+  }
+  
+  if (isMultiLang) {
+    prompt += `- Meertaligheid: Nederlands, Frans, Engels\n`;
+  }
+  prompt += `\n`;
+
+  // Project Structuur
+  prompt += `## Project Structuur\n`;
+  prompt += `\`\`\`\n`;
+  prompt += `/\n`;
+  prompt += `├── app/              # Next.js App Router\n`;
+  prompt += `│   ├── (routes)/     # Route groepen\n`;
+  prompt += `│   ├── api/          # API routes\n`;
+  prompt += `│   └── components/   # React componenten\n`;
+  prompt += `├── lib/              # Utilities en helpers\n`;
+  prompt += `├── public/           # Static assets\n`;
+  prompt += `└── types/            # TypeScript types\n`;
+  prompt += `\`\`\`\n\n`;
+
+  // Code Regels
+  prompt += `## Code Regels & Best Practices\n`;
+  prompt += `- Gebruik TypeScript voor type safety\n`;
+  prompt += `- Componenten: Function components met TypeScript\n`;
+  prompt += `- Styling: Tailwind CSS utility classes\n`;
+  prompt += `- State management: React hooks (useState, useEffect)\n`;
+  prompt += `- API calls: Server-side in API routes, client-side met fetch\n`;
+  prompt += `- Error handling: Try-catch blocks, user-friendly error messages\n`;
+  prompt += `- Responsive: Mobile-first, breakpoints: sm (640px), md (768px), lg (1024px), xl (1280px)\n`;
+  prompt += `- Performance: Image optimization, code splitting, lazy loading\n`;
+  prompt += `- SEO: Metadata per pagina, structured data, sitemap\n`;
+  prompt += `\n`;
+
+  // Klant Specifieke Info
   if (lead.message) {
-    prompt += `## Bericht van Klant\n${lead.message}\n\n`;
+    prompt += `## Klant Specifieke Requirements\n`;
+    prompt += `${lead.message}\n\n`;
   }
 
   if (lead.pain_points && lead.pain_points.length > 0) {
-    prompt += `## Uitdagingen & Pain Points\n${lead.pain_points.map((p: string) => `- ${p}`).join('\n')}\n\n`;
-  }
-
-  if (quote) {
-    prompt += `## Goedgekeurde Offerte\n`;
-    prompt += `- Pakket: ${quote.selectedPackage?.name || 'Niet gespecificeerd'}\n`;
-    prompt += `- Totaal: €${quote.total_price?.toLocaleString('nl-BE') || '0'}\n`;
-    
-    if (quote.selectedOptions && quote.selectedOptions.length > 0) {
-      prompt += `- Opties:\n`;
-      quote.selectedOptions.forEach((opt: any) => {
-        prompt += `  - ${opt.name}\n`;
-      });
-    }
-    
-    if (quote.extraPages && quote.extraPages > 0) {
-      prompt += `- Extra pagina's: ${quote.extraPages}\n`;
-    }
-    
-    if (quote.contentPages && quote.contentPages.length > 0) {
-      prompt += `- Content pagina's: ${quote.contentPages.join(', ')}\n`;
-    }
-    
-    if (quote.customItems && quote.customItems.length > 0) {
-      prompt += `- Aangepaste items:\n`;
-      quote.customItems.forEach((item: any) => {
-        prompt += `  - ${item.name}: €${item.price}\n`;
-      });
-    }
-    
-    if (quote.selectedMaintenance) {
-      prompt += `- Onderhoud: ${quote.selectedMaintenance.name} (€${quote.selectedMaintenance.price}/maand)\n`;
-    }
-    prompt += '\n';
-  }
-
-  if (attachments && attachments.length > 0) {
-    prompt += `## Alle Bijlagen\n`;
-    attachments.forEach((att: any) => {
-      prompt += `- ${att.file_name}`;
-      if (att.file_type) prompt += ` (${att.file_type})`;
-      if (att.file_size) {
-        const sizeMB = (att.file_size / (1024 * 1024)).toFixed(2);
-        prompt += ` - ${sizeMB} MB`;
-      }
-      if (att.description) prompt += `: ${att.description}`;
-      if (att.uploaded_by) prompt += ` (geüpload door: ${att.uploaded_by})`;
-      prompt += '\n';
+    prompt += `## Uitdagingen & Focus Punten\n`;
+    lead.pain_points.forEach((p: string) => {
+      prompt += `- ${p}\n`;
     });
-    prompt += '\n';
+    prompt += `\n`;
   }
 
-  if (activities && activities.length > 0) {
-    prompt += `## Alle Activiteiten & Notities\n`;
-    activities.forEach((act: any) => {
-      prompt += `### ${act.title || act.activity_type || 'Activiteit'}\n`;
-      prompt += `Type: ${act.activity_type || 'Niet gespecificeerd'}\n`;
-      if (act.summary) prompt += `Samenvatting: ${act.summary}\n`;
-      if (act.description) prompt += `Beschrijving: ${act.description}\n`;
-      if (act.duration_minutes) prompt += `Duur: ${act.duration_minutes} minuten\n`;
-      if (act.created_by) prompt += `Door: ${act.created_by}\n`;
-      if (act.scheduled_at) prompt += `Gepland: ${new Date(act.scheduled_at).toLocaleString('nl-BE')}\n`;
-      if (act.completed_at) prompt += `Voltooid: ${new Date(act.completed_at).toLocaleString('nl-BE')}\n`;
-      prompt += '\n';
-    });
+  // Budget
+  if (totalPrice > 0) {
+    prompt += `## Budget & Scope\n`;
+    prompt += `- Totaal budget: €${formattedPrice}\n`;
+    prompt += `- Focus op core functionaliteiten binnen budget\n`;
+    prompt += `\n`;
   }
 
-  prompt += `## Volgende Stappen\n`;
-  prompt += `1. Review alle bijlagen en documenten\n`;
-  prompt += `2. Setup project structuur volgens offerte\n`;
-  prompt += `3. Implementeer core functionaliteiten\n`;
-  prompt += `4. Test en deploy\n`;
+  // Volgende Stappen
+  prompt += `## Start Instructies\n`;
+  prompt += `1. Initialiseer Next.js project met TypeScript en Tailwind CSS\n`;
+  prompt += `2. Setup Supabase database en configuratie\n`;
+  prompt += `3. Creëer basis project structuur\n`;
+  prompt += `4. Implementeer core functionaliteiten volgens offerte\n`;
+  prompt += `5. Test alle features en responsive design\n`;
+  prompt += `6. Deploy naar Vercel\n`;
 
   return prompt;
 }

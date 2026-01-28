@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Class-based dark mode (admin toggle) so dark: utilities apply when .dark is on html */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   /* New brand color palette */
   --midnight-violet: #242038;

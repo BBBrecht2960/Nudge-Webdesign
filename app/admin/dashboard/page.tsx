@@ -173,7 +173,7 @@ export default function DashboardPage() {
               <div>
                 <p className="text-xs sm:text-sm text-muted-foreground mb-1">Totaal Omzet</p>
                 <p className="text-xl sm:text-2xl font-bold text-primary">
-                  €{stats.customers.totalRevenue.toLocaleString('nl-BE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  €{stats.customers.totalRevenue.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
               <Euro className="w-6 h-6 sm:w-8 sm:h-8 text-primary shrink-0" />
@@ -345,7 +345,7 @@ export default function DashboardPage() {
                         <td className="p-2 min-w-0">
                           {customer.quote_total ? (
                             <span className="text-sm font-semibold">
-                              €{customer.quote_total.toLocaleString('nl-BE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                              €{Number(customer.quote_total).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                           ) : (
                             <span className="text-xs text-muted-foreground">-</span>

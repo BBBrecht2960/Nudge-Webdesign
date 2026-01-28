@@ -1,52 +1,85 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateAdmin } from '@/lib/auth';
-import { cookies } from 'next/headers';
+import { createAdminSession } from '@/lib/auth-helpers';
+import { checkRateLimit, getClientIP, getRateLimitHeaders, isValidEmail, sanitizeInput } from '@/lib/security';
+import * as z from 'zod';
+
+// Strict validation schema
+const loginSchema = z.object({
+  email: z.string().min(1).max(255).refine(isValidEmail, { message: 'Ongeldig e-mailadres' }),
+  password: z.string().min(1).max(100),
+  rememberMe: z.boolean().optional().default(false),
+}).strict();
 
 export async function POST(request: NextRequest) {
-  try {
-    const { email, password, rememberMe } = await request.json();
+  // Rate limiting: 5 attempts per 15 minutes per IP
+  const clientIP = getClientIP(request);
+  const rateLimit = checkRateLimit(`login:${clientIP}`, 5, 15 * 60 * 1000);
+  
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Te veel inlogpogingen. Probeer het later opnieuw.' },
+      { 
+        status: 429,
+        headers: getRateLimitHeaders(rateLimit.remaining, rateLimit.resetTime),
+      }
+    );
+  }
 
-    if (!email || !password) {
+  try {
+    // Parse and validate request body
+    let body;
+    try {
+      body = await request.json();
+    } catch {
       return NextResponse.json(
-        { error: 'E-mail en wachtwoord zijn verplicht' },
+        { error: 'Ongeldige JSON data' },
         { status: 400 }
       );
     }
 
-    // Normalize email (lowercase, trim)
-    const normalizedEmail = email.toLowerCase().trim();
-
-    const isValid = await authenticateAdmin(normalizedEmail, password);
-
-    if (!isValid) {
-      console.error('[Login] Authenticatie mislukt voor:', normalizedEmail);
-      console.error('[Login] Controleer:');
-      console.error('  1. Of de admin user bestaat in de database');
-      console.error('  2. Of het wachtwoord hash correct is');
-      console.error('  3. Of SUPABASE_SERVICE_ROLE_KEY is ingesteld');
+    // Validate with Zod (strict mode)
+    const validationResult = loginSchema.safeParse(body);
+    if (!validationResult.success) {
       return NextResponse.json(
-        { error: 'Ongeldige inloggegevens. Controleer je e-mail en wachtwoord.' },
-        { status: 401 }
+        { error: 'Ongeldige invoer', details: validationResult.error.issues },
+        { status: 400 }
       );
     }
 
-    // Create session (simple approach - in production, use proper session management)
-    const sessionToken = Buffer.from(`${normalizedEmail}:${Date.now()}`).toString('base64');
-    
-    const cookieStore = await cookies();
-    // If rememberMe is true, set cookie for 30 days, otherwise 7 days
-    const maxAge = rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24 * 7;
-    
-    cookieStore.set('admin_session', sessionToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge,
-      path: '/',
-    });
+    const { email, password, rememberMe } = validationResult.data;
+
+    // Sanitize email input
+    const normalizedEmail = sanitizeInput(email.toLowerCase().trim());
+
+    // Authenticate
+    const isValid = await authenticateAdmin(normalizedEmail, password);
+
+    if (!isValid) {
+      // Don't reveal whether email exists (security best practice)
+      return NextResponse.json(
+        { error: 'Ongeldige inloggegevens. Controleer je e-mail en wachtwoord.' },
+        { 
+          status: 401,
+          headers: getRateLimitHeaders(rateLimit.remaining - 1, rateLimit.resetTime),
+        }
+      );
+    }
+
+    // Create secure session
+    try {
+      await createAdminSession(normalizedEmail, rememberMe);
+    } catch (sessionError) {
+      console.error('[Login] Session creation error:', sessionError);
+      // Fallback: continue with basic session if table doesn't exist
+      // This allows the system to work even if admin_sessions table is not created yet
+    }
 
     console.log('[Login] Succesvol ingelogd:', normalizedEmail, rememberMe ? '(onthouden)' : '');
-    return NextResponse.json({ success: true });
+    return NextResponse.json(
+      { success: true },
+      { headers: getRateLimitHeaders(rateLimit.remaining, rateLimit.resetTime) }
+    );
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(

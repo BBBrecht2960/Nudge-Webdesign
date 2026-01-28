@@ -381,10 +381,30 @@ export default function LeadDetailPage() {
   };
 
   const handleStatusChange = async (newStatus: string) => {
-    if (!lead || lead.status === newStatus) return;
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:383',message:'Status change initiated',data:{leadId,currentStatus:lead?.status,newStatus,isSaving},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+    
+    if (!lead || lead.status === newStatus) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:386',message:'Status change skipped',data:{reason:!lead ? 'no lead' : 'same status'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
+      return;
+    }
+
+    if (isSaving) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:390',message:'Status change prevented - already saving',data:{isSaving},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
+      return;
+    }
 
     // Validate status change
     const validation = canChangeToStatus(lead.status, newStatus, hasQuote);
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:395',message:'Status validation result',data:{allowed:validation.allowed,reason:validation.reason},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+    
     if (!validation.allowed) {
       alert(validation.reason || 'Deze statuswijziging is niet toegestaan.');
       return;
@@ -393,11 +413,19 @@ export default function LeadDetailPage() {
     setIsSaving(true);
     
     try {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:400',message:'Updating lead status in database',data:{leadId,newStatus},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
+      
       // Update lead status
       const { error: updateError } = await supabase
         .from('leads')
         .update({ status: newStatus })
         .eq('id', leadId);
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:407',message:'Lead status update result',data:{hasError:!!updateError,error:updateError?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
 
       if (updateError) throw updateError;
 
@@ -426,6 +454,10 @@ export default function LeadDetailPage() {
 
       // If status is "lost", also cancel related customer if exists
       if (newStatus === 'lost') {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:428',message:'Checking for related customer to cancel',data:{leadId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
+        
         try {
           // Check if customer exists for this lead
           const { data: existingCustomer } = await supabase
@@ -434,11 +466,19 @@ export default function LeadDetailPage() {
             .eq('lead_id', leadId)
             .maybeSingle();
 
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:435',message:'Customer check result',data:{hasCustomer:!!existingCustomer,customerId:existingCustomer?.id,currentStatus:existingCustomer?.project_status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+          // #endregion
+
           if (existingCustomer && existingCustomer.project_status !== 'canceled') {
             const { error: customerUpdateError } = await supabase
               .from('customers')
               .update({ project_status: 'canceled' })
               .eq('id', existingCustomer.id);
+
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:442',message:'Customer cancel update result',data:{hasError:!!customerUpdateError,error:customerUpdateError?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
 
             if (customerUpdateError) {
               console.warn('Error updating related customer to canceled:', customerUpdateError);
@@ -447,12 +487,19 @@ export default function LeadDetailPage() {
             }
           }
         } catch (customerErr) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:450',message:'Customer cancel error',data:{error:customerErr instanceof Error ? customerErr.message : String(customerErr)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+          // #endregion
           console.warn('Error checking/updating related customer:', customerErr);
         }
       }
 
       // If status is "converted", automatically convert to customer
       if (newStatus === 'converted') {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:454',message:'Starting customer conversion',data:{leadId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+        // #endregion
+        
         try {
           console.log(`[StatusChange] Converting lead ${leadId} to customer...`);
           const convertResponse = await fetch(`/api/leads/${leadId}/convert`, {
@@ -460,17 +507,27 @@ export default function LeadDetailPage() {
             headers: { 'Content-Type': 'application/json' },
           });
 
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:462',message:'Conversion API response',data:{status:convertResponse.status,ok:convertResponse.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+          // #endregion
+
           if (convertResponse.ok) {
             const convertData = await convertResponse.json();
             const revenue = convertData.customer?.quote_total 
               ? `€${Number(convertData.customer.quote_total).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
               : 'geen offerte';
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:469',message:'Conversion successful',data:{customerId:convertData.customer?.id,revenue:convertData.customer?.quote_total},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+            // #endregion
             console.log(`[StatusChange] Conversion successful. Revenue: ${revenue}`);
             alert(`Lead succesvol geconverteerd naar customer! Omzet: ${revenue}. AI prompt is gegenereerd.`);
             // Optionally redirect to customer page
             // router.push(`/admin/customers/${convertData.customer.id}`);
           } else {
             const errorData = await convertResponse.json();
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:477',message:'Conversion failed',data:{status:convertResponse.status,error:errorData?.error,customerId:errorData?.customer_id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+            // #endregion
             // Check if customer already exists
             if (errorData.customer_id) {
               console.log(`[StatusChange] Customer already exists for lead ${leadId}`);
@@ -481,6 +538,9 @@ export default function LeadDetailPage() {
             }
           }
         } catch (convertError) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:486',message:'Conversion exception',data:{error:convertError instanceof Error ? convertError.message : String(convertError)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+          // #endregion
           console.error('[StatusChange] Error converting to customer:', convertError);
           alert('Status bijgewerkt, maar conversie naar customer mislukt. Probeer handmatig te converteren.');
         }
@@ -488,12 +548,21 @@ export default function LeadDetailPage() {
 
       // Reload to get fresh data
       loadLeadData();
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:491',message:'Status change completed successfully',data:{leadId,newStatus},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
     } catch (error) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:495',message:'Status change error',data:{error:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       console.error('Error updating status:', error);
       alert('Fout bij het bijwerken van de status');
       loadLeadData(); // Reload to revert
     } finally {
       setIsSaving(false);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:500',message:'Status change finished',data:{isSaving:false},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
     }
   };
 
@@ -685,34 +754,66 @@ export default function LeadDetailPage() {
   };
 
   const handleDeleteLead = async () => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:714',message:'Delete lead initiated',data:{leadId,leadName:lead?.name,deleteConfirmName,isDeleting},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+    // #endregion
+    
     if (!lead || !leadId) return;
     
     if (deleteConfirmName !== lead.name) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:718',message:'Delete confirmation failed',data:{expected:lead.name,provided:deleteConfirmName},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+      // #endregion
       alert('De naam komt niet overeen. Typ de exacte naam om te bevestigen.');
+      return;
+    }
+
+    if (isDeleting) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:725',message:'Delete prevented - already deleting',data:{isDeleting},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
       return;
     }
 
     try {
       setIsDeleting(true);
       
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:732',message:'Sending delete request',data:{leadId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+      // #endregion
+      
       const response = await fetch(`/api/leads/${leadId}`, {
         method: 'DELETE',
       });
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:738',message:'Delete response received',data:{status:response.status,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+      // #endregion
 
       if (!response.ok) {
         let errorMessage = 'Fout bij verwijderen';
         try {
           const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:745',message:'Delete error response',data:{status:response.status,error:errorData?.error},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
         } catch (parseError) {
           errorMessage = `HTTP ${response.status}: ${response.statusText}`;
         }
         throw new Error(errorMessage);
       }
 
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:754',message:'Delete successful',data:{leadId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+      // #endregion
+
       // Redirect to leads list
       router.push('/admin/leads');
     } catch (error: unknown) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:760',message:'Delete error',data:{error:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       const errorMessage = error instanceof Error ? error.message : 'Fout bij verwijderen van lead';
       console.error('Error deleting lead:', {
         error,
@@ -923,6 +1024,7 @@ export default function LeadDetailPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Lead Header */}
           <div className="bg-card border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">Leadgegevens</p>
             <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-4 mb-4 sm:mb-6 w-full min-w-0">
               <div className="flex-1 min-w-0">
                 <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-2 break-words">{lead.name}</h1>
@@ -989,7 +1091,9 @@ export default function LeadDetailPage() {
               </div>
             </div>
 
-            <div className="grid sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <div className="border-t border-border pt-4 mt-2">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Contactgegevens</h3>
+              <div className="grid sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
               <div className="flex items-center gap-2 min-w-0">
                 <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground shrink-0" />
                 <a href={`mailto:${lead.email}`} className="text-primary hover:underline break-all text-sm sm:text-base">
@@ -1020,11 +1124,12 @@ export default function LeadDetailPage() {
                 <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground shrink-0" />
                 <span className="text-xs sm:text-sm break-words">{new Date(lead.created_at).toLocaleString('nl-BE')}</span>
               </div>
+              </div>
             </div>
 
             {lead.pain_points && lead.pain_points.length > 0 && (
-              <div className="mb-4 sm:mb-6 min-w-0">
-                <h3 className="font-semibold mb-2 text-sm sm:text-base break-words">Uitdagingen:</h3>
+              <div className="mb-4 sm:mb-6 min-w-0 border-t border-border pt-4 mt-2">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2 break-words">Uitdagingen</h3>
                 <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm text-muted-foreground">
                   {lead.pain_points.map((point, i) => (
                     <li key={i} className="break-words">{point}</li>
@@ -1034,16 +1139,16 @@ export default function LeadDetailPage() {
             )}
 
             {lead.message && (
-              <div className="min-w-0">
-                <h3 className="font-semibold mb-2 break-words">Bericht:</h3>
+              <div className="min-w-0 border-t border-border pt-4 mt-2">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2 break-words">Bericht</h3>
                 <p className="text-muted-foreground whitespace-pre-wrap break-words">{lead.message}</p>
               </div>
             )}
 
             {/* Company Information Section */}
-            <div className="bg-card border border-border rounded-lg p-4 sm:p-6 mt-4 sm:mt-6 w-full min-w-0">
+            <div className="bg-muted/50 border border-border rounded-lg p-4 sm:p-6 mt-4 sm:mt-6 w-full min-w-0">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 w-full min-w-0">
-                <h2 className="text-lg sm:text-xl font-bold break-words">Bedrijfsgegevens</h2>
+                <h2 className="text-base sm:text-lg font-bold break-words">Bedrijfsgegevens</h2>
                 <Button
                   onClick={() => setShowCompanyForm(!showCompanyForm)}
                   size="sm"

@@ -26,7 +26,9 @@ import {
   Edit,
   History,
   Trash2,
+  Download,
 } from 'lucide-react';
+import { generateQuotePdfBlob, type ApprovedQuoteData } from '@/lib/quotePdf';
 
 export default function CustomerDetailPage() {
   const params = useParams();
@@ -45,6 +47,8 @@ export default function CustomerDetailPage() {
   const [showDeleteCustomerModal, setShowDeleteCustomerModal] = useState(false);
   const [deleteConfirmName, setDeleteConfirmName] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   
   // Update form state
   const [showUpdateForm, setShowUpdateForm] = useState(false);
@@ -66,6 +70,14 @@ export default function CustomerDetailPage() {
       setProjectStatus(customer.project_status);
     }
   }, [customer]);
+
+  // Revoke PDF blob URL on unmount to avoid memory leaks
+  useEffect(() => {
+    const url = pdfBlobUrl;
+    return () => {
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [pdfBlobUrl]);
 
   const loadCustomerData = async () => {
     try {
@@ -126,7 +138,23 @@ export default function CustomerDetailPage() {
   };
 
   const handleStatusChange = async (newStatus: string) => {
-    if (!customer || customer.project_status === newStatus) return;
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:128',message:'Customer status change initiated',data:{customerId,currentStatus:customer?.project_status,newStatus,isSaving},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+    // #endregion
+    
+    if (!customer || customer.project_status === newStatus) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:130',message:'Customer status change skipped',data:{reason:!customer ? 'no customer' : 'same status'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+      // #endregion
+      return;
+    }
+
+    if (isSaving) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:133',message:'Customer status change prevented - already saving',data:{isSaving},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
+      return;
+    }
 
     setIsSaving(true);
     
@@ -177,17 +205,28 @@ export default function CustomerDetailPage() {
 
       // If customer is canceled, also update related lead to "lost"
       if (newStatus === 'canceled' && customer.lead_id) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:179',message:'Updating related lead to lost',data:{customerId,leadId:customer.lead_id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+        // #endregion
+        
         try {
           const { error: leadUpdateError } = await supabase
             .from('leads')
             .update({ status: 'lost' })
             .eq('id', customer.lead_id);
 
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:186',message:'Lead update result',data:{hasError:!!leadUpdateError,error:leadUpdateError?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+          // #endregion
+
           if (leadUpdateError) {
             console.warn('Error updating related lead to lost:', leadUpdateError);
             // Don't fail the customer update, just log the warning
           }
         } catch (leadErr) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:191',message:'Lead update exception',data:{error:leadErr instanceof Error ? leadErr.message : String(leadErr)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+          // #endregion
           console.warn('Error updating related lead to lost:', leadErr);
         }
       }
@@ -271,35 +310,67 @@ export default function CustomerDetailPage() {
   };
 
   const handleDeleteCustomer = async () => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:300',message:'Delete customer initiated',data:{customerId,customerName:customer?.name,deleteConfirmName,isDeleting},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+    // #endregion
+    
     if (!customer || !customerId) return;
     
     const customerDisplayName = customer.company_name || customer.name;
     if (deleteConfirmName !== customerDisplayName) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:305',message:'Delete confirmation failed',data:{expected:customerDisplayName,provided:deleteConfirmName},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+      // #endregion
       alert('De naam komt niet overeen. Typ de exacte naam om te bevestigen.');
+      return;
+    }
+
+    if (isDeleting) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:311',message:'Delete prevented - already deleting',data:{isDeleting},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
       return;
     }
 
     try {
       setIsDeleting(true);
       
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:316',message:'Sending delete request',data:{customerId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+      // #endregion
+      
       const response = await fetch(`/api/customers/${customerId}`, {
         method: 'DELETE',
       });
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:322',message:'Delete response received',data:{status:response.status,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+      // #endregion
 
       if (!response.ok) {
         let errorMessage = 'Fout bij verwijderen';
         try {
           const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:329',message:'Delete error response',data:{status:response.status,error:errorData?.error},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
         } catch (parseError) {
           errorMessage = `HTTP ${response.status}: ${response.statusText}`;
         }
         throw new Error(errorMessage);
       }
 
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:338',message:'Delete successful',data:{customerId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+      // #endregion
+
       // Redirect to customers list
       router.push('/admin/customers');
     } catch (error: unknown) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:344',message:'Delete error',data:{error:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       const errorMessage = error instanceof Error ? error.message : 'Fout bij verwijderen van klant';
       console.error('Error deleting customer:', {
         error,
@@ -312,14 +383,29 @@ export default function CustomerDetailPage() {
   };
 
   const handleAddUpdate = async () => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:373',message:'Customer update initiated',data:{customerId,updateType,hasTitle:!!updateTitle.trim(),hasDescription:!!updateDescription.trim(),isSavingUpdate},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'L'})}).catch(()=>{});
+    // #endregion
+    
     if (!updateTitle.trim() || !updateDescription.trim()) {
       alert('Titel en beschrijving zijn verplicht');
+      return;
+    }
+
+    if (isSavingUpdate) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:380',message:'Update prevented - already saving',data:{isSavingUpdate},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
       return;
     }
 
     setIsSavingUpdate(true);
     
     try {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:387',message:'Sending update request',data:{customerId,updateType},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'L'})}).catch(()=>{});
+      // #endregion
+      
       const response = await fetch(`/api/customers/${customerId}/updates`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -333,11 +419,19 @@ export default function CustomerDetailPage() {
         }),
       });
 
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:404',message:'Update response received',data:{status:response.status,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'L'})}).catch(()=>{});
+      // #endregion
+
       if (!response.ok) {
         let errorMessage = 'Fout bij opslaan update';
         try {
           const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
+          
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:412',message:'Update error response',data:{status:response.status,error:errorData?.error},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
           
           // Check for specific error about missing table
           if (errorData.error?.includes('tabel bestaat niet')) {
@@ -352,6 +446,10 @@ export default function CustomerDetailPage() {
 
       const responseData = await response.json();
       const { update } = responseData;
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:426',message:'Update successful',data:{updateId:update?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'L'})}).catch(()=>{});
+      // #endregion
+      
       setUpdates([update, ...updates]);
       
       // Reset form
@@ -472,17 +570,18 @@ export default function CustomerDetailPage() {
 
   return (
     <div className="p-3 sm:p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden">
-      {/* Header */}
-      <div className="mb-6">
+      {/* Back + Header */}
+      <div className="mb-8">
         <Button
           onClick={() => router.push('/admin/customers')}
           variant="outline"
+          size="sm"
           className="mb-4"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Terug naar Klanten
+          Terug naar klanten
         </Button>
-
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Klantgegevens</p>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-2xl sm:text-3xl font-bold mb-2 break-words">
@@ -554,11 +653,12 @@ export default function CustomerDetailPage() {
         <div className="lg:col-span-2 space-y-6 min-w-0">
           {/* Cursor Prompt Section */}
           {customer.cursor_prompt && (
-            <div className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0">
+            <section className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0" aria-label="Cursor AI Prompt">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Cursor AI Prompt</p>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold flex items-center gap-2 break-words">
+                <h2 className="text-lg font-bold flex items-center gap-2 break-words">
                   <Code className="w-5 h-5 text-primary shrink-0" />
-                  Cursor AI Prompt
+                  Prompt voor Cursor
                 </h2>
                 <Button
                   onClick={copyPromptToClipboard}
@@ -589,48 +689,135 @@ export default function CustomerDetailPage() {
                   {customer.cursor_prompt}
                 </pre>
               </div>
-            </div>
+            </section>
           )}
 
           {/* Quote Information */}
           {customer.approved_quote && (
-            <div className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0">
-              <h2 className="text-xl font-bold mb-4 flex items-center gap-2 break-words">
+            <section className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0" aria-label="Goedgekeurde offerte">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Goedgekeurde offerte</p>
+              <h2 className="text-lg font-bold mb-4 flex items-center gap-2 break-words">
                 <FileText className="w-5 h-5 text-primary shrink-0" />
-                Goedgekeurde Offerte
+                Offerte
               </h2>
               {customer.project_status === 'canceled' ? (
                 <div className="mb-4">
                   <p className="text-sm text-muted-foreground mb-1">Totaal:</p>
                   <p className="text-2xl font-bold text-red-600 line-through">
-                    {customer.quote_total ? `€${customer.quote_total.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '€0,00'}
+                    {customer.quote_total ? `€${Number(customer.quote_total).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '€0,00'}
                   </p>
                   <p className="text-sm text-red-600 font-semibold mt-1">
                     Geannuleerd - telt niet mee in omzet
                   </p>
                 </div>
-              ) : customer.quote_total ? (
+              ) : customer.quote_total != null ? (
                 <div className="mb-4">
                   <p className="text-sm text-muted-foreground mb-1">Totaal:</p>
                   <p className="text-2xl font-bold">
-                    €{customer.quote_total.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    €{Number(customer.quote_total).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 </div>
               ) : null}
-              {customer.approved_quote && (
-                <div className="bg-muted border border-border rounded-lg p-4">
-                  <pre className="text-xs sm:text-sm whitespace-pre-wrap break-words overflow-x-auto">
-                    {JSON.stringify(customer.approved_quote, null, 2)}
-                  </pre>
+              <div className="flex flex-wrap gap-2 mb-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isGeneratingPdf}
+                  onClick={async () => {
+                    const q = customer.approved_quote as ApprovedQuoteData;
+                    if (!q?.selectedPackage || customer.quote_total == null) return;
+                    setIsGeneratingPdf(true);
+                    try {
+                      const blob = await generateQuotePdfBlob(
+                        {
+                          name: customer.name,
+                          email: customer.email ?? undefined,
+                          phone: customer.phone ?? undefined,
+                          company_name: customer.company_name ?? undefined,
+                          vat_number: customer.vat_number ?? undefined,
+                          company_address: customer.company_address ?? undefined,
+                          company_postal_code: customer.company_postal_code ?? undefined,
+                          company_city: customer.company_city ?? undefined,
+                          company_country: customer.company_country ?? undefined,
+                          company_website: customer.company_website ?? undefined,
+                        },
+                        q,
+                        Number(customer.quote_total)
+                      );
+                      const url = URL.createObjectURL(blob);
+                      setPdfBlobUrl((prev) => {
+                        if (prev) URL.revokeObjectURL(prev);
+                        return url;
+                      });
+                    } catch (err) {
+                      console.error('PDF genereren mislukt:', err);
+                    } finally {
+                      setIsGeneratingPdf(false);
+                    }
+                  }}
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  {pdfBlobUrl ? 'Vernieuw PDF' : isGeneratingPdf ? 'PDF genereren...' : 'Bekijk PDF'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isGeneratingPdf}
+                  onClick={async () => {
+                    const q = customer.approved_quote as ApprovedQuoteData;
+                    if (!q?.selectedPackage || customer.quote_total == null) return;
+                    setIsGeneratingPdf(true);
+                    try {
+                      const blob = await generateQuotePdfBlob(
+                        {
+                          name: customer.name,
+                          email: customer.email ?? undefined,
+                          phone: customer.phone ?? undefined,
+                          company_name: customer.company_name ?? undefined,
+                          vat_number: customer.vat_number ?? undefined,
+                          company_address: customer.company_address ?? undefined,
+                          company_postal_code: customer.company_postal_code ?? undefined,
+                          company_city: customer.company_city ?? undefined,
+                          company_country: customer.company_country ?? undefined,
+                          company_website: customer.company_website ?? undefined,
+                        },
+                        q,
+                        Number(customer.quote_total)
+                      );
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `Offerte_${customer.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    } catch (err) {
+                      console.error('PDF download mislukt:', err);
+                    } finally {
+                      setIsGeneratingPdf(false);
+                    }
+                  }}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download PDF
+                </Button>
+              </div>
+              {pdfBlobUrl && (
+                <div className="bg-muted border border-border rounded-lg overflow-hidden min-h-[400px]">
+                  <iframe
+                    src={pdfBlobUrl}
+                    title="Goedgekeurde offerte PDF"
+                    className="w-full h-[500px] sm:h-[600px] border-0"
+                  />
                 </div>
               )}
-            </div>
+            </section>
           )}
 
           {/* Project Updates */}
-          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0">
+          <section className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0" aria-label="Project updates">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Project updates</p>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold break-words">Project Updates</h2>
+              <h2 className="text-lg font-bold break-words">Updates</h2>
               <Button
                 onClick={() => setShowUpdateForm(!showUpdateForm)}
                 variant="outline"
@@ -774,11 +961,12 @@ export default function CustomerDetailPage() {
                 ))}
               </div>
             )}
-          </div>
+          </section>
 
           {/* Activities */}
-          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0">
-            <h2 className="text-xl font-bold mb-4 break-words">Activiteiten</h2>
+          <section className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0" aria-label="Activiteiten">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Activiteiten</p>
+            <h2 className="text-lg font-bold mb-4 break-words">Activiteiten</h2>
             {activities.length === 0 ? (
               <p className="text-muted-foreground text-center py-4 break-words">Geen activiteiten</p>
             ) : (
@@ -808,11 +996,12 @@ export default function CustomerDetailPage() {
                 ))}
               </div>
             )}
-          </div>
+          </section>
 
           {/* Attachments */}
-          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0">
-            <h2 className="text-xl font-bold mb-4 break-words">Bijlagen</h2>
+          <section className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0" aria-label="Bijlagen">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Bijlagen</p>
+            <h2 className="text-lg font-bold mb-4 break-words">Bijlagen</h2>
             {attachments.length === 0 ? (
               <p className="text-muted-foreground text-center py-4 break-words">Geen bijlagen</p>
             ) : (
@@ -846,7 +1035,7 @@ export default function CustomerDetailPage() {
                 ))}
               </div>
             )}
-          </div>
+          </section>
         </div>
 
         {/* Sidebar */}
