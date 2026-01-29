@@ -61,8 +61,8 @@ export async function GET(request: NextRequest) {
     const startISO = start.toISOString().split('T')[0];
     const endISO = end.toISOString().split('T')[0];
 
-    let leads: Array<{ id: string; created_at: string; created_by?: string | null; brought_in_by?: string | null }> | null = null;
-    let leadsError: { code?: string; message?: string } | null = null;
+    type LeadRow = { id: string; created_at: string; created_by?: string | null; brought_in_by?: string | null };
+    let leads: LeadRow[] | null = null;
 
     const res = await supabase
       .from('leads')
@@ -70,26 +70,36 @@ export async function GET(request: NextRequest) {
       .gte('created_at', `${startISO}T00:00:00.000Z`)
       .lte('created_at', `${endISO}T23:59:59.999Z`)
       .order('created_at', { ascending: true });
-    leads = res.data;
-    leadsError = res.error;
+    let leadsError = res.error;
 
-    if (leadsError?.code === 'PGRST204' || leadsError?.message?.includes('brought_in_by')) {
+    if (leadsError?.code === 'PGRST204' || leadsError?.message?.includes('brought_in_by') || leadsError?.message?.includes('created_by')) {
       const fallback = await supabase
         .from('leads')
         .select('id, created_at, created_by')
         .gte('created_at', `${startISO}T00:00:00.000Z`)
         .lte('created_at', `${endISO}T23:59:59.999Z`)
         .order('created_at', { ascending: true });
-      leads = fallback.data;
+      leads = fallback.data as LeadRow[] | null;
       leadsError = fallback.error;
+    } else {
+      leads = res.data as LeadRow[] | null;
     }
 
     if (leadsError) {
-      console.error('Sales analytics leads error:', leadsError);
-      return NextResponse.json(
-        { error: 'Fout bij ophalen leads' },
-        { status: 500 }
-      );
+      const minimal = await supabase
+        .from('leads')
+        .select('id, created_at')
+        .gte('created_at', `${startISO}T00:00:00.000Z`)
+        .lte('created_at', `${endISO}T23:59:59.999Z`)
+        .order('created_at', { ascending: true });
+      if (minimal.error) {
+        console.error('Sales analytics leads error:', minimal.error);
+        return NextResponse.json(
+          { error: 'Fout bij ophalen leads' },
+          { status: 500 }
+        );
+      }
+      leads = (minimal.data || []).map((r) => ({ ...r, created_by: null, brought_in_by: null }));
     }
 
     const leadIds = (leads || []).map((l) => l.id);
@@ -100,38 +110,61 @@ export async function GET(request: NextRequest) {
       leadByPerson[person].push({ id: l.id, created_at: l.created_at });
     }
 
+    const IN_CHUNK = 200;
+    const idList = leadIds.length ? leadIds : ['00000000-0000-0000-0000-000000000000'];
+
     let quoteByLeadId: Record<string, number> = {};
     try {
-      const { data: quotes } = await supabase
-        .from('lead_quotes')
-        .select('lead_id, total_price, status')
-        .in('lead_id', leadIds.length ? leadIds : ['00000000-0000-0000-0000-000000000000'])
-        .in('status', ['sent', 'accepted']);
-      if (quotes?.length) {
-        for (const q of quotes) {
-          const price = Number(q.total_price) || 0;
-          if (!quoteByLeadId[q.lead_id] || price > (quoteByLeadId[q.lead_id] ?? 0)) {
-            quoteByLeadId[q.lead_id] = price;
+      for (let i = 0; i < idList.length; i += IN_CHUNK) {
+        const chunk = idList.slice(i, i + IN_CHUNK);
+        const { data: quotes, error: quotesError } = await supabase
+          .from('lead_quotes')
+          .select('lead_id, total_price, status')
+          .in('lead_id', chunk)
+          .in('status', ['sent', 'accepted']);
+        if (quotesError) {
+          if (quotesError.code === '42P01' || quotesError.message?.includes('does not exist')) {
+            break;
+          }
+          throw quotesError;
+        }
+        if (quotes?.length) {
+          for (const q of quotes) {
+            const price = Number(q.total_price) || 0;
+            if (!quoteByLeadId[q.lead_id] || price > (quoteByLeadId[q.lead_id] ?? 0)) {
+              quoteByLeadId[q.lead_id] = price;
+            }
           }
         }
       }
-    } catch {
+    } catch (e) {
+      console.warn('Sales analytics lead_quotes:', e);
       quoteByLeadId = {};
     }
 
     let customerByLeadId: Record<string, number> = {};
     try {
-      const { data: customers } = await supabase
-        .from('customers')
-        .select('lead_id, quote_total')
-        .in('lead_id', leadIds.length ? leadIds : ['00000000-0000-0000-0000-000000000000'])
-        .not('lead_id', 'is', null);
-      if (customers?.length) {
-        for (const c of customers) {
-          if (c.lead_id) customerByLeadId[c.lead_id] = Number(c.quote_total) || 0;
+      for (let i = 0; i < idList.length; i += IN_CHUNK) {
+        const chunk = idList.slice(i, i + IN_CHUNK);
+        const { data: customers, error: customersError } = await supabase
+          .from('customers')
+          .select('lead_id, quote_total')
+          .in('lead_id', chunk)
+          .not('lead_id', 'is', null);
+        if (customersError) {
+          if (customersError.code === '42P01' || customersError.message?.includes('does not exist')) {
+            break;
+          }
+          throw customersError;
+        }
+        if (customers?.length) {
+          for (const c of customers) {
+            if (c.lead_id) customerByLeadId[c.lead_id] = Number(c.quote_total) || 0;
+          }
         }
       }
-    } catch {
+    } catch (e) {
+      console.warn('Sales analytics customers:', e);
       customerByLeadId = {};
     }
 

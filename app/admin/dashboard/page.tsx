@@ -211,32 +211,44 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Customers Status Breakdown */}
+        {/* Customers Status Breakdown - label area fixed height so numbers align */}
         <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
           <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 break-words">Klanten per Status</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 sm:gap-4">
-            <div>
-              <p className="text-xs sm:text-sm text-muted-foreground">Nieuw</p>
+            <div className="flex flex-col">
+              <div className="min-h-[2.5rem] flex items-center">
+                <p className="text-xs sm:text-sm text-muted-foreground">Nieuw</p>
+              </div>
               <p className="text-xl sm:text-2xl font-bold">{stats.customers.total - stats.customers.active - stats.customers.completed - stats.customers.onHold - stats.customers.canceled}</p>
             </div>
-            <div>
-              <p className="text-xs sm:text-sm text-muted-foreground">In Uitvoering</p>
+            <div className="flex flex-col">
+              <div className="min-h-[2.5rem] flex items-center">
+                <p className="text-xs sm:text-sm text-muted-foreground">In Uitvoering</p>
+              </div>
               <p className="text-xl sm:text-2xl font-bold text-purple-600">{stats.customers.inProgress}</p>
             </div>
-            <div>
-              <p className="text-xs sm:text-sm text-muted-foreground">In Review</p>
+            <div className="flex flex-col">
+              <div className="min-h-[2.5rem] flex items-center">
+                <p className="text-xs sm:text-sm text-muted-foreground">In Review</p>
+              </div>
               <p className="text-xl sm:text-2xl font-bold text-yellow-600">{stats.customers.inReview}</p>
             </div>
-            <div>
-              <p className="text-xs sm:text-sm text-muted-foreground">Voltooid</p>
+            <div className="flex flex-col">
+              <div className="min-h-[2.5rem] flex items-center">
+                <p className="text-xs sm:text-sm text-muted-foreground">Voltooid</p>
+              </div>
               <p className="text-xl sm:text-2xl font-bold text-green-600">{stats.customers.completed}</p>
             </div>
-            <div>
-              <p className="text-xs sm:text-sm text-muted-foreground">On Hold</p>
+            <div className="flex flex-col">
+              <div className="min-h-[2.5rem] flex items-center">
+                <p className="text-xs sm:text-sm text-muted-foreground">On Hold</p>
+              </div>
               <p className="text-xl sm:text-2xl font-bold text-red-600">{stats.customers.onHold}</p>
             </div>
-            <div>
-              <p className="text-xs sm:text-sm text-muted-foreground">Geannuleerd</p>
+            <div className="flex flex-col">
+              <div className="min-h-[2.5rem] flex items-center">
+                <p className="text-xs sm:text-sm text-muted-foreground">Geannuleerd</p>
+              </div>
               <p className="text-xl sm:text-2xl font-bold text-gray-600">{stats.customers.canceled}</p>
             </div>
           </div>
