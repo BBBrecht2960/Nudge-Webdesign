@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { CheckCircle2 } from 'lucide-react';
 import { Button } from './Button';
-import { posthog } from '@/lib/posthog';
+import { track } from '@/lib/analytics';
 
 // Email validation
 const validateEmail = (email: string): boolean => {
@@ -91,7 +91,7 @@ export function LeadForm() {
       fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeadForm.tsx:85',message:'Preparing API request',data:{fullName,email:data.email,hasPhone:!!data.phone,hasMessage:!!data.message,gdprConsent:data.gdpr_consent},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
       // #endregion
 
-      posthog?.capture('form_submitted', {
+      track('form_submitted', {
         form_type: 'lead_form_simple',
         ...utmData,
       });
@@ -129,12 +129,6 @@ export function LeadForm() {
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeadForm.tsx:116',message:'Form submission successful',data:{leadId:responseData.lead_id,success:responseData.success},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
       // #endregion
-
-      if (data.email) {
-        posthog?.identify(data.email, {
-          name: fullName,
-        });
-      }
 
       setSubmitSuccess(true);
       setTimeout(() => {

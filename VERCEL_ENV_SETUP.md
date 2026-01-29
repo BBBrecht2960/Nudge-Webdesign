@@ -49,15 +49,6 @@ NEXT_PUBLIC_SITE_URL=https://nudge-webdesign.vercel.app
 
 **Let op:** Update `NEXT_PUBLIC_SITE_URL` naar je echte domain als je die hebt.
 
-#### 4. PostHog (Optioneel - voor analytics)
-
-```
-NEXT_PUBLIC_POSTHOG_KEY=jouw_posthog_key
-NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
-POSTHOG_API_KEY=jouw_posthog_api_key
-NEXT_PUBLIC_POSTHOG_PROJECT_ID=jouw_project_id
-```
-
 ### Stap 3: Redeploy
 
 Na het toevoegen van de environment variables:

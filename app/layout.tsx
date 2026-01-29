@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
-import { PostHogProviderWrapper } from "@/lib/posthog";
+import { AnalyticsTracker } from "./components/AnalyticsTracker";
 import { StructuredData } from "./components/StructuredData";
 
 export const viewport: Viewport = {
@@ -64,9 +64,8 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${spaceGrotesk.variable} antialiased`}
       >
-        <PostHogProviderWrapper>
+        <AnalyticsTracker />
         {children}
-        </PostHogProviderWrapper>
       </body>
     </html>
   );

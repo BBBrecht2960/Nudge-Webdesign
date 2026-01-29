@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
-import { posthog } from '@/lib/posthog';
+import { track } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
 
 const faqs = [
@@ -48,9 +48,7 @@ export function FAQ() {
       setOpenIndex(null);
     } else {
       setOpenIndex(index);
-      posthog?.capture('faq_expanded', {
-        faq_question: faqs[index].question,
-      });
+      track('faq_expanded', { faq_question: faqs[index].question });
     }
   };
 

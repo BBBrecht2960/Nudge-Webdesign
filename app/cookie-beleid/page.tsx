@@ -23,7 +23,7 @@ export default function CookieBeleidPage() {
           
           <h3>Analytische cookies</h3>
           <p>
-            Wij gebruiken PostHog voor analytische doeleinden om te begrijpen hoe bezoekers onze website gebruiken. Deze cookies verzamelen informatie over:
+            Wij registreren intern (in onze eigen database) hoe bezoekers onze website gebruiken, zonder cookies van derden voor analytics. We slaan o.a. op:
           </p>
           <ul>
             <li>Welke pagina's u bezoekt</li>
@@ -49,10 +49,7 @@ export default function CookieBeleidPage() {
         <section>
           <h2>4. Cookies van derden</h2>
           <p>
-            Onze website gebruikt PostHog voor analytics. Deze service kan cookies plaatsen op uw apparaat. Voor meer informatie over hoe PostHog cookies gebruikt, raadpleeg hun{' '}
-            <a href="https://posthog.com/privacy" target="_blank" rel="noopener noreferrer">
-              privacybeleid
-            </a>.
+            Voor analytics gebruiken we geen externe diensten; gegevens worden intern opgeslagen. Andere diensten (bijv. hosting) kunnen wel eigen cookies gebruiken; zie hun respectieve privacybeleiden.
           </p>
         </section>
 

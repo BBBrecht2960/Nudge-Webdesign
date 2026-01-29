@@ -224,14 +224,7 @@ export default function AnalyticsPage() {
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <p className="text-red-800 text-sm break-words">
-            {error}
-            {error.includes('API key') && (
-              <span className="block mt-2">
-                Voeg <code className="bg-red-100 px-1 rounded">POSTHOG_API_KEY</code> toe aan je <code className="bg-red-100 px-1 rounded">.env.local</code>
-              </span>
-            )}
-          </p>
+          <p className="text-red-800 text-sm break-words">{error}</p>
         </div>
       )}
 
@@ -258,31 +251,38 @@ export default function AnalyticsPage() {
                 </select>
               </div>
 
+              {/* Hint als er nog geen data is (tabel niet aangemaakt) */}
+              {data && (data.pageviews?.count ?? 0) === 0 && (data.events?.cta_click?.count ?? 0) === 0 && (data.events?.form_submitted?.count ?? 0) === 0 && (
+                <div className="bg-muted border border-border rounded-lg p-4 mb-6 text-sm text-muted-foreground">
+                  Geen data? Voer eenmalig <code className="bg-background px-1 rounded">scripts/analytics-events-table.sql</code> uit in Supabase SQL Editor. Daarna verschijnen pageviews en events hier zodra bezoekers de site gebruiken.
+                </div>
+              )}
+
           {/* Key Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <MetricCard
               title="Paginaweergaven"
-              value={data?.pageviews.count || 0}
-              trend={data?.pageviews.trend}
+              value={data?.pageviews?.count ?? 0}
+              trend={data?.pageviews?.trend}
               icon={<Eye className="w-5 h-5" />}
             />
             <MetricCard
               title="CTA Klikken"
-              value={data?.events.cta_click.count || 0}
-              trend={data?.events.cta_click.trend}
+              value={data?.events?.cta_click?.count ?? 0}
+              trend={data?.events?.cta_click?.trend}
               icon={<MousePointerClick className="w-5 h-5" />}
             />
             <MetricCard
               title="Formulierinzendingen"
-              value={data?.events.form_submitted.count || 0}
-              trend={data?.events.form_submitted.trend}
+              value={data?.events?.form_submitted?.count ?? 0}
+              trend={data?.events?.form_submitted?.trend}
               subtitle="Leads gegenereerd"
               icon={<FileText className="w-5 h-5" />}
             />
             <MetricCard
               title="Pakketweergaven"
-              value={data?.events.package_card_click.count || 0}
-              trend={data?.events.package_card_click.trend}
+              value={data?.events?.package_card_click?.count ?? 0}
+              trend={data?.events?.package_card_click?.trend}
               icon={<ShoppingCart className="w-5 h-5" />}
             />
           </div>
@@ -321,7 +321,7 @@ export default function AnalyticsPage() {
                   <div>
                     <div className="text-xs sm:text-sm text-muted-foreground mb-1">CTA Click Rate</div>
                     <div className="text-xl sm:text-2xl font-bold">
-                      {data?.pageviews.count && data?.events.cta_click.count
+                      {data?.pageviews?.count && data?.events?.cta_click?.count
                         ? ((data.events.cta_click.count / data.pageviews.count) * 100).toFixed(1)
                         : '0'}
                       %
@@ -330,7 +330,7 @@ export default function AnalyticsPage() {
                   <div>
                     <div className="text-xs sm:text-sm text-muted-foreground mb-1">Form Conversion</div>
                     <div className="text-xl sm:text-2xl font-bold">
-                      {data?.pageviews.count && data?.events.form_submitted.count
+                      {data?.pageviews?.count && data?.events?.form_submitted?.count
                         ? ((data.events.form_submitted.count / data.pageviews.count) * 100).toFixed(2)
                         : '0'}
                       %
@@ -339,7 +339,7 @@ export default function AnalyticsPage() {
                   <div>
                     <div className="text-xs sm:text-sm text-muted-foreground mb-1">Package Interest</div>
                     <div className="text-xl sm:text-2xl font-bold">
-                      {data?.pageviews.count && data?.events.package_card_click.count
+                      {data?.pageviews?.count && data?.events?.package_card_click?.count
                         ? ((data.events.package_card_click.count / data.pageviews.count) * 100).toFixed(1)
                         : '0'}
                       %
@@ -778,20 +778,12 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-          {/* PostHog Link */}
+          {/* Info */}
           <div className="bg-muted border border-border rounded-lg p-4 sm:p-6">
-            <h2 className="text-lg sm:text-xl font-bold mb-4 break-words">Gedetailleerde Analytics</h2>
-            <p className="text-muted-foreground mb-4 text-sm sm:text-base break-words">
-              Voor uitgebreide analytics, session recordings, funnels en meer, open het PostHog dashboard.
+            <h2 className="text-lg sm:text-xl font-bold mb-4 break-words">Interne analytics</h2>
+            <p className="text-muted-foreground text-sm sm:text-base break-words">
+              Pageviews en events worden opgeslagen in je eigen database (tabel <code className="bg-background px-1 rounded">analytics_events</code>). Geen externe diensten nodig.
             </p>
-            <a
-              href="https://app.posthog.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block px-4 sm:px-6 py-2 sm:py-3 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm sm:text-base"
-            >
-              PostHog Dashboard openen →
-            </a>
           </div>
         </div>
       )}

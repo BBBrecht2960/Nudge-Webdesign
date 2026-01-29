@@ -3,11 +3,11 @@
 import Image from 'next/image';
 import { FileText, Building2, Rocket } from 'lucide-react';
 import { Button } from './Button';
-import { posthog } from '@/lib/posthog';
+import { track } from '@/lib/analytics';
 
 export function PackagesPreview() {
   const handlePackageClick = (packageName: string) => {
-    posthog?.capture('package_card_click', {
+    track('package_card_click', {
       package_name: packageName,
       package_type: 'website',
       section: 'packages_preview',
@@ -19,7 +19,7 @@ export function PackagesPreview() {
   };
 
   const handleViewAll = () => {
-    posthog?.capture('cta_click', {
+    track('cta_click', {
       cta_type: 'secondary',
       cta_text: 'Vergelijk alle pakketten',
       section: 'packages_preview',

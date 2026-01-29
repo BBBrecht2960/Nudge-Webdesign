@@ -1,11 +1,11 @@
 'use client';
 
 import { Button } from './Button';
-import { posthog } from '@/lib/posthog';
+import { track } from '@/lib/analytics';
 
 export function FinalCTA() {
   const handleCTA = () => {
-    posthog?.capture('cta_click', {
+    track('cta_click', {
       cta_type: 'primary',
       cta_text: 'Plan een gratis gesprek',
       section: 'final_cta',

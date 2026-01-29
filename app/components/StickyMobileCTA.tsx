@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from './Button';
 import { Phone } from 'lucide-react';
-import { posthog } from '@/lib/posthog';
+import { track } from '@/lib/analytics';
 
 export function StickyMobileCTA() {
   const [show, setShow] = useState(false);
@@ -61,7 +61,7 @@ export function StickyMobileCTA() {
   const phoneNumber = process.env.NEXT_PUBLIC_BUSINESS_PHONE || '+32494299633';
 
   const handleClick = () => {
-    posthog?.capture('sticky_cta_click', {
+    track('sticky_cta_click', {
       cta_type: 'primary',
       cta_text: 'Plan een gratis gesprek',
       section: 'sticky_mobile_bar',
@@ -73,9 +73,7 @@ export function StickyMobileCTA() {
   };
 
   const handlePhoneClick = () => {
-    posthog?.capture('phone_click', {
-      source: 'sticky_mobile_bar',
-    });
+    track('phone_click', { source: 'sticky_mobile_bar' });
   };
 
   return (

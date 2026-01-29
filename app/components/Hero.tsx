@@ -2,11 +2,11 @@
 
 import Image from 'next/image';
 import { Button } from './Button';
-import { posthog } from '@/lib/posthog';
+import { track } from '@/lib/analytics';
 
 export function Hero() {
   const handlePrimaryCTA = () => {
-    posthog?.capture('cta_click', {
+    track('cta_click', {
       cta_type: 'primary',
       cta_text: 'Plan een gratis gesprek',
       section: 'hero',
@@ -19,7 +19,7 @@ export function Hero() {
   };
 
   const handleSecondaryCTA = () => {
-    posthog?.capture('cta_click', {
+    track('cta_click', {
       cta_type: 'secondary',
       cta_text: 'Bekijk pakketten',
       section: 'hero',

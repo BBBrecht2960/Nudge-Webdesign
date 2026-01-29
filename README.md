@@ -6,7 +6,7 @@ Website van Nudge Webdesign, een webdesign agentschap. Gebouwd met Next.js App R
 
 - **Marketing Site**: Conversion-optimized landing page with lead generation
 - **Admin Dashboard**: Lead management system with analytics
-- **PostHog Analytics**: Event tracking and user behavior analysis
+- **Interne analytics**: Pageviews en events in eigen database (Admin → Analytics)
 - **Lead Forms**: GDPR-compliant lead capture with UTM tracking
 - **Responsive Design**: Mobile-first design with sticky CTA bar
 
@@ -16,7 +16,7 @@ Website van Nudge Webdesign, een webdesign agentschap. Gebouwd met Next.js App R
 - **Styling**: Tailwind CSS
 - **UI Components**: Radix UI + custom components
 - **Database**: Supabase (PostgreSQL)
-- **Analytics**: PostHog
+- **Analytics**: Intern (Supabase)
 - **Forms**: React Hook Form + Zod validation
 - **Authentication**: NextAuth.js (for admin dashboard)
 
@@ -51,10 +51,6 @@ Create a `.env.local` file in the root directory:
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
-# PostHog Analytics
-NEXT_PUBLIC_POSTHOG_KEY=your_posthog_project_api_key
-NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
-
 # Authentication
 NEXTAUTH_SECRET=your_random_secret_key_here
 NEXTAUTH_URL=http://localhost:3000
@@ -64,12 +60,9 @@ ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD_HASH=your_bcrypt_hashed_password
 ```
 
-### 4. PostHog Setup
+### 4. Analytics (optioneel)
 
-1. Create a PostHog account at [posthog.com](https://posthog.com)
-2. Create a new project
-3. Copy your Project API Key
-4. Add it to `.env.local`
+Voer `scripts/analytics-events-table.sql` uit in Supabase SQL Editor. Daarna toont Admin → Analytics pageviews en events.
 
 ### 5. Run Development Server
 
@@ -96,7 +89,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
   /thanks             # Thank you page
 /lib
   /db.ts              # Database client
-  /posthog.ts         # PostHog client
+  /analytics.ts       # Internal analytics (track)
   /utils.ts           # Utility functions
 ```
 
@@ -126,8 +119,6 @@ Features:
 Make sure to set all environment variables in your hosting platform:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `NEXT_PUBLIC_POSTHOG_KEY`
-- `NEXT_PUBLIC_POSTHOG_HOST`
 - `NEXTAUTH_SECRET`
 - `NEXTAUTH_URL` (your production URL)
 
@@ -176,11 +167,9 @@ Add LocalBusiness structured data to the homepage for better local SEO. Example:
 }
 ```
 
-## Analytics (PostHog)
+## Analytics
 
-PostHog is alleen actief als `NEXT_PUBLIC_POSTHOG_KEY` in `.env.local` staat. Zie **[docs/POSTHOG.md](./docs/POSTHOG.md)** voor connectie en wat er getracked wordt.
-
-Events o.a.: `page_view`, `page_leave`, autocapture (clicks/forms), `scroll_depth` (25/50/75/100%), session recordings, `cta_click`, `form_started`, `form_submitted`, `package_card_click`, `faq_expanded`, `sticky_cta_click`, `phone_click`, `thank_you_page_view`.
+Analytics zijn intern: pageviews en events worden opgeslagen in de tabel `analytics_events` (Supabase). Voer eenmalig `scripts/analytics-events-table.sql` uit. Events: `$pageview`, `cta_click`, `form_submitted`, `package_card_click`, `scroll_depth`, `sticky_cta_click`, `phone_click`, `thank_you_page_view`, `faq_expanded`.
 
 ## Security
 

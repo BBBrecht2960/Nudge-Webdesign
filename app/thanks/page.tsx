@@ -3,14 +3,14 @@
 import { useEffect } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { Button } from '../components/Button';
-import { posthog } from '@/lib/posthog';
+import { track } from '@/lib/analytics';
 import { useRouter } from 'next/navigation';
 
 export default function ThanksPage() {
   const router = useRouter();
 
   useEffect(() => {
-    posthog?.capture('thank_you_page_view');
+    track('thank_you_page_view');
   }, []);
 
   return (

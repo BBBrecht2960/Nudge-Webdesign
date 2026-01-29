@@ -135,9 +135,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Track in PostHog (server-side if needed)
-    // Note: Client-side tracking is already done in the form component
-
     return NextResponse.json(
       { success: true, lead_id: data.id },
       { 

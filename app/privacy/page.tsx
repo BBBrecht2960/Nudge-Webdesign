@@ -90,7 +90,7 @@ export default function PrivacyPage() {
             <li>Hostingproviders</li>
             <li>E-maildiensten</li>
             <li>Boekhoudsoftware</li>
-            <li>Analytics tools (PostHog)</li>
+            <li>Interne analytics (eigen database)</li>
           </ul>
           <p className="break-words">
             Met deze partijen sluiten wij verwerkersovereenkomsten af zodat jouw gegevens beschermd blijven.
