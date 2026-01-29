@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
+import { requireAdminPermission } from '@/lib/api-security';
 
 // Types for generateCursorPrompt / generateBasicPrompt (DB records are loosely typed)
 interface LeadRecord {
@@ -39,8 +39,9 @@ interface QuoteRecord {
   selectedPackage?: { name?: string };
   selectedOptions?: QuoteOption[];
   extraPages?: number;
-  contentPages?: string[];
+  contentPages?: string[] | number;
   customItems?: QuoteCustomItem[];
+  customLineItems?: Array<{ name?: string; price?: number }>;
   selectedMaintenance?: QuoteMaintenance;
   [key: string]: unknown;
 }
@@ -71,11 +72,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('admin_session');
-    if (!sessionCookie) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
+    const authResult = await requireAdminPermission('can_leads');
+    if ('error' in authResult) return authResult.error;
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -204,10 +202,8 @@ export async function POST(
       .order('created_at', { ascending: true });
 
     // Generate AI prompt for Cursor
-    const cursorPrompt = await generateCursorPrompt(lead, approvedQuote, attachments || [], activities || []);
-
-    // Ensure quote_total is a number (not null/undefined)
     const finalQuoteTotal = quoteTotal !== null && quoteTotal !== undefined ? Number(quoteTotal) : null;
+    const cursorPrompt = await generateCursorPrompt(lead, approvedQuote, attachments || [], activities || [], finalQuoteTotal);
     
     console.log(`[Convert] Creating customer for lead ${leadId} with quote_total: ${finalQuoteTotal}`);
 
@@ -324,6 +320,86 @@ export async function POST(
   }
 }
 
+/** Cursor Build Prompt template die de generator moet vullen (sectie 4). */
+const CURSOR_BUILD_PROMPT_TEMPLATE = `Je bent een senior full-stack engineer. Bouw dit project in dit repo.
+
+CONTEXT
+- ProductType: …
+- Package: …
+- Business: …
+- Primary goal: …
+
+NON-NEGOTIABLE RULES
+- Volg .cursorrules + SECURITY_RULES.md (security + no emojis + admin table layout pattern).
+- Geen gradients; zachte kleuren; geen AI-look.
+
+TECH STACK
+- …
+- …
+
+INFORMATION ARCHITECTURE
+- Routes/pages:
+  - …
+- Components:
+  - …
+- Data model (Supabase):
+  - Tables + RLS intent
+- Roles & permissions:
+  - …
+
+FUNCTIONAL REQUIREMENTS
+Must-have
+- …
+Nice-to-have
+- …
+
+ADMIN REQUIREMENTS
+- Modules:
+  - Producten / Bestellingen / Klanten / Content / …
+- Tabellen: gebruik het vaste scroll→padding/rand→table patroon.
+
+SECURITY & QUALITY CHECKLIST (implement + tests)
+- Request validation: Zod .strict op alle endpoints
+- Rate limiting op: …
+- AuthZ tests per protected route: 3 tests (unauth / wrong role / correct)
+- Secrets: alleen env, nooit client
+
+EXAMPLES TO IMPLEMENT (edge cases)
+1) Contact endpoint:
+   - POST /api/contact met Zod strict schema, rate limit, spam protection (basis), server-side mail hook (stub)
+2) Admin route:
+   - /admin/* protected, deny by default, tests
+3) Admin table:
+   - Table layout pattern + responsive horizontal scroll
+
+DEFINITION OF DONE
+- Build runs
+- Lint/typecheck ok
+- Tests groen
+- Core flows werken: …
+- Deployment ready (Vercel)
+
+OUT OF SCOPE
+- …
+OPEN QUESTIONS (als TODO in code + aparte lijst)
+- …`;
+
+/** Lead input velden die altijd gecapteerd moeten worden (intake/checklist). */
+const LEAD_INPUT_CHECKLIST = [
+  'Type: website / webshop / webapp',
+  'Doel: leads / verkoop / bookings / info',
+  'Doelgroep + landen',
+  'Pagina\'s (min): Home, Over, Diensten/Product, Contact, Privacy',
+  'Features: website (contactform, CMS, booking) | webshop (payments, shipping, returns, varianten, BTW) | webapp (accounts, rollen, dashboards, CRUD, notificaties)',
+  'Admin modules: producten, orders, klanten, content, settings, users/roles',
+  'Design: 3 woorden + 2 voorbeelden (urls); niet: gradients, AI-look',
+  'Content status: teksten/foto\'s klaar?',
+  'SEO: lokaal/landelijk, blog ja/nee',
+  'Integraties: Mailchimp/Klaviyo, CRM, PayPal/Stripe/Payconiq/PayFast, boekingstool',
+  'Onderhoud: Starter/Business/Growth (wat zit erin)',
+  'Deadline + launch must-haves',
+];
+
 // Generate AI prompt for Cursor based on lead data
 async function generateCursorPrompt(
   lead: LeadRecord,
@@ -333,10 +409,8 @@ async function generateCursorPrompt(
   quoteTotal: number | null = null
 ): Promise<string> {
   try {
-    // Check if OpenAI API key is configured
     const openaiApiKey = process.env.OPENAI_API_KEY;
     if (!openaiApiKey) {
-      // Return a basic prompt if AI is not configured
       return generateBasicPrompt(lead, quote, attachments, activities, quoteTotal);
     }
 
@@ -422,75 +496,57 @@ Als het een andere afbeelding is, beschrijf wat je ziet en hoe het relevant is v
       }
     }
 
-    // Build comprehensive context for AI
-    let context = `# Project Brief: ${lead.company_name || lead.name}\n\n`;
-    
-    context += `## Contact Informatie\n`;
-    context += `- Naam: ${lead.name}\n`;
-    context += `- Email: ${lead.email}\n`;
-    context += `- Telefoon: ${lead.phone || 'Niet opgegeven'}\n`;
-    context += `- Bedrijf: ${lead.company_name || 'Niet opgegeven'}\n`;
-    context += `- Bedrijfsgrootte: ${lead.company_size || 'Niet opgegeven'}\n`;
-    context += `- BTW Nummer: ${lead.vat_number || 'Niet opgegeven'}\n`;
-    context += `- Adres: ${lead.company_address || ''} ${lead.company_postal_code || ''} ${lead.company_city || ''} ${lead.company_country || ''}\n`;
-    context += `- Website: ${lead.company_website || 'Niet opgegeven'}\n`;
-    if (lead.assigned_to) {
-      context += `- Toegewezen aan: ${lead.assigned_to}\n`;
-    }
-    context += '\n';
+    // Build context for AI: lead input velden + offerte (voor invullen template)
+    const packageName = quote?.selectedPackage?.name || lead.package_interest || 'Website';
+    const isWebshop = packageName.toLowerCase().includes('webshop') || packageName.toLowerCase().includes('e-commerce');
+    const isWebapp = packageName.toLowerCase().includes('webapp') || packageName.toLowerCase().includes('web app');
+    const productType = isWebapp ? 'webapp' : isWebshop ? 'webshop' : 'website';
+    const contextTotal = quoteTotal !== null && quoteTotal !== undefined ? quoteTotal : (quote?.total_price || 0);
 
-    if (lead.package_interest) {
-      context += `## Interesse in Pakket\n${lead.package_interest}\n\n`;
-    }
+    let context = `# Lead input (gebruik dit om de Cursor Build Prompt template in te vullen)\n\n`;
+    context += `## CONTEXT-velden\n`;
+    context += `- ProductType: ${productType}\n`;
+    context += `- Package: ${packageName}\n`;
+    context += `- Business: ${lead.company_name || lead.name} | ${lead.company_website || '—'} | ${[lead.company_address, lead.company_postal_code, lead.company_city, lead.company_country].filter(Boolean).join(', ') || '—'}\n`;
+    context += `- Primary goal: ${lead.package_interest || lead.message || '—'}\n\n`;
 
-    if (lead.current_website_status) {
-      context += `## Huidige Website Status\n${lead.current_website_status}\n\n`;
-    }
+    context += `## Contact\n`;
+    context += `- Naam: ${lead.name} | Email: ${lead.email} | Telefoon: ${lead.phone || '—'}\n`;
+    context += `- BTW: ${lead.vat_number || '—'} | Bedrijfsgrootte: ${lead.company_size || '—'}\n\n`;
 
-    if (lead.message) {
-      context += `## Bericht van Klant\n${lead.message}\n\n`;
+    context += `## Pagina's & features (uit offerte)\n`;
+    context += `- Minimaal: Home, Over, Diensten/Product, Contact, Privacy\n`;
+    if (quote?.extraPages && quote.extraPages > 0) context += `- Extra pagina's: ${quote.extraPages}\n`;
+    if (quote?.contentPages && (Array.isArray(quote.contentPages) ? quote.contentPages.length > 0 : true)) context += `- Content pagina's: ${Array.isArray(quote.contentPages) ? quote.contentPages.join(', ') : String(quote.contentPages)}\n`;
+    if (quote?.selectedOptions?.length) {
+      context += `- Features:\n`;
+      quote.selectedOptions.forEach((opt: QuoteOption) => {
+        context += `  - ${opt.name}${opt.description ? `: ${opt.description}` : ''}\n`;
+      });
     }
+    const customItems = quote?.customItems ?? quote?.customLineItems;
+    if (customItems?.length) {
+      customItems.forEach((item: QuoteCustomItem & { name?: string }) => {
+        context += `  - ${item.name ?? 'Custom item'} (custom)\n`;
+      });
+    }
+    context += `\n`;
 
-    if (lead.pain_points && lead.pain_points.length > 0) {
-      context += `## Uitdagingen & Pain Points\n${lead.pain_points.map((p: string) => `- ${p}`).join('\n')}\n\n`;
-    }
+    context += `## Admin modules (concreet)\n`;
+    if (isWebshop) context += `- producten, orders, klanten, content, settings\n`;
+    else context += `- klanten, content, settings\n`;
+    context += `\n`;
 
-    if (quote) {
-      context += `## Goedgekeurde Offerte - Technische Requirements\n`;
-      context += `- Pakket Type: ${quote.selectedPackage?.name || 'Niet gespecificeerd'}\n`;
-      // Use quoteTotal parameter if available, otherwise fallback to quote.total_price
-      const contextTotal = quoteTotal !== null && quoteTotal !== undefined ? quoteTotal : (quote.total_price || 0);
-      context += `- Totaal Budget: €${Number(contextTotal).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
-      
-      if (quote.selectedOptions && quote.selectedOptions.length > 0) {
-        context += `\n### Functionaliteiten (Verplicht):\n`;
-        quote.selectedOptions.forEach((opt: QuoteOption) => {
-          context += `- ${opt.name}`;
-          if (opt.description) context += `: ${opt.description}`;
-          context += `\n`;
-        });
-      }
-      
-      if (quote.extraPages && quote.extraPages > 0) {
-        context += `\n- Extra pagina's: ${quote.extraPages}\n`;
-      }
-      
-      if (quote.contentPages && quote.contentPages.length > 0) {
-        context += `\n- Content pagina's: ${quote.contentPages.join(', ')}\n`;
-      }
-      
-      if (quote.customItems && quote.customItems.length > 0) {
-        context += `\n### Aangepaste Features:\n`;
-        quote.customItems.forEach((item: QuoteCustomItem) => {
-          context += `- ${item.name}: €${item.price}\n`;
-        });
-      }
-      
-      if (quote.selectedMaintenance) {
-        context += `\n- Onderhoud: ${quote.selectedMaintenance.name} (€${quote.selectedMaintenance.price}/maand)\n`;
-      }
-      context += '\n';
+    context += `## Budget & onderhoud\n`;
+    context += `- Totaal: €${Number(contextTotal).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
+    if (quote?.selectedMaintenance) {
+      context += `- Onderhoud: ${quote.selectedMaintenance.name} (€${quote.selectedMaintenance.price}/maand)\n`;
     }
+    context += `\n`;
+
+    if (lead.message) context += `## Bericht klant\n${lead.message}\n\n`;
+    if (lead.pain_points?.length) context += `## Pain points\n${lead.pain_points.map((p: string) => `- ${p}`).join('\n')}\n\n`;
+    if (lead.current_website_status) context += `## Huidige website status\n${lead.current_website_status}\n\n`;
 
     // Add attachment analysis
     if (attachmentAnalysis) {
@@ -530,7 +586,12 @@ Als het een andere afbeelding is, beschrijf wat je ziet en hoe het relevant is v
       });
     }
 
-    // Call OpenAI API to generate comprehensive prompt
+    // Lead input checklist (zodat prompt nooit leeg is)
+    context += `## Lead input checklist (invullen waar van toepassing)\n`;
+    context += LEAD_INPUT_CHECKLIST.map((item) => `- ${item}`).join('\n');
+    context += '\n\n';
+
+    // Call OpenAI API: output moet exact het Cursor Build Prompt template volgen
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -542,38 +603,30 @@ Als het een andere afbeelding is, beschrijf wat je ziet en hoe het relevant is v
         messages: [
           {
             role: 'system',
-            content: `Je bent een expert web developer die DIRECT BRUIKBARE Cursor AI prompts genereert.
+            content: `Je bent een expert die Cursor Build Prompts genereert. Je output moet EXACT het onderstaande template volgen. Vul alle secties in op basis van de projectinformatie. Vervang "…" door concrete inhoud. Behoud de sectiekoppen en structuur letterlijk.
 
-BELANGRIJK: Je genereert GEEN opsomming of project brief. Je genereert een DIRECTE PROMPT die een developer kan copy-pasten in Cursor om direct te beginnen met coden.
+TEMPLATE die je moet vullen:
 
-De prompt moet:
-1. Direct instructies geven aan Cursor (gebruik "Maak...", "Implementeer...", "Creëer...")
-2. Een complete project setup beschrijven
-3. Alle technische details bevatten (tech stack, structuur, regels)
-4. Design specificaties bevatten (kleuren, fonts, stijl)
-5. Functionaliteiten in detail beschrijven
-6. Code structuur en best practices definiëren
+${CURSOR_BUILD_PROMPT_TEMPLATE}
 
-Format: Begin direct met instructies. Geen "Project Brief" of opsommingen. Directe, actieve instructies voor Cursor.`,
+Regels:
+- Output is ALLEEN de ingevulde prompt (geen uitleg ervoor of erna).
+- CONTEXT: ProductType (website/webshop/webapp), Package (naam uit offerte), Business (bedrijfsnaam + korte beschrijving), Primary goal (doel van de site).
+- NON-NEGOTIABLE RULES: letterlijk overnemen ( .cursorrules + SECURITY_RULES.md; geen gradients, geen AI-look ).
+- TECH STACK: Next.js, Tailwind, Supabase, Vercel; evt. next-intl bij meertaligheid.
+- INFORMATION ARCHITECTURE: routes/pagina's, componenten, Supabase-tabellen + RLS, rollen.
+- FUNCTIONAL REQUIREMENTS: must-have uit offerte + lead; nice-to-have waar relevant.
+- ADMIN REQUIREMENTS: modules (producten/orders/klanten/content/settings); tabelpatroon: scroll→padding/rand→table.
+- SECURITY & QUALITY CHECKLIST: Zod .strict, rate limiting, 3 AuthZ tests per route, secrets alleen in env.
+- EXAMPLES TO IMPLEMENT: contact endpoint, admin route, admin table (zoals in template).
+- DEFINITION OF DONE, OUT OF SCOPE, OPEN QUESTIONS: concreet invullen.`,
           },
           {
             role: 'user',
-            content: `Genereer een DIRECTE, ACTIEVE Cursor prompt voor dit project. 
-
-GEEN opsomming. GEEN project brief. DIRECTE instructies die Cursor kan uitvoeren.
-
-De prompt moet beginnen met concrete instructies zoals:
-"Maak een [project type] met de volgende specificaties:
-- Tech stack: [exacte stack]
-- Design: [kleuren, fonts, stijl]
-- Functionaliteiten: [lijst met details]
-- Project structuur: [folder layout]
-- Code regels: [best practices]"
-
-Analyseer deze project informatie en genereer een directe, actieve prompt:\n\n${context}`,
+            content: `Vul het Cursor Build Prompt template volledig in op basis van deze projectinformatie. Output alleen de ingevulde prompt.\n\n${context}`,
           },
         ],
-        temperature: 0.7,
+        temperature: 0.5,
         max_tokens: 4000,
       }),
     });
@@ -598,143 +651,104 @@ Analyseer deze project informatie en genereer een directe, actieve prompt:\n\n${
   }
 }
 
-// Fallback: Generate basic prompt without AI
+// Fallback: Generate Cursor Build Prompt template (zonder AI) – zelfde structuur als AI-output
 function generateBasicPrompt(
   lead: LeadRecord,
   quote: QuoteRecord | null,
-  attachments: AttachmentRecord[],
-  activities: ActivityRecord[],
+  _attachments: AttachmentRecord[],
+  _activities: ActivityRecord[],
   quoteTotal: number | null = null
 ): string {
-  // Determine project type from package
   const packageName = quote?.selectedPackage?.name || lead.package_interest || 'Website';
   const isWebshop = packageName.toLowerCase().includes('webshop') || packageName.toLowerCase().includes('e-commerce');
-  const isMultiLang = quote?.selectedOptions?.some((opt: QuoteOption) => opt.name?.toLowerCase().includes('multi-language') || opt.name?.toLowerCase().includes('meertalig'));
-  
-  // Get total price - prioritize quoteTotal from database, fallback to quote.total_price
+  const isWebapp = packageName.toLowerCase().includes('webapp') || packageName.toLowerCase().includes('web app');
+  const productType = isWebapp ? 'webapp' : isWebshop ? 'webshop' : 'website';
   const totalPrice = quoteTotal !== null && quoteTotal !== undefined ? quoteTotal : (quote?.total_price || 0);
   const formattedPrice = Number(totalPrice).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  
-  let prompt = `Maak een ${isWebshop ? 'webshop' : 'website'} project voor ${lead.company_name || lead.name} met de volgende specificaties:\n\n`;
+  const isMultiLang = quote?.selectedOptions?.some((opt: QuoteOption) => opt.name?.toLowerCase().includes('multi-language') || opt.name?.toLowerCase().includes('meertalig'));
 
-  // Tech Stack
-  prompt += `## Tech Stack\n`;
-  prompt += `- Framework: Next.js 16+ (App Router)\n`;
-  prompt += `- Styling: Tailwind CSS\n`;
-  prompt += `- Database: Supabase (PostgreSQL)\n`;
-  prompt += `- Authentication: Supabase Auth (indien nodig)\n`;
-  prompt += `- Deployment: Vercel\n`;
-  if (isMultiLang) {
-    prompt += `- Internationalisatie: next-intl of i18next\n`;
-  }
-  prompt += `\n`;
-
-  // Design & Stijl
-  prompt += `## Design & Stijl\n`;
-  prompt += `- Kleuren: Gebruik een modern, professioneel kleurenschema\n`;
-  prompt += `- Typografie: System fonts (Inter, -apple-system, sans-serif)\n`;
-  prompt += `- Layout: Responsive, mobile-first design\n`;
-  prompt += `- Componenten: Herbruikbare React componenten met Tailwind CSS\n`;
-  if (attachments && attachments.some((att: AttachmentRecord) => att.file_type?.startsWith('image/'))) {
-    prompt += `- Design referenties: Zie bijgevoegde moodboards/designs voor specifieke kleuren en stijl\n`;
-  }
-  prompt += `\n`;
-
-  // Functionaliteiten
-  prompt += `## Functionaliteiten\n`;
-  if (quote?.selectedPackage) {
-    prompt += `- Basis pakket: ${quote.selectedPackage.name}\n`;
-  }
-  
-  if (quote?.selectedOptions && quote.selectedOptions.length > 0) {
-    prompt += `- Extra features:\n`;
+  const mustHave: string[] = [];
+  if (quote?.selectedOptions?.length) {
     quote.selectedOptions.forEach((opt: QuoteOption) => {
-      prompt += `  - ${opt.name}`;
-      if (opt.description) prompt += `: ${opt.description}`;
-      prompt += `\n`;
+      mustHave.push(`${opt.name}${opt.description ? `: ${opt.description}` : ''}`);
     });
   }
-  
-  if (quote?.extraPages && quote.extraPages > 0) {
-    prompt += `- Extra pagina's: ${quote.extraPages} extra pagina's\n`;
+  if (quote?.extraPages && quote.extraPages > 0) mustHave.push(`Extra pagina's: ${quote.extraPages}`);
+  if (quote?.contentPages && (Array.isArray(quote.contentPages) ? quote.contentPages.length > 0 : true)) mustHave.push(`Content pagina's: ${Array.isArray(quote.contentPages) ? quote.contentPages.join(', ') : String(quote.contentPages)}`);
+  const customItemsBasic = quote?.customItems ?? quote?.customLineItems;
+  if (customItemsBasic?.length) {
+    customItemsBasic.forEach((item: QuoteCustomItem & { name?: string }) => mustHave.push(`${item.name ?? 'Custom'} (custom)`));
   }
-  
-  if (quote?.contentPages && quote.contentPages.length > 0) {
-    prompt += `- Content pagina's: ${quote.contentPages.join(', ')}\n`;
-  }
-  
-  if (quote?.customItems && quote.customItems.length > 0) {
-    prompt += `- Aangepaste features:\n`;
-    quote.customItems.forEach((item: QuoteCustomItem) => {
-      prompt += `  - ${item.name}\n`;
-    });
-  }
-  
-  if (isWebshop) {
-    prompt += `- Webshop functionaliteiten: Product catalogus, winkelwagen, checkout, betaling integratie\n`;
-  }
-  
-  if (isMultiLang) {
-    prompt += `- Meertaligheid: Nederlands, Frans, Engels\n`;
-  }
-  prompt += `\n`;
+  if (isWebshop) mustHave.push('Product catalogus, winkelwagen, checkout, betaling');
+  if (isMultiLang) mustHave.push('Meertaligheid NL/FR/EN');
 
-  // Project Structuur
-  prompt += `## Project Structuur\n`;
-  prompt += `\`\`\`\n`;
-  prompt += `/\n`;
-  prompt += `├── app/              # Next.js App Router\n`;
-  prompt += `│   ├── (routes)/     # Route groepen\n`;
-  prompt += `│   ├── api/          # API routes\n`;
-  prompt += `│   └── components/   # React componenten\n`;
-  prompt += `├── lib/              # Utilities en helpers\n`;
-  prompt += `├── public/           # Static assets\n`;
-  prompt += `└── types/            # TypeScript types\n`;
-  prompt += `\`\`\`\n\n`;
+  const adminModules = isWebshop ? 'Producten, Bestellingen, Klanten, Content, Settings' : 'Klanten, Content, Settings';
 
-  // Code Regels
-  prompt += `## Code Regels & Best Practices\n`;
-  prompt += `- Gebruik TypeScript voor type safety\n`;
-  prompt += `- Componenten: Function components met TypeScript\n`;
-  prompt += `- Styling: Tailwind CSS utility classes\n`;
-  prompt += `- State management: React hooks (useState, useEffect)\n`;
-  prompt += `- API calls: Server-side in API routes, client-side met fetch\n`;
-  prompt += `- Error handling: Try-catch blocks, user-friendly error messages\n`;
-  prompt += `- Responsive: Mobile-first, breakpoints: sm (640px), md (768px), lg (1024px), xl (1280px)\n`;
-  prompt += `- Performance: Image optimization, code splitting, lazy loading\n`;
-  prompt += `- SEO: Metadata per pagina, structured data, sitemap\n`;
-  prompt += `\n`;
+  let prompt = `Je bent een senior full-stack engineer. Bouw dit project in dit repo.
 
-  // Klant Specifieke Info
-  if (lead.message) {
-    prompt += `## Klant Specifieke Requirements\n`;
-    prompt += `${lead.message}\n\n`;
-  }
+CONTEXT
+- ProductType: ${productType}
+- Package: ${packageName}
+- Business: ${lead.company_name || lead.name} | ${lead.company_website || '—'}
+- Primary goal: ${lead.package_interest || lead.message || 'Leads/verkoop/info'}
 
-  if (lead.pain_points && lead.pain_points.length > 0) {
-    prompt += `## Uitdagingen & Focus Punten\n`;
-    lead.pain_points.forEach((p: string) => {
-      prompt += `- ${p}\n`;
-    });
-    prompt += `\n`;
-  }
+NON-NEGOTIABLE RULES
+- Volg .cursorrules + SECURITY_RULES.md (security + no emojis + admin table layout pattern).
+- Geen gradients; zachte kleuren; geen AI-look.
 
-  // Budget
-  if (totalPrice > 0) {
-    prompt += `## Budget & Scope\n`;
-    prompt += `- Totaal budget: €${formattedPrice}\n`;
-    prompt += `- Focus op core functionaliteiten binnen budget\n`;
-    prompt += `\n`;
-  }
+TECH STACK
+- Next.js 16+ (App Router), TypeScript
+- Tailwind CSS
+- Supabase (PostgreSQL, Auth indien nodig)
+${isMultiLang ? '- next-intl of i18next\n' : ''}- Vercel deployment
 
-  // Volgende Stappen
-  prompt += `## Start Instructies\n`;
-  prompt += `1. Initialiseer Next.js project met TypeScript en Tailwind CSS\n`;
-  prompt += `2. Setup Supabase database en configuratie\n`;
-  prompt += `3. Creëer basis project structuur\n`;
-  prompt += `4. Implementeer core functionaliteiten volgens offerte\n`;
-  prompt += `5. Test alle features en responsive design\n`;
-  prompt += `6. Deploy naar Vercel\n`;
+INFORMATION ARCHITECTURE
+- Routes/pages: Home, Over, Diensten/Product, Contact, Privacy (+ evt. extra uit offerte)
+- Components: Herbruikbare React componenten, Tailwind
+- Data model (Supabase): tabellen voor leads/klanten/content; RLS per rol
+- Roles & permissions: admin (full), public (read/contact)
+
+FUNCTIONAL REQUIREMENTS
+Must-have
+${mustHave.length ? mustHave.map((m) => `- ${m}`).join('\n') : '- Contactformulier, basis pagina\'s, responsive'}
+Nice-to-have
+- SEO (metadata, sitemap), performance (images, lazy load)
+
+ADMIN REQUIREMENTS
+- Modules: ${adminModules}
+- Tabellen: gebruik het vaste scroll→padding/rand→table patroon.
+
+SECURITY & QUALITY CHECKLIST (implement + tests)
+- Request validation: Zod .strict op alle endpoints
+- Rate limiting op: contact, login, signup
+- AuthZ tests per protected route: 3 tests (unauth / wrong role / correct)
+- Secrets: alleen env, nooit client
+
+EXAMPLES TO IMPLEMENT (edge cases)
+1) Contact endpoint:
+   - POST /api/contact met Zod strict schema, rate limit, spam protection (basis), server-side mail hook (stub)
+2) Admin route:
+   - /admin/* protected, deny by default, tests
+3) Admin table:
+   - Table layout pattern + responsive horizontal scroll
+
+DEFINITION OF DONE
+- Build runs
+- Lint/typecheck ok
+- Tests groen
+- Core flows werken: contact, admin inlog, basis CRUD
+- Deployment ready (Vercel)
+
+OUT OF SCOPE
+- (invullen indien van toepassing)
+
+OPEN QUESTIONS (als TODO in code + aparte lijst)
+- (invullen indien van toepassing)
+`;
+
+  if (totalPrice > 0) prompt += `\nBudget: €${formattedPrice}\n`;
+  if (lead.message) prompt += `\nBericht klant: ${lead.message}\n`;
+  if (lead.pain_points?.length) prompt += `\nPain points: ${lead.pain_points.join('; ')}\n`;
 
   return prompt;
 }

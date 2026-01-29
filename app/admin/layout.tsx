@@ -5,7 +5,14 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Button } from '../components/Button';
-import { LogOut, LayoutDashboard, Users, BarChart3, Menu, X, Briefcase, Moon, Sun, Plus } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, BarChart3, Menu, X, Briefcase, Moon, Sun, Plus, UserCog } from 'lucide-react';
+
+type AdminPermissions = {
+  can_leads: boolean;
+  can_customers: boolean;
+  can_analytics: boolean;
+  can_manage_users: boolean;
+};
 
 function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -15,6 +22,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+  const [permissions, setPermissions] = useState<AdminPermissions | null>(null);
 
   // Sync dark mode preference from localStorage after mount
   useEffect(() => {
@@ -39,7 +47,6 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // httpOnly cookie is niet leesbaar via document.cookie → check via API
     const checkSession = async () => {
       if (pathname === '/admin') {
         if (isDebug) console.log('[Admin Layout] pathname=/admin -> skip session check');
@@ -54,6 +61,8 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
           router.replace('/admin');
           return;
         }
+        const data = await res.json();
+        if (data.permissions) setPermissions(data.permissions);
       } catch (e) {
         if (isDebug) console.log('[Admin Layout] session error', e, '-> redirect /admin');
         router.replace('/admin');
@@ -112,39 +121,58 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                   <LayoutDashboard className="w-4 h-4 mr-2 shrink-0" />
                   Overzicht
                 </a>
-                <Link
-                  href="/admin/leads"
-                  className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium whitespace-nowrap ${
-                    pathname === '/admin/leads' || pathname?.startsWith('/admin/leads/')
-                      ? 'border-primary text-foreground'
-                      : 'border-transparent text-muted-foreground hover:border-gray-300 hover:text-foreground'
-                  }`}
-                >
-                  <Users className="w-4 h-4 mr-2 shrink-0" />
-                  Leads
-                </Link>
-                <Link
-                  href="/admin/customers"
-                  className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium whitespace-nowrap ${
-                    pathname === '/admin/customers' || pathname?.startsWith('/admin/customers/')
-                      ? 'border-primary text-foreground'
-                      : 'border-transparent text-muted-foreground hover:border-gray-300 hover:text-foreground'
-                  }`}
-                >
-                  <Briefcase className="w-4 h-4 mr-2 shrink-0" />
-                  Klanten
-                </Link>
-                <a
-                  href="/admin/analytics"
-                  className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium whitespace-nowrap ${
-                    pathname === '/admin/analytics'
-                      ? 'border-primary text-foreground'
-                      : 'border-transparent text-muted-foreground hover:border-gray-300 hover:text-foreground'
-                  }`}
-                >
-                  <BarChart3 className="w-4 h-4 mr-2 shrink-0" />
-                  Analyses
-                </a>
+                {permissions?.can_leads && (
+                  <Link
+                    href="/admin/leads"
+                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium whitespace-nowrap ${
+                      pathname === '/admin/leads' || pathname?.startsWith('/admin/leads/')
+                        ? 'border-primary text-foreground'
+                        : 'border-transparent text-muted-foreground hover:border-gray-300 hover:text-foreground'
+                    }`}
+                  >
+                    <Users className="w-4 h-4 mr-2 shrink-0" />
+                    Leads
+                  </Link>
+                )}
+                {permissions?.can_customers && (
+                  <Link
+                    href="/admin/customers"
+                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium whitespace-nowrap ${
+                      pathname === '/admin/customers' || pathname?.startsWith('/admin/customers/')
+                        ? 'border-primary text-foreground'
+                        : 'border-transparent text-muted-foreground hover:border-gray-300 hover:text-foreground'
+                    }`}
+                  >
+                    <Briefcase className="w-4 h-4 mr-2 shrink-0" />
+                    Klanten
+                  </Link>
+                )}
+                {permissions?.can_analytics && (
+                  <a
+                    href="/admin/analytics"
+                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium whitespace-nowrap ${
+                      pathname === '/admin/analytics'
+                        ? 'border-primary text-foreground'
+                        : 'border-transparent text-muted-foreground hover:border-gray-300 hover:text-foreground'
+                    }`}
+                  >
+                    <BarChart3 className="w-4 h-4 mr-2 shrink-0" />
+                    Analyses
+                  </a>
+                )}
+                {permissions?.can_manage_users && (
+                  <Link
+                    href="/admin/users"
+                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium whitespace-nowrap ${
+                      pathname === '/admin/users'
+                        ? 'border-primary text-foreground'
+                        : 'border-transparent text-muted-foreground hover:border-gray-300 hover:text-foreground'
+                    }`}
+                  >
+                    <UserCog className="w-4 h-4 mr-2 shrink-0" />
+                    Gebruikers
+                  </Link>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -200,58 +228,82 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                   Overzicht
                 </div>
               </a>
-              <Link
-                href="/admin/leads"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-4 py-2 rounded-md text-sm font-medium ${
-                  pathname === '/admin/leads' || pathname?.startsWith('/admin/leads/')
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                }`}
-              >
-                <div className="flex items-center">
-                  <Users className="w-4 h-4 mr-2" />
-                  Leads
-                </div>
-              </Link>
-              <Link
-                href="/admin/leads/new"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-4 py-2 pl-10 rounded-md text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                <div className="flex items-center">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Lead toevoegen
-                </div>
-              </Link>
-              <Link
-                href="/admin/customers"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-4 py-2 rounded-md text-sm font-medium ${
-                  pathname === '/admin/customers' || pathname?.startsWith('/admin/customers/')
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                }`}
-              >
-                <div className="flex items-center">
-                  <Briefcase className="w-4 h-4 mr-2" />
-                  Klanten
-                </div>
-              </Link>
-              <a
-                href="/admin/analytics"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-4 py-2 rounded-md text-sm font-medium ${
-                  pathname === '/admin/analytics'
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                }`}
-              >
-                <div className="flex items-center">
-                  <BarChart3 className="w-4 h-4 mr-2" />
-                  Analyses
-                </div>
-              </a>
+              {permissions?.can_leads && (
+                <>
+                  <Link
+                    href="/admin/leads"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`block px-4 py-2 rounded-md text-sm font-medium ${
+                      pathname === '/admin/leads' || pathname?.startsWith('/admin/leads/')
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <Users className="w-4 h-4 mr-2" />
+                      Leads
+                    </div>
+                  </Link>
+                  <Link
+                    href="/admin/leads/new"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block px-4 py-2 pl-10 rounded-md text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    <div className="flex items-center">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Lead toevoegen
+                    </div>
+                  </Link>
+                </>
+              )}
+              {permissions?.can_customers && (
+                <Link
+                  href="/admin/customers"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block px-4 py-2 rounded-md text-sm font-medium ${
+                    pathname === '/admin/customers' || pathname?.startsWith('/admin/customers/')
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <Briefcase className="w-4 h-4 mr-2" />
+                    Klanten
+                  </div>
+                </Link>
+              )}
+              {permissions?.can_analytics && (
+                <a
+                  href="/admin/analytics"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block px-4 py-2 rounded-md text-sm font-medium ${
+                    pathname === '/admin/analytics'
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <BarChart3 className="w-4 h-4 mr-2" />
+                    Analyses
+                  </div>
+                </a>
+              )}
+              {permissions?.can_manage_users && (
+                <Link
+                  href="/admin/users"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block px-4 py-2 rounded-md text-sm font-medium ${
+                    pathname === '/admin/users'
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <UserCog className="w-4 h-4 mr-2" />
+                    Gebruikers
+                  </div>
+                </Link>
+              )}
               <div className="pt-2 border-t border-border mt-2 space-y-2">
                 <button
                   onClick={toggleDarkMode}

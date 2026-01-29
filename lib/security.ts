@@ -3,10 +3,23 @@ import { createClient } from '@supabase/supabase-js';
 
 /**
  * Security utilities for authentication, rate limiting, and validation
- * 
+ *
  * Note: Some functions require Node.js runtime (crypto module)
  * These should not be used in Edge Runtime (middleware)
  */
+
+/** Admin permission flags (per-profile toggles). */
+export type AdminPermissions = {
+  can_leads: boolean;
+  can_customers: boolean;
+  can_analytics: boolean;
+  can_manage_users: boolean;
+};
+
+export type AdminPermissionKey = keyof AdminPermissions;
+
+/** E-mail van de superbeheerder: altijd alle rechten, niet wijzigbaar via API/UI. */
+export const SUPER_ADMIN_EMAIL = 'brecht.leap@gmail.com';
 
 // Rate limiting store (in-memory for now, should use Redis in production)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
@@ -108,6 +121,69 @@ export async function requireAuth(): Promise<{ authenticated: boolean; email?: s
 }
 
 /**
+ * Get admin permissions for an email from admin_users.
+ * Returns null if user not found or columns not yet migrated.
+ */
+export async function getAdminPermissions(email: string): Promise<AdminPermissions | null> {
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseUrl || !serviceKey) return null;
+
+    const supabase = createClient(supabaseUrl, serviceKey, {
+      auth: { persistSession: false },
+    });
+
+    const { data, error } = await supabase
+      .from('admin_users')
+      .select('can_leads, can_customers, can_analytics, can_manage_users')
+      .eq('email', email.toLowerCase().trim())
+      .single();
+
+    if (error || !data) return null;
+
+    const normalizedEmail = email.toLowerCase().trim();
+    if (normalizedEmail === SUPER_ADMIN_EMAIL) {
+      return {
+        can_leads: true,
+        can_customers: true,
+        can_analytics: true,
+        can_manage_users: true,
+      };
+    }
+    return {
+      can_leads: Boolean(data.can_leads),
+      can_customers: Boolean(data.can_customers),
+      can_analytics: Boolean(data.can_analytics),
+      can_manage_users: Boolean(data.can_manage_users),
+    };
+  } catch (error) {
+    console.error('[Security] getAdminPermissions error:', error);
+    return null;
+  }
+}
+
+/**
+ * Auth check that also loads permissions (for permission-based routes).
+ */
+export async function requireAuthWithPermissions(): Promise<{
+  authenticated: boolean;
+  email?: string;
+  permissions?: AdminPermissions;
+}> {
+  const auth = await requireAuth();
+  if (!auth.authenticated || !auth.email) {
+    return { authenticated: false };
+  }
+  const permissions = await getAdminPermissions(auth.email);
+  return {
+    authenticated: true,
+    email: auth.email,
+    permissions: permissions ?? undefined,
+  };
+}
+
+/**
  * Rate limiting middleware
  * @param identifier - Unique identifier (IP, user ID, etc.)
  * @param maxRequests - Maximum requests allowed
@@ -116,7 +192,7 @@ export async function requireAuth(): Promise<{ authenticated: boolean; email?: s
 export function checkRateLimit(
   identifier: string,
   maxRequests: number = 10,
-  windowMs: number = 60000 // 1 minute default
+  windowMs: number = 60000
 ): { allowed: boolean; remaining: number; resetTime: number } {
   const now = Date.now();
   const key = identifier;

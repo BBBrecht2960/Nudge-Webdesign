@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
+import { requireAdminPermission } from '@/lib/api-security';
 
 export interface SalesPersonStats {
   person: string;
@@ -20,11 +20,8 @@ export interface SalesByPeriodItem {
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('admin_session');
-    if (!sessionCookie) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
+    const authResult = await requireAdminPermission('can_analytics');
+    if ('error' in authResult) return authResult.error;
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;

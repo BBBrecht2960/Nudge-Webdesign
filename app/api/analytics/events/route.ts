@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { requireAdminPermission } from '@/lib/api-security';
 
 // Simplified endpoint for fetching event counts
 export async function GET(request: NextRequest) {
   try {
-    // Check authentication
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('admin_session');
-    if (!sessionCookie) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
+    const authResult = await requireAdminPermission('can_analytics');
+    if ('error' in authResult) return authResult.error;
 
     const posthogApiKey = process.env.POSTHOG_API_KEY;
     const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase, type Lead } from '@/lib/db';
+import { type Lead } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 import { Search, Plus, ArrowUpDown, FileText, LayoutGrid, CheckCircle, XCircle, Sparkles, Phone, Award } from 'lucide-react';
 import { Button } from '@/app/components/Button';
@@ -21,13 +21,10 @@ export default function LeadsPage() {
 
   const loadLeads = async () => {
     try {
-      const { data, error } = await supabase
-        .from('leads')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setLeads(data || []);
+      const res = await fetch('/api/leads', { credentials: 'include' });
+      if (!res.ok) throw new Error('Fout bij ophalen leads');
+      const data = await res.json();
+      setLeads(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error loading leads:', error);
     } finally {

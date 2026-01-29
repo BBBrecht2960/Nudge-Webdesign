@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
-import { requireAuth } from '@/lib/security';
+import { requireAdminPermission } from '@/lib/api-security';
 
 // GET: Fetch the latest quote for a lead
 export async function GET(
@@ -9,11 +8,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('admin_session');
-    if (!sessionCookie) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
+    const authResult = await requireAdminPermission('can_leads');
+    if ('error' in authResult) return authResult.error;
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -86,10 +82,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireAuth();
-    if (!auth.authenticated) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
+    const authResult = await requireAdminPermission('can_leads');
+    if ('error' in authResult) return authResult.error;
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -172,7 +166,7 @@ export async function POST(
           total_price,
           status,
           notes: notes || null,
-          created_by: auth.email?.trim() || null,
+          created_by: authResult.email?.trim() || null,
         })
         .select()
         .single();

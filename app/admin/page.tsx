@@ -1,16 +1,14 @@
 'use client';
 
-import { use, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '../components/Button';
 import { Eye, EyeOff } from 'lucide-react';
 
-type SearchParamsRecord = { [key: string]: string | string[] | undefined };
-
-export default function AdminLoginPage({ searchParams }: { searchParams?: Promise<SearchParamsRecord> }) {
+export default function AdminLoginPage() {
   const router = useRouter();
-  const resolved = use(searchParams ?? Promise.resolve({} as SearchParamsRecord));
-  const isDebug = resolved?.debug === '1' || (Array.isArray(resolved?.debug) && resolved.debug.includes('1'));
+  const searchParams = useSearchParams();
+  const isDebug = searchParams?.get('debug') === '1';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);

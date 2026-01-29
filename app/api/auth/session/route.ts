@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { verifySessionToken, getAdminPermissions } from '@/lib/security';
 
 /**
  * GET /api/auth/session
- * Controleert of er een geldige admin-sessie is (cookie aanwezig).
- * Gebruikt door de admin layout; document.cookie kan httpOnly niet lezen.
+ * Verifieert admin-sessie (token tegen DB) en retourneert email + permissions voor de UI.
  */
 export async function GET() {
   const cookieStore = await cookies();
@@ -14,5 +14,19 @@ export async function GET() {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 
-  return NextResponse.json({ ok: true });
+  const verified = await verifySessionToken(session.value);
+  if (!verified.valid || !verified.email) {
+    return NextResponse.json({ ok: false }, { status: 401 });
+  }
+
+  const permissions = await getAdminPermissions(verified.email);
+  if (!permissions) {
+    return NextResponse.json({ ok: false }, { status: 401 });
+  }
+
+  return NextResponse.json({
+    ok: true,
+    email: verified.email,
+    permissions,
+  });
 }

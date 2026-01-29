@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { supabase, type Lead } from '@/lib/db';
+import { type Lead } from '@/lib/db';
 import { Users, Mail, Briefcase, Euro } from 'lucide-react';
 import { type Customer } from '@/lib/db';
 
@@ -30,8 +30,11 @@ interface DashboardStats {
   recentCustomers: Customer[];
 }
 
+type Permissions = { can_leads?: boolean; can_customers?: boolean };
+
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [permissions, setPermissions] = useState<Permissions | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -40,23 +43,21 @@ export default function DashboardPage() {
 
   const loadDashboardData = async () => {
     try {
-      // Get all leads
-      const { data: allLeads, error: allError } = await supabase
-        .from('leads')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const sessionRes = await fetch('/api/auth/session', { credentials: 'include' });
+      const sessionData = sessionRes.ok ? await sessionRes.json() : null;
+      const perms = sessionData?.permissions ?? null;
+      setPermissions(perms);
 
-      if (allError) throw allError;
+      let allLeads: Lead[] = [];
+      let allCustomers: Customer[] = [];
 
-      // Get all customers
-      const { data: allCustomers, error: customersError } = await supabase
-        .from('customers')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      // Don't fail if customers table doesn't exist
-      if (customersError && customersError.code !== '42P01' && !customersError.message?.includes('does not exist')) {
-        console.error('Error loading customers:', customersError);
+      if (perms?.can_leads) {
+        const leadsRes = await fetch('/api/leads', { credentials: 'include' });
+        if (leadsRes.ok) allLeads = await leadsRes.json();
+      }
+      if (perms?.can_customers) {
+        const customersRes = await fetch('/api/customers', { credentials: 'include' });
+        if (customersRes.ok) allCustomers = await customersRes.json();
       }
 
       // Calculate lead stats
@@ -128,6 +129,8 @@ export default function DashboardPage() {
     <div className="p-4 sm:p-6 lg:p-8">
       <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-8 break-words">Dashboard</h1>
 
+      {permissions?.can_leads && (
+      <>
       {/* Stats Cards - Leads */}
       <div className="mb-6 sm:mb-8">
         <h2 className="text-lg sm:text-xl font-semibold mb-4 text-muted-foreground">Leads</h2>
@@ -154,6 +157,11 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      </>
+      )}
+
+      {permissions?.can_customers && (
+      <>
       {/* Stats Cards - Customers */}
       <div className="mb-6 sm:mb-8">
         <h2 className="text-lg sm:text-xl font-semibold mb-4 text-muted-foreground">Klanten</h2>
@@ -181,10 +189,13 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+      </>
+      )}
 
-      {/* Status Breakdown */}
+      {/* Status Breakdown - only show when we have at least one permission */}
+      {(permissions?.can_leads || permissions?.can_customers) && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 sm:mb-8">
-        {/* Leads Status Breakdown */}
+        {permissions?.can_leads && (
         <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
           <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 break-words">Leads per Status</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
@@ -210,8 +221,8 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-
-        {/* Customers Status Breakdown - label area fixed height so numbers align */}
+        )}
+        {permissions?.can_customers && (
         <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
           <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 break-words">Klanten per Status</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 sm:gap-4">
@@ -253,11 +264,14 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+        )}
       </div>
+      )}
 
       {/* Recent Leads & Customers */}
+      {(permissions?.can_leads || permissions?.can_customers) && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 sm:mb-8">
-        {/* Recent Leads */}
+        {permissions?.can_leads && (
         <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
           <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 break-words">Recente Leads</h2>
           <div className="w-full min-w-0 overflow-x-auto">
@@ -309,8 +323,9 @@ export default function DashboardPage() {
             </Link>
           </div>
         </div>
+        )}
 
-        {/* Recent Customers */}
+        {permissions?.can_customers && (
         <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
           <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 break-words">Recente Klanten</h2>
           {stats.recentCustomers.length === 0 ? (
@@ -386,7 +401,9 @@ export default function DashboardPage() {
             </>
           )}
         </div>
+        )}
       </div>
+      )}
     </div>
   );
 }

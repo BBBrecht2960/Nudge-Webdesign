@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase, type Customer } from '@/lib/db';
+import { type Customer } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 import { Search, Euro, TrendingUp, Briefcase, ArrowUpDown, LayoutGrid, CheckCircle, Wrench, Sparkles, ClipboardCheck, PauseCircle, XCircle } from 'lucide-react';
 
@@ -21,38 +21,19 @@ export default function CustomersPage() {
 
   const loadCustomers = async () => {
     try {
-      const { data, error } = await supabase
-        .from('customers')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        // Check if table doesn't exist
-        if (error.code === '42P01' || error.message?.includes('does not exist') || error.message?.includes('schema cache')) {
-          console.error('Customers tabel bestaat niet. Voer create-customers-table.sql uit in Supabase.');
-          setTableError('Tabel bestaat niet');
-          setCustomers([]);
-          return;
-        }
-        throw error;
+      const res = await fetch('/api/customers', { credentials: 'include' });
+      if (!res.ok) {
+        setTableError('Fout bij ophalen klanten');
+        setCustomers([]);
+        return;
       }
+      const data = await res.json();
       setTableError(null);
-      setCustomers(data || []);
+      setCustomers(Array.isArray(data) ? data : []);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Onbekende fout';
-      const errorCode = (error as { code?: string })?.code;
-      console.error('Error loading customers:', {
-        error,
-        message: errorMessage,
-        code: errorCode,
-      });
-      
-      // Set empty array on error so UI doesn't break
+      console.error('Error loading customers:', error);
       setCustomers([]);
-      // Check if it's a table missing error
-      if (errorCode === '42P01' || errorMessage.includes('does not exist') || errorMessage.includes('schema cache')) {
-        setTableError('Tabel bestaat niet');
-      }
+      setTableError('Fout bij ophalen klanten');
     } finally {
       setIsLoading(false);
     }

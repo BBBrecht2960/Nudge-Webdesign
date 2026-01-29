@@ -1,7 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { checkRateLimit, getClientIP, getRateLimitHeaders, isValidEmail, isValidPhone, sanitizeInput } from '@/lib/security';
+import { requireAdminPermission } from '@/lib/api-security';
 import * as z from 'zod';
+
+// GET: List leads (admin only, requires can_leads)
+export async function GET(request: NextRequest) {
+  const authResult = await requireAdminPermission('can_leads');
+  if ('error' in authResult) return authResult.error;
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceKey) {
+    return NextResponse.json({ error: 'Database niet geconfigureerd' }, { status: 500 });
+  }
+
+  const supabase = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+  const { data, error } = await supabase
+    .from('leads')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching leads:', error);
+    return NextResponse.json({ error: 'Fout bij ophalen leads' }, { status: 500 });
+  }
+  return NextResponse.json(data ?? []);
+}
 
 // Strict validation schema for lead submission
 const leadSchema = z.object({

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { supabase } from '@/lib/db';
 import { hashPassword } from '@/lib/auth';
 
@@ -25,36 +24,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Check authentication - alleen ingelogde admins kunnen nieuwe admins aanmaken
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get('admin_session');
-  
-  if (!sessionCookie) {
-    return NextResponse.json(
-      { error: 'Niet geautoriseerd. Alleen ingelogde admins kunnen nieuwe admins aanmaken.' },
-      { status: 401 }
-    );
-  }
-
-  // Verify session is valid
-  try {
-    const sessionResponse = await fetch(`${request.nextUrl.origin}/api/auth/session`, {
-      headers: {
-        Cookie: `admin_session=${sessionCookie.value}`,
-      },
-    });
-
-    if (!sessionResponse.ok) {
-      return NextResponse.json(
-        { error: 'Ongeldige sessie' },
-        { status: 401 }
-      );
-    }
-  } catch {
-    return NextResponse.json(
-      { error: 'Sessie verificatie mislukt' },
-      { status: 401 }
-    );
+  const { requireAdminPermission } = await import('@/lib/api-security');
+  const authResult = await requireAdminPermission('can_manage_users');
+  if ('error' in authResult) {
+    return authResult.error.status === 403
+      ? NextResponse.json(
+          { error: 'Geen toegang tot dit onderdeel. Alleen gebruikers met rechten voor gebruikersbeheer kunnen nieuwe admins aanmaken.' },
+          { status: 403 }
+        )
+      : authResult.error;
   }
 
   try {

@@ -1,5 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, checkRateLimit, getClientIP, getRateLimitHeaders, isValidUUID } from './security';
+import { requireAuth, requireAuthWithPermissions, checkRateLimit, getClientIP, getRateLimitHeaders, isValidUUID, type AdminPermissionKey, type AdminPermissions } from './security';
+
+/** Result of requireAdminPermission: either an error response or auth data. */
+export type RequireAdminPermissionResult =
+  | { error: NextResponse }
+  | { email: string; permissions: AdminPermissions };
+
+/**
+ * Require admin session and a specific permission.
+ * Returns { error: NextResponse } on 401/403, or { email, permissions } on success.
+ */
+export async function requireAdminPermission(
+  permission: AdminPermissionKey
+): Promise<RequireAdminPermissionResult> {
+  const auth = await requireAuthWithPermissions();
+  if (!auth.authenticated || !auth.email) {
+    return {
+      error: NextResponse.json(
+        { error: 'Niet geautoriseerd. Log in om toegang te krijgen.' },
+        { status: 401 }
+      ),
+    };
+  }
+  if (!auth.permissions) {
+    return {
+      error: NextResponse.json(
+        { error: 'Geen toegang tot dit onderdeel.' },
+        { status: 403 }
+      ),
+    };
+  }
+  if (!auth.permissions[permission]) {
+    return {
+      error: NextResponse.json(
+        { error: 'Geen toegang tot dit onderdeel.' },
+        { status: 403 }
+      ),
+    };
+  }
+  return { email: auth.email, permissions: auth.permissions };
+}
 
 /**
  * Middleware to protect admin API routes
@@ -58,16 +98,33 @@ export function checkAdminRateLimit(
 }
 
 /**
- * Combined security check for admin routes
+ * Combined security check for admin routes.
+ * If permission is provided, also checks that the admin has that permission.
  */
 export async function secureAdminRoute(
   request: NextRequest,
   params?: { id?: string },
-  rateLimitConfig?: { maxRequests?: number; windowMs?: number }
+  rateLimitConfig?: { maxRequests?: number; windowMs?: number },
+  permission?: AdminPermissionKey
 ): Promise<NextResponse | null> {
-  // Check authentication
-  const authError = await requireAdminAuth(request);
-  if (authError) return authError;
+  if (permission) {
+    const auth = await requireAuthWithPermissions();
+    if (!auth.authenticated || !auth.email) {
+      return NextResponse.json(
+        { error: 'Niet geautoriseerd. Log in om toegang te krijgen.' },
+        { status: 401 }
+      );
+    }
+    if (!auth.permissions || !auth.permissions[permission]) {
+      return NextResponse.json(
+        { error: 'Geen toegang tot dit onderdeel.' },
+        { status: 403 }
+      );
+    }
+  } else {
+    const authError = await requireAdminAuth(request);
+    if (authError) return authError;
+  }
 
   // Check rate limiting
   const rateLimitError = checkAdminRateLimit(
@@ -86,3 +143,4 @@ export async function secureAdminRoute(
 
   return null; // All checks passed
 }
+

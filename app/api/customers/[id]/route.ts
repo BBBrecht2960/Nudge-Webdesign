@@ -2,6 +2,31 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { secureAdminRoute } from '@/lib/api-security';
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: customerId } = await params;
+  const securityError = await secureAdminRoute(request, { id: customerId }, { maxRequests: 100, windowMs: 60000 }, 'can_customers');
+  if (securityError) return securityError;
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceKey) {
+    return NextResponse.json({ error: 'Database niet geconfigureerd' }, { status: 500 });
+  }
+
+  const supabase = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+  const { data, error } = await supabase.from('customers').select('*').eq('id', customerId).single();
+
+  if (error || !data) {
+    if (error?.code === 'PGRST116') return NextResponse.json({ error: 'Klant niet gevonden' }, { status: 404 });
+    console.error('Error fetching customer:', error);
+    return NextResponse.json({ error: 'Fout bij ophalen klant' }, { status: 500 });
+  }
+  return NextResponse.json(data);
+}
+
 const allowedCustomerUpdateKeys = [
   'name', 'email', 'phone', 'company_name', 'company_size', 'vat_number',
   'company_address', 'company_postal_code', 'company_city', 'company_country', 'company_website', 'bank_account',
@@ -15,7 +40,7 @@ export async function PATCH(
 ) {
   try {
     const { id: customerId } = await params;
-    const securityError = await secureAdminRoute(request, { id: customerId }, { maxRequests: 30, windowMs: 60000 });
+    const securityError = await secureAdminRoute(request, { id: customerId }, { maxRequests: 30, windowMs: 60000 }, 'can_customers');
     if (securityError) return securityError;
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -58,7 +83,7 @@ export async function DELETE(
   try {
     // Security check: authentication, rate limiting, UUID validation
     const { id: customerId } = await params;
-    const securityError = await secureAdminRoute(request, { id: customerId }, { maxRequests: 20, windowMs: 60000 });
+    const securityError = await secureAdminRoute(request, { id: customerId }, { maxRequests: 20, windowMs: 60000 }, 'can_customers');
     if (securityError) return securityError;
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

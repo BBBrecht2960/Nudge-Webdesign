@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { requireAuth } from '@/lib/security';
+import { requireAdminPermission } from '@/lib/api-security';
 import * as z from 'zod';
 
 const adminLeadSchema = z.object({
@@ -13,10 +13,8 @@ const adminLeadSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAuth();
-    if (!auth.authenticated) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
+    const authResult = await requireAdminPermission('can_leads');
+    if ('error' in authResult) return authResult.error;
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -58,7 +56,7 @@ export async function POST(request: NextRequest) {
       company_name: data.company_name?.trim() || null,
       message: data.message?.trim() || null,
       status: 'new' as const,
-      created_by: auth.email?.trim() || null,
+      created_by: authResult.email?.trim() || null,
     };
 
     const { data: lead, error } = await supabase

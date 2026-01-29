@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
+import { requireAdminPermission } from '@/lib/api-security';
+import { isValidUUID } from '@/lib/security';
 
 // GET: Fetch all activities for a lead
 export async function GET(
@@ -8,6 +9,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authResult = await requireAdminPermission('can_leads');
+    if ('error' in authResult) return authResult.error;
+    const { id: leadId } = await params;
+    if (!isValidUUID(leadId)) return NextResponse.json({ error: 'Ongeldige id formaat' }, { status: 400 });
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -19,8 +25,6 @@ export async function GET(
     }
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
-    const { id } = await params;
-    const leadId = id;
 
     const { data, error } = await supabase
       .from('lead_activities')
@@ -47,12 +51,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Check authentication
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('admin_session');
-    if (!sessionCookie) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
+    const authResult = await requireAdminPermission('can_leads');
+    if ('error' in authResult) return authResult.error;
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;

@@ -33,6 +33,26 @@ import {
 
 type LeadTabId = 'overview' | 'bedrijf' | 'activiteiten' | 'offerte';
 
+const COUNTRIES = [
+  'België',
+  'Nederland',
+  'Frankrijk',
+  'Duitsland',
+  'Luxemburg',
+  'Verenigd Koninkrijk',
+  'Spanje',
+  'Italië',
+  'Oostenrijk',
+  'Zwitserland',
+  'Polen',
+  'Portugal',
+  'Zweden',
+  'Denemarken',
+  'Noorwegen',
+  'Ierland',
+  'Andere',
+];
+
 // Component to load and show saved quote info
 function LoadSavedQuoteInfo({ leadId }: { leadId: string }) {
   const [hasQuote, setHasQuote] = useState(false);
@@ -152,7 +172,32 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
   const [isSavingCompany, setIsSavingCompany] = useState(false);
   const [kboLookupLoading, setKboLookupLoading] = useState(false);
   const [kboLookupError, setKboLookupError] = useState<string | null>(null);
+  const [postcodeLookupLoading, setPostcodeLookupLoading] = useState(false);
+  const [postcodeLookupError, setPostcodeLookupError] = useState<string | null>(null);
   const [activeLeadTab, setActiveLeadTab] = useState<LeadTabId>('overview');
+
+  const fetchCityForPostcode = async () => {
+    const pc = companyPostalCode.replace(/\s/g, '').trim();
+    if (pc.length !== 4 || !/^\d{4}$/.test(pc)) {
+      setPostcodeLookupError('Vul een geldige postcode in (4 cijfers).');
+      return;
+    }
+    setPostcodeLookupError(null);
+    setPostcodeLookupLoading(true);
+    try {
+      const res = await fetch(`/api/admin/postcode-lookup?postcode=${encodeURIComponent(pc)}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setPostcodeLookupError(data.error || 'Stad niet gevonden voor deze postcode.');
+        return;
+      }
+      if (data.city) setCompanyCity(data.city);
+    } catch {
+      setPostcodeLookupError('Ophalen mislukt.');
+    } finally {
+      setPostcodeLookupLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!leadId) return;
@@ -169,22 +214,15 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
 
   const loadLeadData = async () => {
     try {
-      // Load lead - use select('*') to get all columns
-      const { data: leadData, error: leadError } = await supabase
-        .from('leads')
-        .select('*')
-        .eq('id', leadId)
-        .single();
-
-      if (leadError) {
-        const errorMessage = leadError.message || leadError.code || String(leadError?.details ?? leadError?.hint ?? 'Unknown error');
-        console.error('Error loading lead:', errorMessage, { code: leadError?.code, leadId });
-        throw new Error(`Failed to load lead: ${errorMessage}`);
+      const leadRes = await fetch(`/api/leads/${leadId}`, { credentials: 'include' });
+      if (!leadRes.ok) {
+        if (leadRes.status === 404) {
+          setLead(null);
+          return;
+        }
+        throw new Error(leadRes.statusText || 'Failed to load lead');
       }
-
-      if (!leadData) {
-        throw new Error('Lead not found');
-      }
+      const leadData = await leadRes.json();
 
       setLead(leadData);
       setAssignedTo((leadData as Lead & { assigned_to?: string }).assigned_to || '');
@@ -298,9 +336,19 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
     }
   };
 
+  const hasMinimalCompanyDetails = Boolean(
+    lead?.company_name?.trim() ||
+    lead?.vat_number?.trim() ||
+    lead?.company_address?.trim() ||
+    (lead?.company_postal_code?.trim() && lead?.company_city?.trim())
+  );
+
   const getNextStatusHint = (currentStatus: string): string | null => {
+    if (currentStatus !== 'converted' && currentStatus !== 'lost' && !hasMinimalCompanyDetails) {
+      return 'Vul eerst bedrijfsgegevens in (tab Bedrijfsgegevens) voordat je de status wijzigt';
+    }
     if (currentStatus === 'new') {
-      const hasContact = activities.some(act => 
+      const hasContact = activities.some(act =>
         ['call', 'email', 'meeting'].includes(act.activity_type)
       );
       if (!hasContact) {
@@ -308,9 +356,10 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
       }
     }
     if (currentStatus === 'contacted') {
-      const hasPositiveContact = activities.some(act => 
-        ['call', 'meeting'].includes(act.activity_type) && 
-        act.description && act.description.length > 20
+      const hasPositiveContact = activities.some(act =>
+        ['call', 'meeting'].includes(act.activity_type) &&
+        act.description &&
+        act.description.length > 20
       );
       if (!hasPositiveContact) {
         return 'Voeg een telefoongesprek of meeting toe met beschrijving';
@@ -337,46 +386,54 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
     const statusOrder = ['new', 'contacted', 'qualified', 'converted'];
     const currentIndex = statusOrder.indexOf(currentStatus);
     const newIndex = statusOrder.indexOf(newStatus);
-    
+
     if (newIndex < currentIndex) {
       return { allowed: false, reason: 'Je kunt niet teruggaan naar een eerdere status' };
     }
 
-    // Status-specific validations
+    // Vooruit in de flow: bedrijfsgegevens zijn verplicht
+    if (newIndex > currentIndex && !hasMinimalCompanyDetails) {
+      return {
+        allowed: false,
+        reason: 'Vul eerst bedrijfsgegevens in (tab Bedrijfsgegevens) voordat je de status wijzigt',
+      };
+    }
+
+    // Status-specifieke validaties
     if (currentStatus === 'new' && newStatus === 'contacted') {
-      const hasContact = activities.some(act => 
+      const hasContact = activities.some(act =>
         ['call', 'email', 'meeting'].includes(act.activity_type)
       );
       if (!hasContact) {
         return {
           allowed: false,
-          reason: 'Voeg eerst een telefoongesprek, e-mail of meeting toe'
+          reason: 'Voeg eerst een telefoongesprek, e-mail of meeting toe',
         };
       }
     }
 
     if (currentStatus === 'contacted' && newStatus === 'qualified') {
-      const hasPositiveContact = activities.some(act => 
-        ['call', 'meeting'].includes(act.activity_type) && 
-        act.description && act.description.length > 20
+      const hasPositiveContact = activities.some(act =>
+        ['call', 'meeting'].includes(act.activity_type) &&
+        act.description &&
+        act.description.length > 20
       );
       if (!hasPositiveContact) {
         return {
           allowed: false,
-          reason: 'Voeg een telefoongesprek of meeting toe met beschrijving'
+          reason: 'Voeg een telefoongesprek of meeting toe met beschrijving',
         };
       }
     }
 
     if (currentStatus === 'qualified' && newStatus === 'converted') {
-      // Check if quote exists in database or if there's a quote_sent activity
-      const hasQuoteActivity = activities.some(act => 
+      const hasQuoteActivity = activities.some(act =>
         act.activity_type === 'quote_sent' || act.activity_type === 'contract_sent'
       );
       if (!hasQuoteInDB && !hasQuoteActivity) {
         return {
           allowed: false,
-          reason: 'Maak eerst een offerte via de "Offerte" knop'
+          reason: 'Maak eerst een offerte via de "Offerte" knop',
         };
       }
     }
@@ -407,13 +464,16 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
     try {
       
       // Update lead status
-      const { error: updateError } = await supabase
-        .from('leads')
-        .update({ status: newStatus })
-        .eq('id', leadId);
-
-
-      if (updateError) throw updateError;
+      const updateRes = await fetch(`/api/leads/${leadId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!updateRes.ok) {
+        const err = await updateRes.json().catch(() => ({}));
+        throw new Error(err.error || updateRes.statusText);
+      }
 
       // Update local state immediately
       setLead({ ...lead, status: newStatus as Lead['status'] });
@@ -757,9 +817,11 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
     try {
       setIsSavingCompany(true);
       
-      const { error } = await supabase
-        .from('leads')
-        .update({
+      const res = await fetch(`/api/leads/${leadId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
           company_name: companyName.trim() || null,
           vat_number: vatNumber.trim() || null,
           company_address: companyAddress.trim() || null,
@@ -768,16 +830,12 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
           company_country: companyCountry.trim() || null,
           company_website: companyWebsite.trim() || null,
           bank_account: bankAccount.trim() || null,
-        })
-        .eq('id', leadId);
-
-      if (error) {
-        // Check if columns don't exist
-        if (error.message?.includes('schema cache') || error.message?.includes('column')) {
-          alert('De bedrijfsgegevens kolommen bestaan nog niet. Voer het SQL script uit: add-company-fields.sql');
-          return;
-        }
-        throw error;
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || 'Fout bij opslaan bedrijfsgegevens');
+        return;
       }
 
       // Update local state
@@ -810,24 +868,16 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
     try {
       setIsSaving(true);
       
-      const { error } = await supabase
-        .from('leads')
-        .update({ assigned_to: email || null })
-        .eq('id', leadId);
-
-      if (error) {
-        // Check if column doesn't exist
-        if (error.message?.includes('assigned_to') || error.message?.includes('schema cache') || error.message?.includes('column')) {
-          const sql = 'ALTER TABLE leads ADD COLUMN IF NOT EXISTS assigned_to VARCHAR(255);';
-          const message = `De assigned_to kolom bestaat nog niet.\n\nVoer deze SQL uit in Supabase SQL Editor:\n\n${sql}\n\nKopieer de SQL hierboven en voer deze uit in je Supabase dashboard.`;
-          alert(message);
-          // Copy to clipboard if possible
-          if (navigator.clipboard) {
-            navigator.clipboard.writeText(sql).catch(() => {});
-          }
-          return;
-        }
-        throw error;
+      const res = await fetch(`/api/leads/${leadId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ assigned_to: email || null }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || 'Fout bij opslaan toegewezen aan');
+        return;
       }
       
       setAssignedTo(email);
@@ -1318,7 +1368,9 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
                         onChange={(e) => setCompanyAddress(e.target.value)}
                         placeholder="Straat en nummer"
                         className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-border rounded-md text-sm sm:text-base"
+                        title="Straat en huisnummer; bij KBO-ophaling wordt dit ingevuld"
                       />
+                      <p className="text-xs text-muted-foreground mt-1">Tip: vul eerst BTW in en klik op &quot;Ophalen uit KBO&quot; om adres te vullen.</p>
                     </div>
                   </div>
                   <div className="min-w-0">
@@ -1342,15 +1394,33 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
                     />
                   </div>
                   <div className="grid sm:grid-cols-3 gap-3 sm:gap-4">
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex flex-col gap-1">
                       <label className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2">Postcode</label>
-                      <input
-                        type="text"
-                        value={companyPostalCode}
-                        onChange={(e) => setCompanyPostalCode(e.target.value)}
-                        placeholder="3500"
-                        className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-border rounded-md text-sm sm:text-base"
-                      />
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={companyPostalCode}
+                          onChange={(e) => { setCompanyPostalCode(e.target.value); setPostcodeLookupError(null); }}
+                          onBlur={() => { if (companyPostalCode.replace(/\s/g, '').length === 4) fetchCityForPostcode(); }}
+                          placeholder="3500"
+                          maxLength={4}
+                          className="flex-1 min-w-0 px-2 sm:px-3 py-1.5 sm:py-2 border border-border rounded-md text-sm sm:text-base"
+                          title="4 cijfers; stad wordt automatisch ingevuld"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={fetchCityForPostcode}
+                          disabled={postcodeLookupLoading || companyPostalCode.replace(/\s/g, '').length !== 4}
+                          className="shrink-0 text-xs sm:text-sm"
+                          title="Zoek stad bij postcode"
+                        >
+                          {postcodeLookupLoading ? '…' : 'Zoek stad'}
+                        </Button>
+                      </div>
+                      {postcodeLookupError && <p className="text-xs text-destructive">{postcodeLookupError}</p>}
+                      <p className="text-xs text-muted-foreground">Vul 4 cijfers in; stad wordt automatisch ingevuld.</p>
                     </div>
                     <div className="min-w-0">
                       <label className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2">Stad</label>
@@ -1360,17 +1430,25 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
                         onChange={(e) => setCompanyCity(e.target.value)}
                         placeholder="Hasselt"
                         className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-border rounded-md text-sm sm:text-base"
+                        title="Wordt ingevuld bij postcode of KBO-ophaling"
                       />
                     </div>
                     <div className="min-w-0">
                       <label className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2">Land</label>
-                      <input
-                        type="text"
-                        value={companyCountry}
+                      <select
+                        value={companyCountry || 'België'}
                         onChange={(e) => setCompanyCountry(e.target.value)}
-                        placeholder="België"
-                        className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-border rounded-md text-sm sm:text-base"
-                      />
+                        className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-border rounded-md text-sm sm:text-base bg-card"
+                      >
+                        {!companyCountry || COUNTRIES.includes(companyCountry) ? null : (
+                          <option value={companyCountry}>{companyCountry}</option>
+                        )}
+                        {COUNTRIES.map((country) => (
+                          <option key={country} value={country}>
+                            {country}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2 pt-2">

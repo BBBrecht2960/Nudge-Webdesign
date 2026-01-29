@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { requireAuthWithPermissions } from '@/lib/security';
 
 function normalizeBelgianVat(vat: string): string | null {
   const cleaned = vat.replace(/\s+/g, '').replace(/\./g, '').toUpperCase();
@@ -70,9 +70,9 @@ async function fetchCbeApi(vatNormalized: string, apiKey: string): Promise<Compa
 }
 
 async function handleLookup(request: NextRequest): Promise<NextResponse> {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get('admin_session');
-  if (!sessionCookie) return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
+  const auth = await requireAuthWithPermissions();
+  if (!auth.authenticated || !auth.permissions) return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
+  if (!auth.permissions.can_leads && !auth.permissions.can_customers) return NextResponse.json({ error: 'Geen toegang tot dit onderdeel.' }, { status: 403 });
   const vatParam = request.nextUrl.searchParams.get('vat');
   if (!vatParam || !vatParam.trim()) return NextResponse.json({ error: 'Geef een BTW-nummer op (bijv. BE0123456789)' }, { status: 400 });
   const vatNormalized = normalizeBelgianVat(vatParam.trim());
