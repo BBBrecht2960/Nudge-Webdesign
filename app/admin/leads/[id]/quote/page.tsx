@@ -476,29 +476,17 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
 
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
 
-  const handleDownloadPDF = async () => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quote/page.tsx:475',message:'PDF download initiated',data:{hasLead:!!lead,hasPackage:!!selectedPackage,isDownloadingPDF},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
-    // #endregion
-    
+  const handleDownloadPDF = async () => {    
     if (!lead || !selectedPackage) {
       alert('Selecteer eerst een pakket voordat je de offerte downloadt.');
       return;
     }
 
-    if (isDownloadingPDF) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quote/page.tsx:482',message:'PDF download prevented - already downloading',data:{isDownloadingPDF},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
-      return;
+    if (isDownloadingPDF) {      return;
     }
 
     try {
       setIsDownloadingPDF(true);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quote/page.tsx:488',message:'Starting PDF generation',data:{leadId,packageId:selectedPackage.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
-      // #endregion
-
       const clientInfo = {
         name: lead.name,
         email: lead.email ?? undefined,
@@ -527,24 +515,10 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
       a.href = url;
       a.download = `Offerte_${lead.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
       a.click();
-      URL.revokeObjectURL(url);
-
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quote/page.tsx:1084',message:'PDF download successful',data:{fileName:a.download},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
-      // #endregion
-    } catch (error) {
-
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quote/page.tsx:1087',message:'PDF generation error',data:{error:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
-      console.error('Error generating PDF:', error);
+      URL.revokeObjectURL(url);    } catch (error) {      console.error('Error generating PDF:', error);
       alert('Fout bij genereren PDF. Probeer het opnieuw.');
     } finally {
-      setIsDownloadingPDF(false);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'quote/page.tsx:1094',message:'PDF download finished',data:{isDownloadingPDF:false},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
-      // #endregion
-    }
+      setIsDownloadingPDF(false);    }
   };
 
   const handleSendQuote = async () => {

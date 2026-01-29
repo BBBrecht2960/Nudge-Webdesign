@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS leads (
   landing_path VARCHAR(500),
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
-  created_by VARCHAR(255)
+  created_by VARCHAR(255),
+  brought_in_by VARCHAR(255)
 );
 
 -- Lead notes table
@@ -64,6 +65,7 @@ CREATE INDEX IF NOT EXISTS idx_leads_created_at ON leads(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_leads_email ON leads(email);
 CREATE INDEX IF NOT EXISTS idx_leads_vat_number ON leads(vat_number);
 CREATE INDEX IF NOT EXISTS idx_leads_created_by ON leads(created_by);
+CREATE INDEX IF NOT EXISTS idx_leads_brought_in_by ON leads(brought_in_by);
 CREATE INDEX IF NOT EXISTS idx_lead_notes_lead_id ON lead_notes(lead_id);
 CREATE INDEX IF NOT EXISTS idx_lead_status_history_lead_id ON lead_status_history(lead_id);
 

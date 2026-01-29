@@ -187,23 +187,11 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
     }
   };
 
-  const handleStatusChange = async (newStatus: string) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:128',message:'Customer status change initiated',data:{customerId,currentStatus:customer?.project_status,newStatus,isSaving},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
-    // #endregion
-    
-    if (!customer || customer.project_status === newStatus) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:130',message:'Customer status change skipped',data:{reason:!customer ? 'no customer' : 'same status'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
-      // #endregion
-      return;
+  const handleStatusChange = async (newStatus: string) => {    
+    if (!customer || customer.project_status === newStatus) {      return;
     }
 
-    if (isSaving) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:133',message:'Customer status change prevented - already saving',data:{isSaving},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
-      return;
+    if (isSaving) {      return;
     }
 
     setIsSaving(true);
@@ -254,30 +242,17 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
       }
 
       // If customer is canceled, also update related lead to "lost"
-      if (newStatus === 'canceled' && customer.lead_id) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:179',message:'Updating related lead to lost',data:{customerId,leadId:customer.lead_id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
-        // #endregion
-        
+      if (newStatus === 'canceled' && customer.lead_id) {        
         try {
           const { error: leadUpdateError } = await supabase
             .from('leads')
             .update({ status: 'lost' })
             .eq('id', customer.lead_id);
-
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:186',message:'Lead update result',data:{hasError:!!leadUpdateError,error:leadUpdateError?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
-          // #endregion
-
           if (leadUpdateError) {
             console.warn('Error updating related lead to lost:', leadUpdateError);
             // Don't fail the customer update, just log the warning
           }
-        } catch (leadErr) {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:191',message:'Lead update exception',data:{error:leadErr instanceof Error ? leadErr.message : String(leadErr)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
-          // #endregion
-          console.warn('Error updating related lead to lost:', leadErr);
+        } catch (leadErr) {          console.warn('Error updating related lead to lost:', leadErr);
         }
       }
 
@@ -359,69 +334,34 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
     }
   };
 
-  const handleDeleteCustomer = async () => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:300',message:'Delete customer initiated',data:{customerId,customerName:customer?.name,deleteConfirmName,isDeleting},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
-    // #endregion
-    
+  const handleDeleteCustomer = async () => {    
     if (!customer || !customerId) return;
     
     const customerDisplayName = customer.company_name || customer.name;
-    if (deleteConfirmName !== customerDisplayName) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:305',message:'Delete confirmation failed',data:{expected:customerDisplayName,provided:deleteConfirmName},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
-      // #endregion
-      alert('De naam komt niet overeen. Typ de exacte naam om te bevestigen.');
+    if (deleteConfirmName !== customerDisplayName) {      alert('De naam komt niet overeen. Typ de exacte naam om te bevestigen.');
       return;
     }
 
-    if (isDeleting) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:311',message:'Delete prevented - already deleting',data:{isDeleting},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
-      return;
+    if (isDeleting) {      return;
     }
 
     try {
-      setIsDeleting(true);
-      
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:316',message:'Sending delete request',data:{customerId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
-      // #endregion
-      
+      setIsDeleting(true);      
       const response = await fetch(`/api/customers/${customerId}`, {
         method: 'DELETE',
       });
-
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:322',message:'Delete response received',data:{status:response.status,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
-      // #endregion
-
       if (!response.ok) {
         let errorMessage = 'Fout bij verwijderen';
         try {
           const errorData = await response.json();
-          errorMessage = errorData.error || errorMessage;
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:329',message:'Delete error response',data:{status:response.status,error:errorData?.error},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-          // #endregion
-        } catch (parseError) {
+          errorMessage = errorData.error || errorMessage;        } catch (parseError) {
           errorMessage = `HTTP ${response.status}: ${response.statusText}`;
         }
         throw new Error(errorMessage);
       }
-
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:338',message:'Delete successful',data:{customerId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
-      // #endregion
-
       // Redirect to customers list
       router.push('/admin/customers');
-    } catch (error: unknown) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:344',message:'Delete error',data:{error:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
-      const errorMessage = error instanceof Error ? error.message : 'Fout bij verwijderen van klant';
+    } catch (error: unknown) {      const errorMessage = error instanceof Error ? error.message : 'Fout bij verwijderen van klant';
       console.error('Error deleting customer:', {
         error,
         message: errorMessage,
@@ -432,30 +372,18 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
     }
   };
 
-  const handleAddUpdate = async () => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:373',message:'Customer update initiated',data:{customerId,updateType,hasTitle:!!updateTitle.trim(),hasDescription:!!updateDescription.trim(),isSavingUpdate},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'L'})}).catch(()=>{});
-    // #endregion
-    
+  const handleAddUpdate = async () => {    
     if (!updateTitle.trim() || !updateDescription.trim()) {
       alert('Titel en beschrijving zijn verplicht');
       return;
     }
 
-    if (isSavingUpdate) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:380',message:'Update prevented - already saving',data:{isSavingUpdate},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
-      return;
+    if (isSavingUpdate) {      return;
     }
 
     setIsSavingUpdate(true);
     
-    try {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:387',message:'Sending update request',data:{customerId,updateType},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'L'})}).catch(()=>{});
-      // #endregion
-      
+    try {      
       const response = await fetch(`/api/customers/${customerId}/updates`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -468,21 +396,11 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
           created_by: 'Admin',
         }),
       });
-
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:404',message:'Update response received',data:{status:response.status,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'L'})}).catch(()=>{});
-      // #endregion
-
       if (!response.ok) {
         let errorMessage = 'Fout bij opslaan update';
         try {
           const errorData = await response.json();
-          errorMessage = errorData.error || errorMessage;
-          
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:412',message:'Update error response',data:{status:response.status,error:errorData?.error},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-          // #endregion
-          
+          errorMessage = errorData.error || errorMessage;          
           // Check for specific error about missing table
           if (errorData.error?.includes('tabel bestaat niet')) {
             errorMessage = `${errorData.error}\n\nVoer het SQL script uit in Supabase om de tabel aan te maken.`;
@@ -495,11 +413,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
       }
 
       const responseData = await response.json();
-      const { update } = responseData;
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:426',message:'Update successful',data:{updateId:update?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'L'})}).catch(()=>{});
-      // #endregion
-      
+      const { update } = responseData;      
       setUpdates([update, ...updates]);
       
       // Reset form

@@ -154,6 +154,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [kboLookupLoading, setKboLookupLoading] = useState(false);
   const [kboLookupError, setKboLookupError] = useState<string | null>(null);
   const [activeLeadTab, setActiveLeadTab] = useState<LeadTabId>('overview');
+  const [broughtInBy, setBroughtInBy] = useState('');
+  const [isSavingBroughtInBy, setIsSavingBroughtInBy] = useState(false);
 
   useEffect(() => {
     if (leadId) {
@@ -194,7 +196,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
       setLead(leadData);
       setAssignedTo((leadData as Lead & { assigned_to?: string }).assigned_to || '');
-      
+      setBroughtInBy((leadData as Lead & { brought_in_by?: string }).brought_in_by || '');
+
       // Set company information form fields
       setVatNumber(leadData.vat_number || '');
       setCompanyAddress(leadData.company_address || '');
@@ -389,31 +392,15 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     return { allowed: true };
   };
 
-  const handleStatusChange = async (newStatus: string) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:383',message:'Status change initiated',data:{leadId,currentStatus:lead?.status,newStatus,isSaving},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
-    
-    if (!lead || lead.status === newStatus) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:386',message:'Status change skipped',data:{reason:!lead ? 'no lead' : 'same status'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
-      return;
+  const handleStatusChange = async (newStatus: string) => {    
+    if (!lead || lead.status === newStatus) {      return;
     }
 
-    if (isSaving) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:390',message:'Status change prevented - already saving',data:{isSaving},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
-      return;
+    if (isSaving) {      return;
     }
 
     // Validate status change
-    const validation = canChangeToStatus(lead.status, newStatus, hasQuote);
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:395',message:'Status validation result',data:{allowed:validation.allowed,reason:validation.reason},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
-    
+    const validation = canChangeToStatus(lead.status, newStatus, hasQuote);    
     if (!validation.allowed) {
       alert(validation.reason || 'Deze statuswijziging is niet toegestaan.');
       return;
@@ -421,21 +408,12 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
     setIsSaving(true);
     
-    try {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:400',message:'Updating lead status in database',data:{leadId,newStatus},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
-      
+    try {      
       // Update lead status
       const { error: updateError } = await supabase
         .from('leads')
         .update({ status: newStatus })
         .eq('id', leadId);
-
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:407',message:'Lead status update result',data:{hasError:!!updateError,error:updateError?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
-
       if (updateError) throw updateError;
 
       // Update local state immediately
@@ -462,11 +440,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       });
 
       // If status is "lost", also cancel related customer if exists
-      if (newStatus === 'lost') {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:428',message:'Checking for related customer to cancel',data:{leadId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-        // #endregion
-        
+      if (newStatus === 'lost') {        
         try {
           // Check if customer exists for this lead
           const { data: existingCustomer } = await supabase
@@ -474,70 +448,39 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             .select('id, project_status')
             .eq('lead_id', leadId)
             .maybeSingle();
-
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:435',message:'Customer check result',data:{hasCustomer:!!existingCustomer,customerId:existingCustomer?.id,currentStatus:existingCustomer?.project_status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-          // #endregion
-
           if (existingCustomer && existingCustomer.project_status !== 'canceled') {
             const { error: customerUpdateError } = await supabase
               .from('customers')
               .update({ project_status: 'canceled' })
               .eq('id', existingCustomer.id);
-
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:442',message:'Customer cancel update result',data:{hasError:!!customerUpdateError,error:customerUpdateError?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-            // #endregion
-
             if (customerUpdateError) {
               console.warn('Error updating related customer to canceled:', customerUpdateError);
             } else {
               console.log('Related customer marked as canceled');
             }
           }
-        } catch (customerErr) {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:450',message:'Customer cancel error',data:{error:customerErr instanceof Error ? customerErr.message : String(customerErr)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-          // #endregion
-          console.warn('Error checking/updating related customer:', customerErr);
+        } catch (customerErr) {          console.warn('Error checking/updating related customer:', customerErr);
         }
       }
 
       // If status is "converted", automatically convert to customer
-      if (newStatus === 'converted') {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:454',message:'Starting customer conversion',data:{leadId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-        // #endregion
-        
+      if (newStatus === 'converted') {        
         try {
           console.log(`[StatusChange] Converting lead ${leadId} to customer...`);
           const convertResponse = await fetch(`/api/leads/${leadId}/convert`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
           });
-
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:462',message:'Conversion API response',data:{status:convertResponse.status,ok:convertResponse.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-          // #endregion
-
           if (convertResponse.ok) {
             const convertData = await convertResponse.json();
             const revenue = convertData.customer?.quote_total 
               ? `€${Number(convertData.customer.quote_total).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-              : 'geen offerte';
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:469',message:'Conversion successful',data:{customerId:convertData.customer?.id,revenue:convertData.customer?.quote_total},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-            // #endregion
-            console.log(`[StatusChange] Conversion successful. Revenue: ${revenue}`);
+              : 'geen offerte';            console.log(`[StatusChange] Conversion successful. Revenue: ${revenue}`);
             alert(`Lead succesvol geconverteerd naar customer! Omzet: ${revenue}. AI prompt is gegenereerd.`);
             // Optionally redirect to customer page
             // router.push(`/admin/customers/${convertData.customer.id}`);
           } else {
-            const errorData = await convertResponse.json();
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:477',message:'Conversion failed',data:{status:convertResponse.status,error:errorData?.error,customerId:errorData?.customer_id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-            // #endregion
-            // Check if customer already exists
+            const errorData = await convertResponse.json();            // Check if customer already exists
             if (errorData.customer_id) {
               console.log(`[StatusChange] Customer already exists for lead ${leadId}`);
               alert(`Lead is al geconverteerd naar customer.`);
@@ -546,33 +489,17 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               alert(`Status bijgewerkt, maar conversie naar customer mislukt: ${errorData.error || 'Onbekende fout'}`);
             }
           }
-        } catch (convertError) {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:486',message:'Conversion exception',data:{error:convertError instanceof Error ? convertError.message : String(convertError)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-          // #endregion
-          console.error('[StatusChange] Error converting to customer:', convertError);
+        } catch (convertError) {          console.error('[StatusChange] Error converting to customer:', convertError);
           alert('Status bijgewerkt, maar conversie naar customer mislukt. Probeer handmatig te converteren.');
         }
       }
 
       // Reload to get fresh data
-      loadLeadData();
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:491',message:'Status change completed successfully',data:{leadId,newStatus},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
-    } catch (error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:495',message:'Status change error',data:{error:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
-      console.error('Error updating status:', error);
+      loadLeadData();    } catch (error) {      console.error('Error updating status:', error);
       alert('Fout bij het bijwerken van de status');
       loadLeadData(); // Reload to revert
     } finally {
-      setIsSaving(false);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:500',message:'Status change finished',data:{isSaving:false},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
-    }
+      setIsSaving(false);    }
   };
 
   const handleAddActivity = async () => {
@@ -762,68 +689,33 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     }
   };
 
-  const handleDeleteLead = async () => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:714',message:'Delete lead initiated',data:{leadId,leadName:lead?.name,deleteConfirmName,isDeleting},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
-    // #endregion
-    
+  const handleDeleteLead = async () => {    
     if (!lead || !leadId) return;
     
-    if (deleteConfirmName !== lead.name) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:718',message:'Delete confirmation failed',data:{expected:lead.name,provided:deleteConfirmName},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
-      // #endregion
-      alert('De naam komt niet overeen. Typ de exacte naam om te bevestigen.');
+    if (deleteConfirmName !== lead.name) {      alert('De naam komt niet overeen. Typ de exacte naam om te bevestigen.');
       return;
     }
 
-    if (isDeleting) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:725',message:'Delete prevented - already deleting',data:{isDeleting},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
-      return;
+    if (isDeleting) {      return;
     }
 
     try {
-      setIsDeleting(true);
-      
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:732',message:'Sending delete request',data:{leadId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
-      // #endregion
-      
+      setIsDeleting(true);      
       const response = await fetch(`/api/leads/${leadId}`, {
         method: 'DELETE',
       });
-
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:738',message:'Delete response received',data:{status:response.status,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
-      // #endregion
-
       if (!response.ok) {
         let errorMessage = 'Fout bij verwijderen';
         try {
           const errorData = await response.json();
-          errorMessage = errorData.error || errorMessage;
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:745',message:'Delete error response',data:{status:response.status,error:errorData?.error},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-          // #endregion
-        } catch (parseError) {
+          errorMessage = errorData.error || errorMessage;        } catch (parseError) {
           errorMessage = `HTTP ${response.status}: ${response.statusText}`;
         }
         throw new Error(errorMessage);
       }
-
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:754',message:'Delete successful',data:{leadId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
-      // #endregion
-
       // Redirect to leads list
       router.push('/admin/leads');
-    } catch (error: unknown) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'leads/[id]/page.tsx:760',message:'Delete error',data:{error:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
-      const errorMessage = error instanceof Error ? error.message : 'Fout bij verwijderen van lead';
+    } catch (error: unknown) {      const errorMessage = error instanceof Error ? error.message : 'Fout bij verwijderen van lead';
       console.error('Error deleting lead:', {
         error,
         message: errorMessage,
@@ -925,6 +817,35 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       }
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleBroughtInBy = async (value: string) => {
+    if (!lead) return;
+    const trimmed = value.trim() || null;
+    try {
+      setIsSavingBroughtInBy(true);
+      const { error } = await supabase
+        .from('leads')
+        .update({ brought_in_by: trimmed })
+        .eq('id', leadId);
+      if (error) {
+        if (error.message?.includes('brought_in_by') || error.message?.includes('schema cache') || error.message?.includes('column')) {
+          const sql = 'ALTER TABLE leads ADD COLUMN IF NOT EXISTS brought_in_by VARCHAR(255); CREATE INDEX IF NOT EXISTS idx_leads_brought_in_by ON leads(brought_in_by);';
+          alert(`De brought_in_by kolom bestaat nog niet.\n\nVoer het script uit: scripts/add-brought-in-by.sql in Supabase SQL Editor.`);
+          if (navigator.clipboard) navigator.clipboard.writeText('ALTER TABLE leads ADD COLUMN IF NOT EXISTS brought_in_by VARCHAR(255);').catch(() => {});
+          return;
+        }
+        throw error;
+      }
+      setBroughtInBy(trimmed || '');
+      setLead({ ...lead, brought_in_by: trimmed || undefined } as Lead);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('Error updating brought_in_by:', err);
+      alert(msg || 'Fout bij opslaan binnengebracht door');
+    } finally {
+      setIsSavingBroughtInBy(false);
     }
   };
 
@@ -1185,6 +1106,45 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 </p>
               </div>
             )}
+
+            {/* Binnengebracht door (attributie voor Sales/Team; ook voor website-leads) */}
+            <div className="bg-card border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
+              <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 break-words">Binnengebracht door</h2>
+              <p className="text-xs text-muted-foreground mb-2 break-words">
+                Naam of e-mail van de persoon die deze lead heeft binnengebracht (gebruikt in Sales-tab). Bij leeg: Aangemaakt door of Onbekend.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  value={broughtInBy}
+                  onChange={(e) => setBroughtInBy(e.target.value)}
+                  onBlur={() => { if (broughtInBy !== (lead.brought_in_by ?? '')) handleBroughtInBy(broughtInBy); }}
+                  placeholder="Naam of e-mail"
+                  className="flex-1 min-w-0 px-2 sm:px-3 py-1.5 sm:py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm sm:text-base"
+                  disabled={isSavingBroughtInBy}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => handleBroughtInBy(broughtInBy)}
+                  disabled={isSavingBroughtInBy || broughtInBy === (lead.brought_in_by ?? '')}
+                >
+                  {isSavingBroughtInBy ? 'Opslaan…' : 'Opslaan'}
+                </Button>
+              </div>
+              {adminUsers.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-2">Snel: {adminUsers.slice(0, 5).map((u) => (
+                  <button
+                    key={u.email}
+                    type="button"
+                    onClick={() => { setBroughtInBy(u.email); handleBroughtInBy(u.email); }}
+                    className="mr-2 underline hover:no-underline"
+                  >
+                    {u.email}
+                  </button>
+                ))}</p>
+              )}
+            </div>
 
             {/* Toegewezen aan (in overview) */}
             <div className="bg-card border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
