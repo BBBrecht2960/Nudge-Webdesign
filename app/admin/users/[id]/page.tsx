@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, FileImage, FileText, Trash2, Upload, Mail, User, MapPin, Phone, CreditCard, Users, ShieldCheck } from 'lucide-react';
 import { Button } from '@/app/components/Button';
@@ -41,7 +41,6 @@ type AdminUserDetail = {
 };
 
 export default function AdminUserDetailPage() {
-  const router = useRouter();
   const params = useParams();
   const id = params?.id as string;
   const [user, setUser] = useState<AdminUserDetail | null>(null);
@@ -50,8 +49,11 @@ export default function AdminUserDetailPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Partial<AdminUserDetail>>({});
+  const [newPassword, setNewPassword] = useState('');
   const [docUploading, setDocUploading] = useState<'passport_front' | 'passport_back' | 'nda' | null>(null);
   const [docError, setDocError] = useState<string | null>(null);
+
+  const DEFAULT_PASSWORD = 'Nudge2026!!';
 
   useEffect(() => {
     if (!id) return;
@@ -152,6 +154,7 @@ export default function AdminUserDetailPage() {
         return;
       }
       setUser((prev) => prev ? { ...prev, ...data } : null);
+      setNewPassword('');
     } catch {
       setSaveError('Fout bij opslaan');
     } finally {
@@ -252,6 +255,19 @@ export default function AdminUserDetailPage() {
         <Section title="E-mail" description="Inlogadres voor het adminpaneel." icon={Mail}>
           <Field id="email" label="E-mail" required>
             <Input id="email" type="email" required value={form.email ?? ''} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} disabled={!canEdit} placeholder="naam@bedrijf.be" />
+          </Field>
+        </Section>
+
+        <Section title="Wachtwoord" description="Wijzig het wachtwoord van deze gebruiker. Laat leeg om niet te wijzigen." icon={Mail}>
+          <Field id="new_password" label="Nieuw wachtwoord" hint="Optioneel. Minimaal 8 tekens. Standaard: Nudge2026!!">
+            <div className="flex flex-wrap gap-2 items-center">
+              <Input id="new_password" type="password" minLength={8} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} disabled={!canEdit} placeholder="Laat leeg om niet te wijzigen" className="flex-1 min-w-[200px]" />
+              {canEdit && (
+                <Button type="button" variant="outline" size="sm" onClick={() => setNewPassword(DEFAULT_PASSWORD)}>
+                  Standaard (Nudge2026!!)
+                </Button>
+              )}
+            </div>
           </Field>
         </Section>
 

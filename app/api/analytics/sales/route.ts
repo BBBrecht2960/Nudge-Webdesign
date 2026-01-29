@@ -5,11 +5,17 @@ import { requireAdminPermission } from '@/lib/api-security';
 export interface SalesPersonStats {
   person: string;
   leadCount: number;
+  leadNew: number;
+  leadQualified: number;
+  leadLost: number;
   quoteCount: number;
   totalQuoteAmount: number;
   avgQuoteAmount: number;
   convertedCount: number;
   convertedRevenue: number;
+  customerInReview: number;
+  customerOnHold: number;
+  customerCanceled: number;
 }
 
 export interface SalesByPeriodItem {
@@ -36,7 +42,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
-    const groupBy = (searchParams.get('groupBy') || 'week') as 'day' | 'week' | 'month';
+    const groupBy = (searchParams.get('groupBy') || 'week') as 'day' | 'week' | 'month' | 'quarter';
 
     let end: Date;
     let start: Date;
@@ -58,25 +64,25 @@ export async function GET(request: NextRequest) {
     const startISO = start.toISOString().split('T')[0];
     const endISO = end.toISOString().split('T')[0];
 
-    type LeadRow = { id: string; created_at: string; created_by?: string | null; brought_in_by?: string | null };
+    type LeadRow = { id: string; created_at: string; created_by?: string | null; brought_in_by?: string | null; status?: string | null };
     let leads: LeadRow[] | null = null;
 
     const res = await supabase
       .from('leads')
-      .select('id, created_at, created_by, brought_in_by')
+      .select('id, created_at, created_by, brought_in_by, status')
       .gte('created_at', `${startISO}T00:00:00.000Z`)
       .lte('created_at', `${endISO}T23:59:59.999Z`)
       .order('created_at', { ascending: true });
     let leadsError = res.error;
 
-    if (leadsError?.code === 'PGRST204' || leadsError?.message?.includes('brought_in_by') || leadsError?.message?.includes('created_by')) {
+    if (leadsError?.code === 'PGRST204' || leadsError?.message?.includes('brought_in_by') || leadsError?.message?.includes('created_by') || leadsError?.message?.includes('status')) {
       const fallback = await supabase
         .from('leads')
-        .select('id, created_at, created_by')
+        .select('id, created_at, created_by, brought_in_by')
         .gte('created_at', `${startISO}T00:00:00.000Z`)
         .lte('created_at', `${endISO}T23:59:59.999Z`)
         .order('created_at', { ascending: true });
-      leads = fallback.data as LeadRow[] | null;
+      leads = (fallback.data as LeadRow[] | null)?.map((r) => ({ ...r, status: null })) ?? null;
       leadsError = fallback.error;
     } else {
       leads = res.data as LeadRow[] | null;
@@ -96,15 +102,15 @@ export async function GET(request: NextRequest) {
           { status: 500 }
         );
       }
-      leads = (minimal.data || []).map((r) => ({ ...r, created_by: null, brought_in_by: null }));
+      leads = (minimal.data || []).map((r) => ({ ...r, created_by: null, brought_in_by: null, status: null }));
     }
 
     const leadIds = (leads || []).map((l) => l.id);
-    const leadByPerson: Record<string, Array<{ id: string; created_at: string }>> = {};
+    const leadByPerson: Record<string, Array<{ id: string; created_at: string; status: string | null }>> = {};
     for (const l of leads || []) {
       const person = (l.brought_in_by?.trim() || l.created_by?.trim()) || 'Onbekend';
       if (!leadByPerson[person]) leadByPerson[person] = [];
-      leadByPerson[person].push({ id: l.id, created_at: l.created_at });
+      leadByPerson[person].push({ id: l.id, created_at: l.created_at, status: l.status ?? null });
     }
 
     const IN_CHUNK = 200;
@@ -140,6 +146,7 @@ export async function GET(request: NextRequest) {
     }
 
     let customerByLeadId: Record<string, number> = {};
+    let customerStatusByLeadId: Record<string, string> = {};
     try {
       for (let i = 0; i < idList.length; i += IN_CHUNK) {
         const chunk = idList.slice(i, i + IN_CHUNK);
@@ -149,9 +156,7 @@ export async function GET(request: NextRequest) {
           .in('lead_id', chunk)
           .not('lead_id', 'is', null);
         if (customersError) {
-          if (customersError.code === '42P01' || customersError.message?.includes('does not exist')) {
-            break;
-          }
+          if (customersError.code === '42P01' || customersError.message?.includes('does not exist')) break;
           throw customersError;
         }
         if (customers?.length) {
@@ -160,14 +165,35 @@ export async function GET(request: NextRequest) {
           }
         }
       }
+      for (let i = 0; i < idList.length; i += IN_CHUNK) {
+        const chunk = idList.slice(i, i + IN_CHUNK);
+        const { data: statusRows, error: statusError } = await supabase
+          .from('customers')
+          .select('lead_id, project_status')
+          .in('lead_id', chunk)
+          .not('lead_id', 'is', null);
+        if (statusError) break;
+        if (statusRows?.length) {
+          for (const r of statusRows) {
+            if (r.lead_id && r.project_status) customerStatusByLeadId[r.lead_id] = r.project_status;
+          }
+        }
+      }
     } catch (e) {
       console.warn('Sales analytics customers:', e);
       customerByLeadId = {};
+      customerStatusByLeadId = {};
+    }
+
+    const leadIdToPerson: Record<string, string> = {};
+    for (const [person, list] of Object.entries(leadByPerson)) {
+      for (const { id } of list) leadIdToPerson[id] = person;
     }
 
     function getPeriodKey(d: Date): string {
       if (groupBy === 'day') return d.toISOString().slice(0, 10);
       if (groupBy === 'month') return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      if (groupBy === 'quarter') return `${d.getFullYear()}-Q${Math.floor(d.getMonth() / 3) + 1}`;
       const w = new Date(d);
       w.setDate(w.getDate() - w.getDay() + 1);
       return w.toISOString().slice(0, 10);
@@ -179,21 +205,45 @@ export async function GET(request: NextRequest) {
         const names = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
         return `${names[parseInt(m, 10) - 1]} ${y}`;
       }
+      if (groupBy === 'quarter' && key.includes('-Q')) {
+        const [y, q] = key.split('-Q');
+        return `Q${q} ${y}`;
+      }
       return `Week ${key}`;
     }
 
-    const totalsByPerson: Record<string, { leadCount: number; quoteCount: number; totalQuote: number; convertedCount: number; convertedRevenue: number }> = {};
-    const byPeriod: Record<string, Record<string, { leadCount: number; quoteCount: number; totalQuote: number; convertedCount: number; convertedRevenue: number }>> = {};
+    const totalsByPerson: Record<string, {
+      leadCount: number; leadNew: number; leadQualified: number; leadLost: number;
+      quoteCount: number; totalQuote: number; convertedCount: number; convertedRevenue: number;
+      customerInReview: number; customerOnHold: number; customerCanceled: number;
+    }> = {};
+    const byPeriod: Record<string, Record<string, {
+      leadCount: number; leadNew: number; leadQualified: number; leadLost: number;
+      quoteCount: number; totalQuote: number; convertedCount: number; convertedRevenue: number;
+      customerInReview: number; customerOnHold: number; customerCanceled: number;
+    }>> = {};
+    const emptyPersonStats = () => ({
+      leadCount: 0, leadNew: 0, leadQualified: 0, leadLost: 0,
+      quoteCount: 0, totalQuote: 0, convertedCount: 0, convertedRevenue: 0,
+      customerInReview: 0, customerOnHold: 0, customerCanceled: 0,
+    });
 
     for (const [person, list] of Object.entries(leadByPerson)) {
-      if (!totalsByPerson[person]) {
-        totalsByPerson[person] = { leadCount: 0, quoteCount: 0, totalQuote: 0, convertedCount: 0, convertedRevenue: 0 };
-      }
-      for (const { id, created_at } of list) {
+      if (!totalsByPerson[person]) totalsByPerson[person] = emptyPersonStats();
+      for (const { id, created_at, status } of list) {
         const periodKey = getPeriodKey(new Date(created_at));
         if (!byPeriod[periodKey]) byPeriod[periodKey] = {};
-        if (!byPeriod[periodKey][person]) {
-          byPeriod[periodKey][person] = { leadCount: 0, quoteCount: 0, totalQuote: 0, convertedCount: 0, convertedRevenue: 0 };
+        if (!byPeriod[periodKey][person]) byPeriod[periodKey][person] = emptyPersonStats();
+        const st = status?.toLowerCase() ?? 'new';
+        if (st === 'new') {
+          totalsByPerson[person].leadNew += 1;
+          byPeriod[periodKey][person].leadNew += 1;
+        } else if (st === 'qualified' || st === 'contacted') {
+          totalsByPerson[person].leadQualified += 1;
+          byPeriod[periodKey][person].leadQualified += 1;
+        } else if (st === 'lost') {
+          totalsByPerson[person].leadLost += 1;
+          byPeriod[periodKey][person].leadLost += 1;
         }
         totalsByPerson[person].leadCount += 1;
         byPeriod[periodKey][person].leadCount += 1;
@@ -212,6 +262,14 @@ export async function GET(request: NextRequest) {
         }
       }
     }
+    for (const [leadId, projectStatus] of Object.entries(customerStatusByLeadId)) {
+      const person = leadIdToPerson[leadId];
+      if (!person) continue;
+      const ps = projectStatus?.toLowerCase() ?? '';
+      if (ps === 'review') totalsByPerson[person].customerInReview += 1;
+      else if (ps === 'on_hold') totalsByPerson[person].customerOnHold += 1;
+      else if (ps === 'canceled') totalsByPerson[person].customerCanceled += 1;
+    }
 
     const totalLeads = (leads || []).length;
     const totalQuoteAmount = Object.values(quoteByLeadId).reduce((a, b) => a + b, 0);
@@ -221,11 +279,17 @@ export async function GET(request: NextRequest) {
     const summary: SalesPersonStats[] = Object.entries(totalsByPerson).map(([person, t]) => ({
       person,
       leadCount: t.leadCount,
+      leadNew: t.leadNew,
+      leadQualified: t.leadQualified,
+      leadLost: t.leadLost,
       quoteCount: t.quoteCount,
       totalQuoteAmount: Math.round(t.totalQuote * 100) / 100,
       avgQuoteAmount: t.quoteCount > 0 ? Math.round((t.totalQuote / t.quoteCount) * 100) / 100 : 0,
       convertedCount: t.convertedCount,
       convertedRevenue: Math.round(t.convertedRevenue * 100) / 100,
+      customerInReview: t.customerInReview,
+      customerOnHold: t.customerOnHold,
+      customerCanceled: t.customerCanceled,
     })).sort((a, b) => b.convertedRevenue - a.convertedRevenue);
 
     const byPeriodList: SalesByPeriodItem[] = Object.entries(byPeriod)
@@ -238,11 +302,17 @@ export async function GET(request: NextRequest) {
             person,
             {
               leadCount: t.leadCount,
+              leadNew: t.leadNew,
+              leadQualified: t.leadQualified,
+              leadLost: t.leadLost,
               quoteCount: t.quoteCount,
               totalQuoteAmount: Math.round(t.totalQuote * 100) / 100,
               avgQuoteAmount: t.quoteCount > 0 ? Math.round((t.totalQuote / t.quoteCount) * 100) / 100 : 0,
               convertedCount: t.convertedCount,
               convertedRevenue: Math.round(t.convertedRevenue * 100) / 100,
+              customerInReview: t.customerInReview,
+              customerOnHold: t.customerOnHold,
+              customerCanceled: t.customerCanceled,
             },
           ])
         ),

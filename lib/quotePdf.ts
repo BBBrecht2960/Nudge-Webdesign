@@ -182,7 +182,6 @@ export async function generateQuotePdfBlob(
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   let y = MARGIN;
   const footerY = PAGE_HEIGHT - 18;
-  const maxContentY = footerY - 20;
 
   const projectType = quoteData.selectedPackage?.name ?? 'Website';
   const clientName = clientInfo.company_name?.trim() || clientInfo.name?.trim() || 'n.t.b.';
@@ -241,7 +240,6 @@ export async function generateQuotePdfBlob(
   doc.setFontSize(FONT_SMALL);
   const colLeft = MARGIN;
   const colRight = MARGIN + CONTENT_WIDTH / 2 + 4;
-  const colWidth = CONTENT_WIDTH / 2 - 4;
   doc.setTextColor(COLOR_MUTED);
   doc.text('Inbegrepen:', colLeft, y);
   doc.text('Niet inbegrepen:', colRight, y);

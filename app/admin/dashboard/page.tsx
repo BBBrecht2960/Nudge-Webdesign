@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { type Lead } from '@/lib/db';
-import { Users, Mail, Briefcase, Euro } from 'lucide-react';
+import { Users, Mail, Briefcase, Euro, TrendingUp } from 'lucide-react';
 import { type Customer } from '@/lib/db';
 
 interface DashboardStats {
@@ -30,12 +30,24 @@ interface DashboardStats {
   recentCustomers: Customer[];
 }
 
-type Permissions = { can_leads?: boolean; can_customers?: boolean };
+type Permissions = { can_leads?: boolean; can_customers?: boolean; can_manage_users?: boolean };
+
+type SalesTargetData = {
+  daily_target_eur: number;
+  weekly_target_eur: number;
+  revenue_today?: number;
+  revenue_this_week?: number;
+  progress_daily_pct?: number;
+  progress_weekly_pct?: number;
+};
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [permissions, setPermissions] = useState<Permissions | null>(null);
+  const [salesTarget, setSalesTarget] = useState<SalesTargetData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [savingTarget, setSavingTarget] = useState(false);
+  const [targetForm, setTargetForm] = useState({ daily: '', weekly: '' });
 
   useEffect(() => {
     loadDashboardData();
@@ -58,6 +70,17 @@ export default function DashboardPage() {
       if (perms?.can_customers) {
         const customersRes = await fetch('/api/customers', { credentials: 'include' });
         if (customersRes.ok) allCustomers = await customersRes.json();
+        const targetRes = await fetch('/api/admin/sales-target', { credentials: 'include' });
+        if (targetRes.ok) {
+          const targetData = await targetRes.json();
+          setSalesTarget(targetData);
+          if (perms?.can_manage_users && (targetForm.daily === '' && targetForm.weekly === '')) {
+            setTargetForm({
+              daily: String(targetData.daily_target_eur ?? 0),
+              weekly: String(targetData.weekly_target_eur ?? 0),
+            });
+          }
+        }
       }
 
       // Calculate lead stats
@@ -176,6 +199,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          {permissions?.can_manage_users && (
           <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -187,8 +211,105 @@ export default function DashboardPage() {
               <Euro className="w-6 h-6 sm:w-8 sm:h-8 text-primary shrink-0" />
             </div>
           </div>
+          )}
+
+          {!permissions?.can_manage_users && salesTarget && (
+            <>
+              <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs sm:text-sm text-muted-foreground mb-1">Dagdoel</p>
+                    <p className="text-xl sm:text-2xl font-bold text-primary">
+                      {(salesTarget.progress_daily_pct ?? 0)}%
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">van streefdoel</p>
+                  </div>
+                  <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-primary shrink-0" />
+                </div>
+              </div>
+              <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs sm:text-sm text-muted-foreground mb-1">Weekdoel</p>
+                    <p className="text-xl sm:text-2xl font-bold text-primary">
+                      {(salesTarget.progress_weekly_pct ?? 0)}%
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">van streefdoel</p>
+                  </div>
+                  <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-primary shrink-0" />
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
+
+      {permissions?.can_manage_users && (
+      <div className="mb-6 sm:mb-8 bg-card border border-border rounded-lg p-4 sm:p-6">
+        <h2 className="text-lg sm:text-xl font-semibold mb-4 text-muted-foreground">Salesdoelen (team)</h2>
+        <p className="text-sm text-muted-foreground mb-4">Stel dag- en weekdoel in euro in. Het sales team ziet alleen het percentage van het doel, niet de exacte omzet.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
+          <div>
+            <label className="block text-sm font-medium mb-1">Dagdoel (€)</label>
+            <input
+              type="number"
+              min={0}
+              step={100}
+              value={targetForm.daily}
+              onChange={(e) => setTargetForm((f) => ({ ...f, daily: e.target.value }))}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+            />
+            {salesTarget?.revenue_today != null && (
+              <p className="text-xs text-muted-foreground mt-1">Vandaag: €{salesTarget.revenue_today.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Weekdoel (€)</label>
+            <input
+              type="number"
+              min={0}
+              step={500}
+              value={targetForm.weekly}
+              onChange={(e) => setTargetForm((f) => ({ ...f, weekly: e.target.value }))}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+            />
+            {salesTarget?.revenue_this_week != null && (
+              <p className="text-xs text-muted-foreground mt-1">Deze week: €{salesTarget.revenue_this_week.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            )}
+          </div>
+        </div>
+        <div className="mt-4">
+          <button
+            type="button"
+            disabled={savingTarget}
+            onClick={async () => {
+              setSavingTarget(true);
+              try {
+                const res = await fetch('/api/admin/sales-target', {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({
+                    daily_target_eur: Number(targetForm.daily) || 0,
+                    weekly_target_eur: Number(targetForm.weekly) || 0,
+                  }),
+                });
+                if (res.ok) {
+                  const targetRes = await fetch('/api/admin/sales-target', { credentials: 'include' });
+                  if (targetRes.ok) setSalesTarget(await targetRes.json());
+                }
+              } finally {
+                setSavingTarget(false);
+              }
+            }}
+            className="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50"
+          >
+            {savingTarget ? 'Opslaan...' : 'Doelen opslaan'}
+          </button>
+        </div>
+      </div>
+      )}
+
       </>
       )}
 
@@ -341,7 +462,9 @@ export default function DashboardPage() {
                     <tr className="border-b border-border">
                       <th className="text-left p-2 text-sm font-semibold">Klant</th>
                       <th className="text-left p-2 text-sm font-semibold">Status</th>
-                      <th className="text-left p-2 text-sm font-semibold">Omzet</th>
+                      {permissions?.can_manage_users && (
+                        <th className="text-left p-2 text-sm font-semibold">Omzet</th>
+                      )}
                       <th className="text-left p-2 text-sm font-semibold">Datum</th>
                     </tr>
                   </thead>
@@ -372,15 +495,17 @@ export default function DashboardPage() {
                              customer.project_status === 'canceled' ? 'Geannuleerd' : 'On Hold'}
                           </span>
                         </td>
-                        <td className="p-2 min-w-0">
-                          {customer.quote_total ? (
-                            <span className="text-sm font-semibold">
-                              €{Number(customer.quote_total).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </span>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">-</span>
-                          )}
-                        </td>
+                        {permissions?.can_manage_users && (
+                          <td className="p-2 min-w-0">
+                            {customer.quote_total ? (
+                              <span className="text-sm font-semibold">
+                                €{Number(customer.quote_total).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">-</span>
+                            )}
+                          </td>
+                        )}
                         <td className="p-2 text-xs text-muted-foreground whitespace-nowrap min-w-0">
                           {new Date(customer.converted_at).toLocaleDateString('nl-BE')}
                         </td>

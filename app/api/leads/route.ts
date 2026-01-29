@@ -5,7 +5,7 @@ import { requireAdminPermission } from '@/lib/api-security';
 import * as z from 'zod';
 
 // GET: List leads (admin only, requires can_leads)
-export async function GET(request: NextRequest) {
+export async function GET() {
   const authResult = await requireAdminPermission('can_leads');
   if ('error' in authResult) return authResult.error;
 

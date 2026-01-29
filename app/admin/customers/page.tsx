@@ -5,10 +5,20 @@ import { type Customer } from '@/lib/db';
 import { useRouter } from 'next/navigation';
 import { Search, Euro, TrendingUp, Briefcase, ArrowUpDown, LayoutGrid, CheckCircle, Wrench, Sparkles, ClipboardCheck, PauseCircle, XCircle } from 'lucide-react';
 
+type Permissions = { can_manage_users?: boolean };
+type SalesTargetData = {
+  daily_target_eur: number;
+  weekly_target_eur: number;
+  progress_daily_pct?: number;
+  progress_weekly_pct?: number;
+};
+
 export default function CustomersPage() {
   const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [permissions, setPermissions] = useState<Permissions | null>(null);
+  const [salesTarget, setSalesTarget] = useState<SalesTargetData | null>(null);
   const [filter, setFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [tableError, setTableError] = useState<string | null>(null);
@@ -17,6 +27,20 @@ export default function CustomersPage() {
 
   useEffect(() => {
     loadCustomers();
+  }, []);
+
+  useEffect(() => {
+    const loadSessionAndTarget = async () => {
+      const sessionRes = await fetch('/api/auth/session', { credentials: 'include' });
+      const sessionData = sessionRes.ok ? await sessionRes.json() : null;
+      const perms = sessionData?.permissions ?? null;
+      setPermissions(perms);
+      if (perms?.can_manage_users === false) {
+        const targetRes = await fetch('/api/admin/sales-target', { credentials: 'include' });
+        if (targetRes.ok) setSalesTarget(await targetRes.json());
+      }
+    };
+    loadSessionAndTarget();
   }, []);
 
   const loadCustomers = async () => {
@@ -39,6 +63,8 @@ export default function CustomersPage() {
     }
   };
 
+  const canSeeRevenue = permissions?.can_manage_users === true;
+
   // Calculate stats
   const stats = {
     total: customers.length,
@@ -54,6 +80,7 @@ export default function CustomersPage() {
       : 0,
   };
 
+  const effectiveSortBy = canSeeRevenue ? sortBy : (sortBy === 'revenue' ? 'date' : sortBy);
   const filteredCustomers = customers
     .filter((customer) => {
       if (filter !== 'all' && customer.project_status !== filter) return false;
@@ -68,7 +95,7 @@ export default function CustomersPage() {
     })
     .sort((a, b) => {
       let comparison = 0;
-      switch (sortBy) {
+      switch (effectiveSortBy) {
         case 'date':
           comparison = new Date(a.converted_at).getTime() - new Date(b.converted_at).getTime();
           break;
@@ -263,34 +290,67 @@ export default function CustomersPage() {
         </div>
       </section>
 
-      {/* Revenue Stats */}
-      <section className="mb-8" aria-label="Omzet">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Omzet</h2>
+      {/* Revenue / Sales goals: beheer ziet omzet, sales team ziet alleen dagdoel/weekdoel */}
+      <section className="mb-8" aria-label={canSeeRevenue ? 'Omzet' : 'Doelen'}>
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+          {canSeeRevenue ? 'Omzet' : 'Salesdoelen'}
+        </h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-lg p-4 sm:p-6">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-sm text-muted-foreground">Totaal Omzet</div>
-            <Euro className="w-5 h-5 text-primary shrink-0" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-bold">
-            €{stats.totalRevenue.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </div>
-          <div className="text-xs text-muted-foreground mt-1">
-            Van {stats.total} klant{stats.total !== 1 ? 'en' : ''}
-          </div>
-        </div>
-        <div className="bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/20 rounded-lg p-4 sm:p-6">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-sm text-muted-foreground">Gemiddelde Deal</div>
-            <TrendingUp className="w-5 h-5 text-green-600 shrink-0" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-bold text-green-600">
-            €{stats.averageDeal.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </div>
-          <div className="text-xs text-muted-foreground mt-1">
-            Per project
-          </div>
-        </div>
+        {canSeeRevenue ? (
+          <>
+            <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-lg p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm text-muted-foreground">Totaal Omzet</div>
+                <Euro className="w-5 h-5 text-primary shrink-0" />
+              </div>
+              <div className="text-2xl sm:text-3xl font-bold">
+                €{stats.totalRevenue.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                Van {stats.total} klant{stats.total !== 1 ? 'en' : ''}
+              </div>
+            </div>
+            <div className="bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/20 rounded-lg p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm text-muted-foreground">Gemiddelde Deal</div>
+                <TrendingUp className="w-5 h-5 text-green-600 shrink-0" />
+              </div>
+              <div className="text-2xl sm:text-3xl font-bold text-green-600">
+                €{stats.averageDeal.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                Per project
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Dagdoel</p>
+                  <p className="text-2xl font-bold text-primary">
+                    {(salesTarget?.progress_daily_pct ?? 0)}%
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">van streefdoel</p>
+                </div>
+                <TrendingUp className="w-8 h-8 text-primary shrink-0" />
+              </div>
+            </div>
+            <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Weekdoel</p>
+                  <p className="text-2xl font-bold text-primary">
+                    {(salesTarget?.progress_weekly_pct ?? 0)}%
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">van streefdoel</p>
+                </div>
+                <TrendingUp className="w-8 h-8 text-primary shrink-0" />
+              </div>
+            </div>
+          </>
+        )}
       </div>
       </section>
 
@@ -339,7 +399,7 @@ export default function CustomersPage() {
           <div className="flex items-center gap-2">
             <ArrowUpDown className="w-4 h-4 text-muted-foreground shrink-0" />
             <select
-              value={sortBy}
+              value={effectiveSortBy}
               onChange={(e) => setSortBy(e.target.value as 'date' | 'name' | 'status' | 'revenue')}
               className="px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             >
@@ -374,7 +434,7 @@ export default function CustomersPage() {
                   <th className="text-left py-3 px-4 font-medium">Klant</th>
                   <th className="text-left py-3 px-4 font-medium">Bedrijf</th>
                   <th className="text-left py-3 px-4 font-medium">Pakket</th>
-                  <th className="text-left py-3 px-4 font-medium">Omzet</th>
+                  {canSeeRevenue && <th className="text-left py-3 px-4 font-medium">Omzet</th>}
                   <th className="text-left py-3 px-4 font-medium">Status</th>
                   <th className="text-left py-3 px-4 font-medium">Toegewezen</th>
                   <th className="text-left py-3 px-4 font-medium">Geconverteerd</th>
@@ -384,7 +444,7 @@ export default function CustomersPage() {
               <tbody>
                 {filteredCustomers.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-12 px-4 text-center text-muted-foreground text-sm">
+                    <td colSpan={canSeeRevenue ? 8 : 7} className="py-12 px-4 text-center text-muted-foreground text-sm">
                       Geen klanten gevonden
                     </td>
                   </tr>
@@ -413,6 +473,7 @@ export default function CustomersPage() {
                         <td className={`py-3 px-4 whitespace-nowrap ${isCanceled ? 'line-through text-muted-foreground' : ''}`}>
                           {customer.package_interest || '-'}
                         </td>
+                        {canSeeRevenue && (
                         <td className="py-3 px-4 whitespace-nowrap">
                           {isCanceled ? (
                             <span className="text-muted-foreground text-sm italic">Geannuleerd</span>
@@ -424,6 +485,7 @@ export default function CustomersPage() {
                             <span className="text-muted-foreground">-</span>
                           )}
                         </td>
+                        )}
                         <td className="py-3 px-4 whitespace-nowrap">
                           <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(customer.project_status)}`}>
                             {getStatusLabel(customer.project_status)}

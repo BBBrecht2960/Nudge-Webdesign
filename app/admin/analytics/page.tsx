@@ -61,11 +61,17 @@ interface RevenueAnalyticsData {
 interface SalesPersonStats {
   person: string;
   leadCount: number;
+  leadNew: number;
+  leadQualified: number;
+  leadLost: number;
   quoteCount: number;
   totalQuoteAmount: number;
   avgQuoteAmount: number;
   convertedCount: number;
   convertedRevenue: number;
+  customerInReview: number;
+  customerOnHold: number;
+  customerCanceled: number;
 }
 interface SalesByPeriodItem {
   periodLabel: string;
@@ -89,21 +95,25 @@ type TabType = 'overview' | 'leads' | 'revenue' | 'sales' | 'info';
 
 type PeriodSortKey = 'person' | 'leadCount' | 'quoteCount' | 'totalQuoteAmount' | 'convertedRevenue';
 
+type GroupByOption = 'day' | 'week' | 'month' | 'quarter';
+
 function SalesPeriodBreakdown({
   byPeriod,
   groupBy,
+  canSeeRevenue = true,
   defaultSortKey = 'leadCount',
   defaultSortDir = 'desc',
 }: {
   byPeriod: SalesByPeriodItem[];
-  groupBy: 'day' | 'week' | 'month';
+  groupBy: GroupByOption;
+  canSeeRevenue?: boolean;
   defaultSortKey?: PeriodSortKey;
   defaultSortDir?: 'asc' | 'desc';
 }) {
   const [expanded, setExpanded] = useState<string | null>(byPeriod[0]?.periodKey ?? null);
   const [periodSortBy, setPeriodSortBy] = useState<PeriodSortKey>(defaultSortKey);
   const [periodSortDir, setPeriodSortDir] = useState<'asc' | 'desc'>(defaultSortDir);
-  const periodLabel = groupBy === 'day' ? 'dag' : groupBy === 'week' ? 'week' : 'maand';
+  const periodLabel = groupBy === 'day' ? 'dag' : groupBy === 'week' ? 'week' : groupBy === 'quarter' ? 'kwartaal' : 'maand';
 
   const handlePeriodSort = (key: PeriodSortKey) => {
     if (periodSortBy === key) {
@@ -178,8 +188,8 @@ function SalesPeriodBreakdown({
                         <SortableTh sortKey="person" label="Persoon" className="text-left py-2 px-3 font-medium" />
                         <SortableTh sortKey="leadCount" label="Leads" className="text-right py-2 px-3 font-medium w-16" />
                         <SortableTh sortKey="quoteCount" label="Offertes" className="text-right py-2 px-3 font-medium w-16" />
-                        <SortableTh sortKey="totalQuoteAmount" label="Totaal offerte" className="text-right py-2 px-3 font-medium" />
-                        <SortableTh sortKey="convertedRevenue" label="Omzet" className="text-right py-2 px-3 font-medium" />
+                        {canSeeRevenue && <SortableTh sortKey="totalQuoteAmount" label="Totaal offerte" className="text-right py-2 px-3 font-medium" />}
+                        {canSeeRevenue && <SortableTh sortKey="convertedRevenue" label="Omzet" className="text-right py-2 px-3 font-medium" />}
                       </tr>
                     </thead>
                     <tbody>
@@ -188,8 +198,8 @@ function SalesPeriodBreakdown({
                           <td className="py-2 px-3 whitespace-nowrap" title={person}>{person}</td>
                           <td className="py-2 px-3 text-right tabular-nums whitespace-nowrap">{t.leadCount}</td>
                           <td className="py-2 px-3 text-right tabular-nums whitespace-nowrap">{t.quoteCount}</td>
-                          <td className="py-2 px-3 text-right tabular-nums whitespace-nowrap">€ {t.totalQuoteAmount.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                          <td className="py-2 px-3 text-right tabular-nums font-medium whitespace-nowrap">€ {t.convertedRevenue.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          {canSeeRevenue && <td className="py-2 px-3 text-right tabular-nums whitespace-nowrap">€ {t.totalQuoteAmount.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>}
+                          {canSeeRevenue && <td className="py-2 px-3 text-right tabular-nums font-medium whitespace-nowrap">€ {t.convertedRevenue.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>}
                         </tr>
                       ))}
                     </tbody>
@@ -204,8 +214,11 @@ function SalesPeriodBreakdown({
   );
 }
 
+type Permissions = { can_manage_users?: boolean };
+
 export default function AnalyticsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [permissions, setPermissions] = useState<Permissions | null>(null);
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [leadData, setLeadData] = useState<LeadAnalyticsData | null>(null);
   const [revenueData, setRevenueData] = useState<RevenueAnalyticsData | null>(null);
@@ -215,8 +228,8 @@ export default function AnalyticsPage() {
   const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState(30);
   const [leadDays, setLeadDays] = useState(30);
-  const [leadGroupBy, setLeadGroupBy] = useState<'day' | 'week' | 'month'>('day');
-  const [revenueGroupBy, setRevenueGroupBy] = useState<'day' | 'week' | 'month'>('day');
+  const [leadGroupBy, setLeadGroupBy] = useState<GroupByOption>('day');
+  const [revenueGroupBy, setRevenueGroupBy] = useState<GroupByOption>('day');
   const [customDateRange, setCustomDateRange] = useState(false);
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
@@ -228,16 +241,64 @@ export default function AnalyticsPage() {
   });
   const [salesData, setSalesData] = useState<SalesData | null>(null);
   const [salesLoading, setSalesLoading] = useState(false);
-  const [salesStartDate, setSalesStartDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 30);
-    return d.toISOString().split('T')[0];
-  });
-  const [salesEndDate, setSalesEndDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [salesGroupBy, setSalesGroupBy] = useState<'day' | 'week' | 'month'>('week');
-  type TeamSortKey = 'person' | 'leadCount' | 'quoteCount' | 'totalQuoteAmount' | 'avgQuoteAmount' | 'convertedCount' | 'conversion' | 'convertedRevenue';
+  function getSalesPresetRange(preset: 'this_month' | 'last_month' | 'this_quarter' | 'last_quarter' | 'this_year' | 'last_year') {
+    const now = new Date();
+    let start: Date;
+    let end: Date;
+    if (preset === 'this_month') {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    } else if (preset === 'last_month') {
+      start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      end = new Date(now.getFullYear(), now.getMonth(), 0);
+    } else if (preset === 'this_quarter') {
+      const q = Math.floor(now.getMonth() / 3) + 1;
+      start = new Date(now.getFullYear(), (q - 1) * 3, 1);
+      end = new Date(now.getFullYear(), q * 3, 0);
+    } else if (preset === 'last_quarter') {
+      const q = Math.floor(now.getMonth() / 3) + 1;
+      const lastQ = q === 1 ? 4 : q - 1;
+      const y = q === 1 ? now.getFullYear() - 1 : now.getFullYear();
+      start = new Date(y, (lastQ - 1) * 3, 1);
+      end = new Date(y, lastQ * 3, 0);
+    } else if (preset === 'this_year') {
+      start = new Date(now.getFullYear(), 0, 1);
+      end = new Date(now.getFullYear(), 11, 31);
+    } else {
+      start = new Date(now.getFullYear() - 1, 0, 1);
+      end = new Date(now.getFullYear() - 1, 11, 31);
+    }
+    return {
+      start: start.toISOString().split('T')[0],
+      end: end.toISOString().split('T')[0],
+    };
+  }
+  type SalesPeriodPreset = 'this_month' | 'last_month' | 'this_quarter' | 'last_quarter' | 'this_year' | 'last_year' | 'custom';
+  const [salesPeriodPreset, setSalesPeriodPreset] = useState<SalesPeriodPreset>('this_month');
+  const [salesStartDate, setSalesStartDate] = useState(() => getSalesPresetRange('this_month').start);
+  const [salesEndDate, setSalesEndDate] = useState(() => getSalesPresetRange('this_month').end);
+  const [salesGroupBy, setSalesGroupBy] = useState<GroupByOption>('week');
+  type TeamSortKey = 'person' | 'leadCount' | 'leadNew' | 'leadQualified' | 'leadLost' | 'quoteCount' | 'totalQuoteAmount' | 'avgQuoteAmount' | 'convertedCount' | 'conversion' | 'customerInReview' | 'customerOnHold' | 'customerCanceled' | 'convertedRevenue';
   const [teamSortBy, setTeamSortBy] = useState<TeamSortKey>('leadCount');
   const [teamSortDir, setTeamSortDir] = useState<'asc' | 'desc'>('desc');
+
+  useEffect(() => {
+    fetch('/api/auth/session', { credentials: 'include' })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => setPermissions(data?.permissions ?? null));
+  }, []);
+
+  useEffect(() => {
+    if (permissions && !permissions.can_manage_users && activeTab === 'revenue') {
+      setActiveTab('overview');
+    }
+  }, [permissions, activeTab]);
+
+  useEffect(() => {
+    if (permissions && !permissions.can_manage_users && ['totalQuoteAmount', 'avgQuoteAmount', 'convertedRevenue'].includes(teamSortBy)) {
+      setTeamSortBy('leadCount');
+    }
+  }, [permissions, teamSortBy]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -379,10 +440,19 @@ export default function AnalyticsPage() {
     fetchSalesData();
   }, [activeTab, salesStartDate, salesEndDate, salesGroupBy]);
 
+  useEffect(() => {
+    if (salesPeriodPreset !== 'custom') {
+      const { start, end } = getSalesPresetRange(salesPeriodPreset);
+      setSalesStartDate(start);
+      setSalesEndDate(end);
+    }
+  }, [salesPeriodPreset]);
+
+  const canSeeRevenue = permissions?.can_manage_users === true;
   const tabs = [
     { id: 'overview' as TabType, label: 'Overzicht', icon: BarChart3 },
     { id: 'leads' as TabType, label: 'Leads', icon: Users },
-    { id: 'revenue' as TabType, label: 'Omzet', icon: Euro },
+    ...(canSeeRevenue ? [{ id: 'revenue' as TabType, label: 'Omzet', icon: Euro }] : []),
     { id: 'sales' as TabType, label: 'Sales / Team', icon: UserCheck },
     { id: 'info' as TabType, label: 'Informatie', icon: FileText },
   ];
@@ -614,12 +684,13 @@ export default function AnalyticsPage() {
                   <label className="text-sm font-medium">Groeperen op:</label>
                   <select
                     value={leadGroupBy}
-                    onChange={(e) => setLeadGroupBy(e.target.value as 'day' | 'week' | 'month')}
+                    onChange={(e) => setLeadGroupBy(e.target.value as GroupByOption)}
                     className="px-3 py-2 border border-border rounded-md bg-card text-sm"
                   >
                     <option value="day">Dag</option>
                     <option value="week">Week</option>
                     <option value="month">Maand</option>
+                    <option value="quarter">Kwartaal</option>
                   </select>
                 </div>
               </div>
@@ -670,7 +741,7 @@ export default function AnalyticsPage() {
                 {leadData.timeline.length > 0 && (
                   <div className="bg-card border border-border rounded-xl overflow-hidden mb-6">
                     <div className="px-5 py-4 border-b border-border">
-                      <h3 className="text-base font-semibold">Leads per {leadGroupBy === 'day' ? 'dag' : leadGroupBy === 'week' ? 'week' : 'maand'}</h3>
+                      <h3 className="text-base font-semibold">Leads per {leadGroupBy === 'day' ? 'dag' : leadGroupBy === 'week' ? 'week' : leadGroupBy === 'quarter' ? 'kwartaal' : 'maand'}</h3>
                       <p className="text-xs text-muted-foreground mt-0.5">Volledige geschiedenis in het geselecteerde bereik.</p>
                     </div>
                     <div className="w-full min-w-0 overflow-x-auto max-h-[400px] overflow-y-auto">
@@ -894,12 +965,13 @@ export default function AnalyticsPage() {
                 <label className="text-sm font-medium">Groeperen op:</label>
                 <select
                   value={revenueGroupBy}
-                  onChange={(e) => setRevenueGroupBy(e.target.value as 'day' | 'week' | 'month')}
+                  onChange={(e) => setRevenueGroupBy(e.target.value as GroupByOption)}
                   className="px-3 py-2 border border-border rounded-md bg-card text-sm"
                 >
                   <option value="day">Dag</option>
                   <option value="week">Week</option>
                   <option value="month">Maand</option>
+                  <option value="quarter">Kwartaal</option>
                 </select>
               </div>
             </div>
@@ -999,30 +1071,50 @@ export default function AnalyticsPage() {
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
-              <input
-                type="date"
-                value={salesStartDate}
-                onChange={(e) => setSalesStartDate(e.target.value)}
+              <label htmlFor="sales-period-preset" className="sr-only">Periode</label>
+              <select
+                id="sales-period-preset"
+                value={salesPeriodPreset}
+                onChange={(e) => setSalesPeriodPreset(e.target.value as SalesPeriodPreset)}
                 className="px-3 py-2 border border-border rounded-lg bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-              <span className="text-muted-foreground text-sm">t/m</span>
-              <input
-                type="date"
-                value={salesEndDate}
-                onChange={(e) => setSalesEndDate(e.target.value)}
-                className="px-3 py-2 border border-border rounded-lg bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
+              >
+                <option value="this_month">Deze maand</option>
+                <option value="last_month">Vorige maand</option>
+                <option value="this_quarter">Dit kwartaal</option>
+                <option value="last_quarter">Vorig kwartaal</option>
+                <option value="this_year">Dit jaar</option>
+                <option value="last_year">Vorig jaar</option>
+                <option value="custom">Specifieke selectie</option>
+              </select>
             </div>
+            {salesPeriodPreset === 'custom' && (
+              <>
+                <input
+                  type="date"
+                  value={salesStartDate}
+                  onChange={(e) => setSalesStartDate(e.target.value)}
+                  className="px-3 py-2 border border-border rounded-lg bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+                <span className="text-muted-foreground text-sm">t/m</span>
+                <input
+                  type="date"
+                  value={salesEndDate}
+                  onChange={(e) => setSalesEndDate(e.target.value)}
+                  className="px-3 py-2 border border-border rounded-lg bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </>
+            )}
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground text-sm">Groeperen</span>
               <select
                 value={salesGroupBy}
-                onChange={(e) => setSalesGroupBy(e.target.value as 'day' | 'week' | 'month')}
+                onChange={(e) => setSalesGroupBy(e.target.value as GroupByOption)}
                 className="px-3 py-2 border border-border rounded-lg bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 <option value="day">Per dag</option>
                 <option value="week">Per week</option>
                 <option value="month">Per maand</option>
+                <option value="quarter">Per kwartaal</option>
               </select>
             </div>
           </div>
@@ -1032,10 +1124,14 @@ export default function AnalyticsPage() {
           ) : salesData ? (
             <>
               {salesData.totals && (
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className={`grid gap-4 ${canSeeRevenue ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-2'}`}>
                   <MetricCard title="Leads" value={salesData.totals.totalLeads} icon={<Users className="w-4 h-4" />} />
-                  <MetricCard title="Offertewaarde" value={`€ ${salesData.totals.totalQuoteAmount.toLocaleString('nl-BE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`} icon={<FileText className="w-4 h-4" />} />
-                  <MetricCard title="Omzet (gesloten)" value={`€ ${salesData.totals.totalConvertedRevenue.toLocaleString('nl-BE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`} icon={<Euro className="w-4 h-4" />} />
+                  {canSeeRevenue && (
+                    <>
+                      <MetricCard title="Offertewaarde" value={`€ ${salesData.totals.totalQuoteAmount.toLocaleString('nl-BE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`} icon={<FileText className="w-4 h-4" />} />
+                      <MetricCard title="Omzet (gesloten)" value={`€ ${salesData.totals.totalConvertedRevenue.toLocaleString('nl-BE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`} icon={<Euro className="w-4 h-4" />} />
+                    </>
+                  )}
                   <MetricCard title="Deals" value={salesData.totals.totalConvertedCount} subtitle={salesData.totals.totalLeads > 0 ? `${Math.round((salesData.totals.totalConvertedCount / salesData.totals.totalLeads) * 100)}% van leads` : undefined} icon={<Target className="w-4 h-4" />} />
                 </div>
               )}
@@ -1066,6 +1162,30 @@ export default function AnalyticsPage() {
                             </span>
                           </button>
                         </th>
+                        <th className="text-right py-3 px-4 font-medium w-16" title="Nieuw">
+                          <button type="button" onClick={() => handleTeamSort('leadNew')} className="ml-auto flex items-center justify-end gap-1 w-full hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 rounded">
+                            Nieuw
+                            <span className="inline-flex w-4 h-4 shrink-0 items-center justify-center">
+                              {teamSortBy === 'leadNew' ? (teamSortDir === 'desc' ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />) : <ChevronDown className="w-4 h-4 opacity-40" />}
+                            </span>
+                          </button>
+                        </th>
+                        <th className="text-right py-3 px-4 font-medium w-16" title="Gekwalificeerd">
+                          <button type="button" onClick={() => handleTeamSort('leadQualified')} className="ml-auto flex items-center justify-end gap-1 w-full hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 rounded">
+                            Gekwal.
+                            <span className="inline-flex w-4 h-4 shrink-0 items-center justify-center">
+                              {teamSortBy === 'leadQualified' ? (teamSortDir === 'desc' ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />) : <ChevronDown className="w-4 h-4 opacity-40" />}
+                            </span>
+                          </button>
+                        </th>
+                        <th className="text-right py-3 px-4 font-medium w-16" title="Verloren">
+                          <button type="button" onClick={() => handleTeamSort('leadLost')} className="ml-auto flex items-center justify-end gap-1 w-full hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 rounded">
+                            Verloren
+                            <span className="inline-flex w-4 h-4 shrink-0 items-center justify-center">
+                              {teamSortBy === 'leadLost' ? (teamSortDir === 'desc' ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />) : <ChevronDown className="w-4 h-4 opacity-40" />}
+                            </span>
+                          </button>
+                        </th>
                         <th className="text-right py-3 px-4 font-medium w-20">
                           <button type="button" onClick={() => handleTeamSort('quoteCount')} className="ml-auto flex items-center justify-end gap-1 w-full hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 rounded">
                             Offertes
@@ -1074,6 +1194,7 @@ export default function AnalyticsPage() {
                             </span>
                           </button>
                         </th>
+                        {canSeeRevenue && (
                         <th className="text-right py-3 px-4 font-medium">
                           <button type="button" onClick={() => handleTeamSort('totalQuoteAmount')} className="ml-auto flex items-center justify-end gap-1 w-full hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 rounded">
                             Totaal offerte
@@ -1082,6 +1203,8 @@ export default function AnalyticsPage() {
                             </span>
                           </button>
                         </th>
+                        )}
+                        {canSeeRevenue && (
                         <th className="text-right py-3 px-4 font-medium">
                           <button type="button" onClick={() => handleTeamSort('avgQuoteAmount')} className="ml-auto flex items-center justify-end gap-1 w-full hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 rounded">
                             Gem. offerte
@@ -1090,11 +1213,36 @@ export default function AnalyticsPage() {
                             </span>
                           </button>
                         </th>
+                        )}
                         <th className="text-right py-3 px-4 font-medium w-20">
                           <button type="button" onClick={() => handleTeamSort('convertedCount')} className="ml-auto flex items-center justify-end gap-1 w-full hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 rounded">
                             Deals
                             <span className="inline-flex w-4 h-4 shrink-0 items-center justify-center">
                               {teamSortBy === 'convertedCount' ? (teamSortDir === 'desc' ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />) : <ChevronDown className="w-4 h-4 opacity-40" />}
+                            </span>
+                          </button>
+                        </th>
+                        <th className="text-right py-3 px-4 font-medium w-16" title="In review">
+                          <button type="button" onClick={() => handleTeamSort('customerInReview')} className="ml-auto flex items-center justify-end gap-1 w-full hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 rounded">
+                            Review
+                            <span className="inline-flex w-4 h-4 shrink-0 items-center justify-center">
+                              {teamSortBy === 'customerInReview' ? (teamSortDir === 'desc' ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />) : <ChevronDown className="w-4 h-4 opacity-40" />}
+                            </span>
+                          </button>
+                        </th>
+                        <th className="text-right py-3 px-4 font-medium w-16" title="In afwachting">
+                          <button type="button" onClick={() => handleTeamSort('customerOnHold')} className="ml-auto flex items-center justify-end gap-1 w-full hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 rounded">
+                            Afwacht.
+                            <span className="inline-flex w-4 h-4 shrink-0 items-center justify-center">
+                              {teamSortBy === 'customerOnHold' ? (teamSortDir === 'desc' ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />) : <ChevronDown className="w-4 h-4 opacity-40" />}
+                            </span>
+                          </button>
+                        </th>
+                        <th className="text-right py-3 px-4 font-medium w-16" title="Geannuleerd">
+                          <button type="button" onClick={() => handleTeamSort('customerCanceled')} className="ml-auto flex items-center justify-end gap-1 w-full hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 rounded">
+                            Geannul.
+                            <span className="inline-flex w-4 h-4 shrink-0 items-center justify-center">
+                              {teamSortBy === 'customerCanceled' ? (teamSortDir === 'desc' ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />) : <ChevronDown className="w-4 h-4 opacity-40" />}
                             </span>
                           </button>
                         </th>
@@ -1106,20 +1254,22 @@ export default function AnalyticsPage() {
                             </span>
                           </button>
                         </th>
-                        <th className="text-right py-3 px-4 font-medium">
-                          <button type="button" onClick={() => handleTeamSort('convertedRevenue')} className="ml-auto flex items-center justify-end gap-1 w-full hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 rounded">
-                            Omzet
-                            <span className="inline-flex w-4 h-4 shrink-0 items-center justify-center">
-                              {teamSortBy === 'convertedRevenue' ? (teamSortDir === 'desc' ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />) : <ChevronDown className="w-4 h-4 opacity-40" />}
-                            </span>
-                          </button>
-                        </th>
+                        {canSeeRevenue && (
+                          <th className="text-right py-3 px-4 font-medium">
+                            <button type="button" onClick={() => handleTeamSort('convertedRevenue')} className="ml-auto flex items-center justify-end gap-1 w-full hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 rounded">
+                              Omzet
+                              <span className="inline-flex w-4 h-4 shrink-0 items-center justify-center">
+                                {teamSortBy === 'convertedRevenue' ? (teamSortDir === 'desc' ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />) : <ChevronDown className="w-4 h-4 opacity-40" />}
+                              </span>
+                            </button>
+                          </th>
+                        )}
                       </tr>
                     </thead>
                     <tbody>
                       {sortedTeamSummary.length === 0 ? (
                         <tr>
-                          <td colSpan={8} className="py-12 px-4 text-center text-muted-foreground text-sm">
+                          <td colSpan={canSeeRevenue ? 14 : 11} className="py-12 px-4 text-center text-muted-foreground text-sm">
                             Geen leads in deze periode of geen attributie ingesteld. Vul bij een lead «Binnengebracht door» in voor correcte toewijzing.
                           </td>
                         </tr>
@@ -1130,12 +1280,24 @@ export default function AnalyticsPage() {
                             <tr key={row.person} className="border-t border-border/80 hover:bg-muted/20 transition-colors">
                               <td className="py-3 px-4 font-medium text-foreground whitespace-nowrap" title={row.person}>{row.person}</td>
                               <td className="py-3 px-4 text-right tabular-nums whitespace-nowrap">{row.leadCount}</td>
+                              <td className="py-3 px-4 text-right tabular-nums whitespace-nowrap">{row.leadNew ?? 0}</td>
+                              <td className="py-3 px-4 text-right tabular-nums whitespace-nowrap">{row.leadQualified ?? 0}</td>
+                              <td className="py-3 px-4 text-right tabular-nums whitespace-nowrap">{row.leadLost ?? 0}</td>
                               <td className="py-3 px-4 text-right tabular-nums whitespace-nowrap">{row.quoteCount}</td>
+                              {canSeeRevenue && (
                               <td className="py-3 px-4 text-right tabular-nums whitespace-nowrap">€ {row.totalQuoteAmount.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              )}
+                              {canSeeRevenue && (
                               <td className="py-3 px-4 text-right tabular-nums whitespace-nowrap">€ {row.avgQuoteAmount.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              )}
                               <td className="py-3 px-4 text-right tabular-nums whitespace-nowrap">{row.convertedCount}</td>
+                              <td className="py-3 px-4 text-right tabular-nums whitespace-nowrap">{row.customerInReview ?? 0}</td>
+                              <td className="py-3 px-4 text-right tabular-nums whitespace-nowrap">{row.customerOnHold ?? 0}</td>
+                              <td className="py-3 px-4 text-right tabular-nums whitespace-nowrap">{row.customerCanceled ?? 0}</td>
                               <td className="py-3 px-4 text-right tabular-nums text-muted-foreground whitespace-nowrap">{convPct}%</td>
+                              {canSeeRevenue && (
                               <td className="py-3 px-4 text-right tabular-nums font-semibold whitespace-nowrap">€ {row.convertedRevenue.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              )}
                             </tr>
                           );
                         })
@@ -1146,7 +1308,7 @@ export default function AnalyticsPage() {
               </div>
 
               {salesData.byPeriod.length > 0 && (
-                <SalesPeriodBreakdown byPeriod={salesData.byPeriod} groupBy={salesGroupBy} defaultSortKey="leadCount" defaultSortDir="desc" />
+                <SalesPeriodBreakdown byPeriod={salesData.byPeriod} groupBy={salesGroupBy} canSeeRevenue={canSeeRevenue} defaultSortKey="leadCount" defaultSortDir="desc" />
               )}
             </>
           ) : (

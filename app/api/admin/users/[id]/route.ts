@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdminPermission } from '@/lib/api-security';
+import { hashPassword } from '@/lib/auth';
 import { isValidUUID, SUPER_ADMIN_EMAIL } from '@/lib/security';
 import * as z from 'zod';
 
 const patchUserSchema = z.object({
   email: z.string().email().max(255).transform((v) => v.toLowerCase().trim()).optional(),
+  password: z.string().min(8).max(255).optional(),
   full_name: z.string().max(255).optional(),
   first_name: z.string().max(100).optional(),
   gender: z.enum(['M', 'V', 'X']).optional(),
@@ -206,6 +208,9 @@ export async function PATCH(
   const opt = (v: string | undefined) => (v === undefined ? undefined : (v.trim() || null));
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (parsed.data.email !== undefined) updates.email = parsed.data.email;
+  if (parsed.data.password !== undefined && parsed.data.password.length >= 8) {
+    updates.password_hash = await hashPassword(parsed.data.password);
+  }
   if (parsed.data.full_name !== undefined) updates.full_name = opt(parsed.data.full_name);
   if (parsed.data.first_name !== undefined) updates.first_name = opt(parsed.data.first_name);
   if (parsed.data.gender !== undefined) updates.gender = parsed.data.gender || null;

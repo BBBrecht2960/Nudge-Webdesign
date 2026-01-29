@@ -110,7 +110,7 @@ export function LeadForm() {
         throw new Error(errorMessage);
       }
 
-      const responseData = await response.json();
+      await response.json();
 
       setSubmitSuccess(true);
       setTimeout(() => {

@@ -121,8 +121,8 @@ export default function NewAdminUserPage() {
           <Field id="email" label="E-mail" required hint="Het e-mailadres waarmee deze gebruiker inlogt.">
             <Input id="email" type="email" required value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="naam@bedrijf.be" />
           </Field>
-          <Field id="password" label="Wachtwoord" required hint="Minimaal 8 tekens. Kies een sterk wachtwoord.">
-            <Input id="password" type="password" required minLength={8} value={form.password} onChange={(e) => set('password', e.target.value)} placeholder="••••••••" />
+          <Field id="password" label="Wachtwoord" required hint="Standaard: Nudge2026!!. Minimaal 8 tekens. Je kunt dit aanpassen.">
+            <Input id="password" type="password" required minLength={8} value={form.password} onChange={(e) => set('password', e.target.value)} placeholder="Nudge2026!!" />
           </Field>
         </Section>
 

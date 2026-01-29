@@ -22,7 +22,6 @@ import {
   Download,
   Trash2,
   Percent,
-  Euro,
   CreditCard,
 } from 'lucide-react';
 import { generateQuotePdfBlob } from '@/lib/quotePdf';

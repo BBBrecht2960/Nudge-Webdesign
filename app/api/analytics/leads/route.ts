@@ -111,6 +111,9 @@ export async function GET(request: NextRequest) {
           const monthMonth = date.getMonth();
           key = `${monthYear}-${String(monthMonth + 1).padStart(2, '0')}`;
           break;
+        case 'quarter':
+          key = `${date.getFullYear()}-Q${Math.floor(date.getMonth() / 3) + 1}`;
+          break;
       }
 
       if (!groupedData[key]) {
@@ -169,6 +172,10 @@ export async function GET(request: NextRequest) {
         key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         if (!groupedData[key]) groupedData[key] = emptyEntry(key);
         walk.setDate(walk.getDate() + 7);
+      } else if (groupBy === 'quarter') {
+        key = `${walk.getFullYear()}-Q${Math.floor(walk.getMonth() / 3) + 1}`;
+        if (!groupedData[key]) groupedData[key] = emptyEntry(key);
+        walk.setMonth(walk.getMonth() + 3);
       } else {
         key = `${walk.getFullYear()}-${String(walk.getMonth() + 1).padStart(2, '0')}`;
         if (!groupedData[key]) groupedData[key] = emptyEntry(key);

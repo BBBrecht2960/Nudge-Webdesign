@@ -51,11 +51,18 @@ function CustomerDetailClientInner({ customerId }: { customerId: string }) {
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [activeCustomerTab, setActiveCustomerTab] = useState<CustomerTabId>('overview');
+  const [canSeeRevenue, setCanSeeRevenue] = useState(true);
   const [showEditCompany, setShowEditCompany] = useState(false);
   const [editCompany, setEditCompany] = useState<Partial<Customer>>({});
   const [isSavingCompany, setIsSavingCompany] = useState(false);
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetch('/api/auth/session', { credentials: 'include' })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => setCanSeeRevenue(data?.permissions?.can_manage_users === true));
+  }, []);
 
   // Update form state
   const [showUpdateForm, setShowUpdateForm] = useState(false);
@@ -967,9 +974,13 @@ function CustomerDetailClientInner({ customerId }: { customerId: string }) {
               {customer.project_status === 'canceled' ? (
                 <div className="mb-4">
                   <p className="text-sm text-muted-foreground mb-1">Totaal:</p>
-                  <p className="text-2xl font-bold text-red-600 line-through">
-                    {customer.quote_total ? `€${Number(customer.quote_total).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '€0,00'}
-                  </p>
+                  {canSeeRevenue ? (
+                    <p className="text-2xl font-bold text-red-600 line-through">
+                      {customer.quote_total ? `€${Number(customer.quote_total).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '€0,00'}
+                    </p>
+                  ) : (
+                    <p className="text-2xl font-bold text-red-600 line-through">—</p>
+                  )}
                   <p className="text-sm text-red-600 font-semibold mt-1">
                     Geannuleerd - telt niet mee in omzet
                   </p>
@@ -977,9 +988,13 @@ function CustomerDetailClientInner({ customerId }: { customerId: string }) {
               ) : customer.quote_total != null ? (
                 <div className="mb-4">
                   <p className="text-sm text-muted-foreground mb-1">Totaal:</p>
-                  <p className="text-2xl font-bold">
-                    €{Number(customer.quote_total).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
+                  {canSeeRevenue ? (
+                    <p className="text-2xl font-bold">
+                      €{Number(customer.quote_total).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                  ) : (
+                    <p className="text-2xl font-bold text-muted-foreground">—</p>
+                  )}
                 </div>
               ) : null}
               <div className="flex flex-wrap gap-2 mb-4">

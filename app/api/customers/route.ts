@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { requireAdminPermission } from '@/lib/api-security';
 
 // GET: List customers (admin only, requires can_customers)
-export async function GET(request: NextRequest) {
+export async function GET() {
   const authResult = await requireAdminPermission('can_customers');
   if ('error' in authResult) return authResult.error;
 

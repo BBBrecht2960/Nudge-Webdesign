@@ -91,6 +91,9 @@ export async function GET(request: NextRequest) {
         case 'month':
           key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
           break;
+        case 'quarter':
+          key = `${date.getFullYear()}-Q${Math.floor(date.getMonth() / 3) + 1}`;
+          break;
       }
 
       if (!groupedData[key]) {
@@ -129,6 +132,14 @@ export async function GET(request: NextRequest) {
         const bucket = groupedData[key];
         timeline.push({ date: key, total: bucket ? bucket.total : 0, count: bucket ? bucket.count : 0 });
         cursor.setDate(cursor.getDate() + 7);
+      }
+    } else if (groupBy === 'quarter') {
+      const cursor = new Date(start.getFullYear(), Math.floor(start.getMonth() / 3) * 3, 1);
+      while (cursor <= end) {
+        const key = `${cursor.getFullYear()}-Q${Math.floor(cursor.getMonth() / 3) + 1}`;
+        const bucket = groupedData[key];
+        timeline.push({ date: key, total: bucket ? bucket.total : 0, count: bucket ? bucket.count : 0 });
+        cursor.setMonth(cursor.getMonth() + 3);
       }
     } else {
       // month
