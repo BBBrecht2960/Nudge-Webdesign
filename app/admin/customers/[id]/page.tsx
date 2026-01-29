@@ -1,7 +1,7 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { supabase, type Customer, type CustomerActivity, type CustomerAttachment, type CustomerUpdate, type CustomerProgressHistory } from '@/lib/db';
 import { Button } from '@/app/components/Button';
 import {
@@ -30,17 +30,15 @@ import {
   User,
   Briefcase,
   Paperclip,
-  Pencil,
-  FilePlus,
 } from 'lucide-react';
 import { generateQuotePdfBlob, type ApprovedQuoteData } from '@/lib/quotePdf';
 
 type CustomerTabId = 'overview' | 'offerte' | 'updates' | 'activiteiten' | 'bijlagen';
 
-export default function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function CustomerDetailPage() {
+  const params = useParams();
   const router = useRouter();
-  const customerId = id;
+  const customerId = params.id as string;
 
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [activities, setActivities] = useState<CustomerActivity[]>([]);
@@ -57,7 +55,6 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [activeCustomerTab, setActiveCustomerTab] = useState<CustomerTabId>('overview');
-  const [isQuoteActionLoading, setIsQuoteActionLoading] = useState(false);
   
   // Update form state
   const [showUpdateForm, setShowUpdateForm] = useState(false);
@@ -146,52 +143,23 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
     }
   };
 
-  /** Open offerte builder: ensure lead, optionally copy approved_quote to draft, then redirect. */
-  const openQuoteBuilder = async (forEdit: boolean) => {
-    if (!customer) return;
-    setIsQuoteActionLoading(true);
-    try {
-      const res = await fetch(`/api/admin/customers/${customerId}/lead`, { credentials: 'include' });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Kon geen lead ophalen');
-      }
-      const { lead_id } = await res.json();
-      if (!lead_id) throw new Error('Geen lead_id ontvangen');
-
-      if (forEdit && customer.approved_quote && customer.quote_total != null) {
-        // Copy current approved quote to lead_quotes as draft so builder loads it
-        const saveRes = await fetch(`/api/leads/${lead_id}/quote`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            quote_data: customer.approved_quote,
-            total_price: Number(customer.quote_total),
-            status: 'draft',
-          }),
-        });
-        if (!saveRes.ok) {
-          const err = await saveRes.json().catch(() => ({}));
-          console.warn('Quote als concept opslaan mislukt:', err);
-          // Still redirect so user can build from scratch
-        }
-      }
-
-      router.push(`/admin/leads/${lead_id}/quote`);
-    } catch (e) {
-      console.error('openQuoteBuilder:', e);
-      alert(e instanceof Error ? e.message : 'Kon offerte builder niet openen');
-    } finally {
-      setIsQuoteActionLoading(false);
-    }
-  };
-
-  const handleStatusChange = async (newStatus: string) => {    
-    if (!customer || customer.project_status === newStatus) {      return;
+  const handleStatusChange = async (newStatus: string) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:128',message:'Customer status change initiated',data:{customerId,currentStatus:customer?.project_status,newStatus,isSaving},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+    // #endregion
+    
+    if (!customer || customer.project_status === newStatus) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:130',message:'Customer status change skipped',data:{reason:!customer ? 'no customer' : 'same status'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+      // #endregion
+      return;
     }
 
-    if (isSaving) {      return;
+    if (isSaving) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:133',message:'Customer status change prevented - already saving',data:{isSaving},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
+      return;
     }
 
     setIsSaving(true);
@@ -242,17 +210,30 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
       }
 
       // If customer is canceled, also update related lead to "lost"
-      if (newStatus === 'canceled' && customer.lead_id) {        
+      if (newStatus === 'canceled' && customer.lead_id) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:179',message:'Updating related lead to lost',data:{customerId,leadId:customer.lead_id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+        // #endregion
+        
         try {
           const { error: leadUpdateError } = await supabase
             .from('leads')
             .update({ status: 'lost' })
             .eq('id', customer.lead_id);
+
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:186',message:'Lead update result',data:{hasError:!!leadUpdateError,error:leadUpdateError?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+          // #endregion
+
           if (leadUpdateError) {
             console.warn('Error updating related lead to lost:', leadUpdateError);
             // Don't fail the customer update, just log the warning
           }
-        } catch (leadErr) {          console.warn('Error updating related lead to lost:', leadErr);
+        } catch (leadErr) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:191',message:'Lead update exception',data:{error:leadErr instanceof Error ? leadErr.message : String(leadErr)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+          // #endregion
+          console.warn('Error updating related lead to lost:', leadErr);
         }
       }
 
@@ -334,34 +315,69 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
     }
   };
 
-  const handleDeleteCustomer = async () => {    
+  const handleDeleteCustomer = async () => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:300',message:'Delete customer initiated',data:{customerId,customerName:customer?.name,deleteConfirmName,isDeleting},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+    // #endregion
+    
     if (!customer || !customerId) return;
     
     const customerDisplayName = customer.company_name || customer.name;
-    if (deleteConfirmName !== customerDisplayName) {      alert('De naam komt niet overeen. Typ de exacte naam om te bevestigen.');
+    if (deleteConfirmName !== customerDisplayName) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:305',message:'Delete confirmation failed',data:{expected:customerDisplayName,provided:deleteConfirmName},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+      // #endregion
+      alert('De naam komt niet overeen. Typ de exacte naam om te bevestigen.');
       return;
     }
 
-    if (isDeleting) {      return;
+    if (isDeleting) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:311',message:'Delete prevented - already deleting',data:{isDeleting},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
+      return;
     }
 
     try {
-      setIsDeleting(true);      
+      setIsDeleting(true);
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:316',message:'Sending delete request',data:{customerId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+      // #endregion
+      
       const response = await fetch(`/api/customers/${customerId}`, {
         method: 'DELETE',
       });
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:322',message:'Delete response received',data:{status:response.status,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+      // #endregion
+
       if (!response.ok) {
         let errorMessage = 'Fout bij verwijderen';
         try {
           const errorData = await response.json();
-          errorMessage = errorData.error || errorMessage;        } catch (parseError) {
+          errorMessage = errorData.error || errorMessage;
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:329',message:'Delete error response',data:{status:response.status,error:errorData?.error},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
+        } catch (parseError) {
           errorMessage = `HTTP ${response.status}: ${response.statusText}`;
         }
         throw new Error(errorMessage);
       }
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:338',message:'Delete successful',data:{customerId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+      // #endregion
+
       // Redirect to customers list
       router.push('/admin/customers');
-    } catch (error: unknown) {      const errorMessage = error instanceof Error ? error.message : 'Fout bij verwijderen van klant';
+    } catch (error: unknown) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:344',message:'Delete error',data:{error:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
+      const errorMessage = error instanceof Error ? error.message : 'Fout bij verwijderen van klant';
       console.error('Error deleting customer:', {
         error,
         message: errorMessage,
@@ -372,18 +388,30 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
     }
   };
 
-  const handleAddUpdate = async () => {    
+  const handleAddUpdate = async () => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:373',message:'Customer update initiated',data:{customerId,updateType,hasTitle:!!updateTitle.trim(),hasDescription:!!updateDescription.trim(),isSavingUpdate},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'L'})}).catch(()=>{});
+    // #endregion
+    
     if (!updateTitle.trim() || !updateDescription.trim()) {
       alert('Titel en beschrijving zijn verplicht');
       return;
     }
 
-    if (isSavingUpdate) {      return;
+    if (isSavingUpdate) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:380',message:'Update prevented - already saving',data:{isSavingUpdate},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
+      return;
     }
 
     setIsSavingUpdate(true);
     
-    try {      
+    try {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:387',message:'Sending update request',data:{customerId,updateType},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'L'})}).catch(()=>{});
+      // #endregion
+      
       const response = await fetch(`/api/customers/${customerId}/updates`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -396,11 +424,21 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
           created_by: 'Admin',
         }),
       });
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:404',message:'Update response received',data:{status:response.status,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'L'})}).catch(()=>{});
+      // #endregion
+
       if (!response.ok) {
         let errorMessage = 'Fout bij opslaan update';
         try {
           const errorData = await response.json();
-          errorMessage = errorData.error || errorMessage;          
+          errorMessage = errorData.error || errorMessage;
+          
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:412',message:'Update error response',data:{status:response.status,error:errorData?.error},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
+          
           // Check for specific error about missing table
           if (errorData.error?.includes('tabel bestaat niet')) {
             errorMessage = `${errorData.error}\n\nVoer het SQL script uit in Supabase om de tabel aan te maken.`;
@@ -413,7 +451,11 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
       }
 
       const responseData = await response.json();
-      const { update } = responseData;      
+      const { update } = responseData;
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:426',message:'Update successful',data:{updateId:update?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'L'})}).catch(()=>{});
+      // #endregion
+      
       setUpdates([update, ...updates]);
       
       // Reset form
@@ -533,7 +575,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   }
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full min-w-0 max-w-full overflow-x-hidden box-border">
+    <div className="p-3 sm:p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden">
       {/* Back + Header */}
       <div className="mb-8">
         <Button
@@ -825,67 +867,36 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
         </div>
         )}
 
-        {activeCustomerTab === 'offerte' && (
-            <>
-              {!customer.approved_quote ? (
-                <section className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0" aria-label="Offerte">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Offerte</p>
-                  <h2 className="text-lg font-bold mb-4 flex items-center gap-2 break-words">
-                    <FileText className="w-5 h-5 text-primary shrink-0" />
-                    Nog geen offerte
-                  </h2>
-                  <p className="text-muted-foreground mb-4">
-                    Maak een offerte met de offerte builder. Je kunt pakketten, opties en extra kosten samenstellen en daarna de offerte versturen of als PDF downloaden.
+        {activeCustomerTab === 'offerte' && customer.approved_quote && (
+            <section className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0" aria-label="Goedgekeurde offerte">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Goedgekeurde offerte</p>
+              <h2 className="text-lg font-bold mb-4 flex items-center gap-2 break-words">
+                <FileText className="w-5 h-5 text-primary shrink-0" />
+                Offerte
+              </h2>
+              {customer.project_status === 'canceled' ? (
+                <div className="mb-4">
+                  <p className="text-sm text-muted-foreground mb-1">Totaal:</p>
+                  <p className="text-2xl font-bold text-red-600 line-through">
+                    {customer.quote_total ? `€${Number(customer.quote_total).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '€0,00'}
                   </p>
-                  <Button
-                    onClick={() => openQuoteBuilder(false)}
-                    disabled={isQuoteActionLoading}
-                    className="inline-flex items-center gap-2"
-                  >
-                    <FilePlus className="w-4 h-4" />
-                    {isQuoteActionLoading ? 'Bezig...' : 'Offerte maken met Offerte Builder'}
-                  </Button>
-                </section>
-              ) : (
-                <section className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0" aria-label="Goedgekeurde offerte">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Goedgekeurde offerte</p>
-                  <h2 className="text-lg font-bold mb-4 flex items-center gap-2 break-words">
-                    <FileText className="w-5 h-5 text-primary shrink-0" />
-                    Offerte
-                  </h2>
-                  {customer.project_status === 'canceled' ? (
-                    <div className="mb-4">
-                      <p className="text-sm text-muted-foreground mb-1">Totaal:</p>
-                      <p className="text-2xl font-bold text-red-600 line-through">
-                        {customer.quote_total ? `€${Number(customer.quote_total).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '€0,00'}
-                      </p>
-                      <p className="text-sm text-red-600 font-semibold mt-1">
-                        Geannuleerd - telt niet mee in omzet
-                      </p>
-                    </div>
-                  ) : customer.quote_total != null ? (
-                    <div className="mb-4">
-                      <p className="text-sm text-muted-foreground mb-1">Totaal:</p>
-                      <p className="text-2xl font-bold">
-                        €{Number(customer.quote_total).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                  ) : null}
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={isQuoteActionLoading}
-                      onClick={() => openQuoteBuilder(true)}
-                      title="Offerte aanpassen (extra functie of kost toevoegen) en nieuwe versie sturen"
-                    >
-                      <Pencil className="w-4 h-4 mr-2" />
-                      Offerte aanpassen
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={isGeneratingPdf}
+                  <p className="text-sm text-red-600 font-semibold mt-1">
+                    Geannuleerd - telt niet mee in omzet
+                  </p>
+                </div>
+              ) : customer.quote_total != null ? (
+                <div className="mb-4">
+                  <p className="text-sm text-muted-foreground mb-1">Totaal:</p>
+                  <p className="text-2xl font-bold">
+                    €{Number(customer.quote_total).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+              ) : null}
+              <div className="flex flex-wrap gap-2 mb-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isGeneratingPdf}
                   onClick={async () => {
                     const q = customer.approved_quote as ApprovedQuoteData;
                     if (!q?.selectedPackage || customer.quote_total == null) return;
@@ -973,9 +984,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                   />
                 </div>
               )}
-                </section>
-              )}
-            </>
+            </section>
         )}
 
         {activeCustomerTab === 'updates' && (
@@ -1209,8 +1218,8 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
 
       {/* Delete Customer Modal */}
       {showDeleteCustomerModal && customer && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-auto">
-          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 max-w-md w-full max-w-[calc(100vw-2rem)] shadow-xl min-w-0 overflow-x-hidden">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6 max-w-md w-full shadow-xl min-w-0">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
                 <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />

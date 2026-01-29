@@ -302,29 +302,6 @@ export async function POST(
       // Don't fail the request if status update fails - email was sent
     }
 
-    // If this lead is linked to a customer, update customer's approved_quote and quote_total
-    // so the customer page shows the latest sent offer (e.g. after "Offerte aanpassen" from klanten paneel)
-    const { data: customerByLead } = await supabase
-      .from('customers')
-      .select('id')
-      .eq('lead_id', leadId)
-      .maybeSingle();
-
-    if (customerByLead && quote.quote_data && quote.total_price != null) {
-      const { error: customerUpdateError } = await supabase
-        .from('customers')
-        .update({
-          approved_quote: quote.quote_data,
-          quote_total: Number(quote.total_price),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', customerByLead.id);
-
-      if (customerUpdateError) {
-        console.error('Error syncing quote to customer:', customerUpdateError);
-      }
-    }
-
     // Create activity log (non-blocking)
     try {
       await supabase

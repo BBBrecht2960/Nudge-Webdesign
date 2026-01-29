@@ -51,6 +51,14 @@ NEXT_PUBLIC_BUSINESS_PHONE=+32494299633
 NEXT_PUBLIC_SITE_URL=https://jouw-domein.vercel.app
 ```
 
+#### PostHog (optioneel, voor analytics):
+```
+NEXT_PUBLIC_POSTHOG_KEY=jouw_posthog_key
+NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
+POSTHOG_API_KEY=jouw_posthog_api_key
+NEXT_PUBLIC_POSTHOG_PROJECT_ID=jouw_project_id
+```
+
 #### KBO / Kruispuntbank (optioneel – voor "Ophalen uit KBO"):
 ```
 KBO_PARTY_API_KEY=jouw_kbo_party_key
@@ -72,8 +80,8 @@ Na de eerste deploy, voer deze SQL scripts uit in Supabase:
 3. **Quotes table** (als nog niet gedaan):
    - Run `supabase-quotes-table.sql`
 
-4. **Leads-schema (bedrijfsvelden)**:
-   - Run `scripts/migrate-leads-schema.sql` in Supabase SQL Editor (of `npm run migrate-leads` lokaal met DATABASE_URL)
+4. **Company fields** (nieuw):
+   - Run `add-company-fields.sql`
 
 ### 5. Supabase Storage Bucket Aanmaken
 

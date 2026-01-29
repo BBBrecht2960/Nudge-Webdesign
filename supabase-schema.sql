@@ -14,12 +14,6 @@ CREATE TABLE IF NOT EXISTS leads (
   current_website_status VARCHAR(100),
   message TEXT,
   status VARCHAR(50) DEFAULT 'new' CHECK (status IN ('new', 'contacted', 'qualified', 'converted', 'lost')),
-  vat_number VARCHAR(50),
-  company_address TEXT,
-  company_postal_code VARCHAR(20),
-  company_city VARCHAR(100),
-  company_country VARCHAR(100) DEFAULT 'België',
-  company_website VARCHAR(255),
   utm_source VARCHAR(255),
   utm_medium VARCHAR(255),
   utm_campaign VARCHAR(255),
@@ -28,9 +22,7 @@ CREATE TABLE IF NOT EXISTS leads (
   referrer TEXT,
   landing_path VARCHAR(500),
   created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  created_by VARCHAR(255),
-  brought_in_by VARCHAR(255)
+  updated_at TIMESTAMP DEFAULT NOW()
 );
 
 -- Lead notes table
@@ -63,9 +55,6 @@ CREATE TABLE IF NOT EXISTS admin_users (
 CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status);
 CREATE INDEX IF NOT EXISTS idx_leads_created_at ON leads(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_leads_email ON leads(email);
-CREATE INDEX IF NOT EXISTS idx_leads_vat_number ON leads(vat_number);
-CREATE INDEX IF NOT EXISTS idx_leads_created_by ON leads(created_by);
-CREATE INDEX IF NOT EXISTS idx_leads_brought_in_by ON leads(brought_in_by);
 CREATE INDEX IF NOT EXISTS idx_lead_notes_lead_id ON lead_notes(lead_id);
 CREATE INDEX IF NOT EXISTS idx_lead_status_history_lead_id ON lead_status_history(lead_id);
 

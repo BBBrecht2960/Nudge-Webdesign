@@ -125,7 +125,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 w-full min-w-0 max-w-full overflow-x-hidden box-border">
+    <div className="p-4 sm:p-6 lg:p-8">
       <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-8 break-words">Dashboard</h1>
 
       {/* Stats Cards - Leads */}

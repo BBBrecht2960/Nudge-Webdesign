@@ -5,7 +5,7 @@ import { MetricCard } from '@/app/components/analytics/MetricCard';
 import { EventChart } from '@/app/components/analytics/EventChart';
 import { LeadChart } from '@/app/components/analytics/LeadChart';
 import { RevenueChart } from '@/app/components/analytics/RevenueChart';
-import { MousePointerClick, FileText, ShoppingCart, TrendingUp, Eye, Users, BarChart3, Calendar, Euro, DollarSign, UserCheck, ChevronDown, ChevronRight, Target } from 'lucide-react';
+import { MousePointerClick, FileText, ShoppingCart, TrendingUp, Eye, Users, BarChart3, Calendar, Euro, DollarSign } from 'lucide-react';
 
 interface AnalyticsData {
   events: {
@@ -58,94 +58,7 @@ interface RevenueAnalyticsData {
   };
 }
 
-interface SalesPersonStats {
-  person: string;
-  leadCount: number;
-  quoteCount: number;
-  totalQuoteAmount: number;
-  avgQuoteAmount: number;
-  convertedCount: number;
-  convertedRevenue: number;
-}
-interface SalesByPeriodItem {
-  periodLabel: string;
-  periodKey: string;
-  persons: Record<string, Omit<SalesPersonStats, 'person'>>;
-}
-interface SalesTotals {
-  totalLeads: number;
-  totalQuoteAmount: number;
-  totalConvertedRevenue: number;
-  totalConvertedCount: number;
-}
-interface SalesData {
-  summary: SalesPersonStats[];
-  byPeriod: SalesByPeriodItem[];
-  dateRange: { start: string; end: string; groupBy: string };
-  totals?: SalesTotals;
-}
-
-type TabType = 'overview' | 'leads' | 'revenue' | 'sales';
-
-function SalesPeriodBreakdown({ byPeriod, groupBy }: { byPeriod: SalesByPeriodItem[]; groupBy: 'day' | 'week' | 'month' }) {
-  const [expanded, setExpanded] = useState<string | null>(byPeriod[0]?.periodKey ?? null);
-  const periodLabel = groupBy === 'day' ? 'dag' : groupBy === 'week' ? 'week' : 'maand';
-  return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden">
-      <div className="px-5 py-4 border-b border-border">
-        <h2 className="text-base font-semibold">Uitsplitsing per {periodLabel}</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">Klik op een periode om details te tonen.</p>
-      </div>
-      <div className="divide-y divide-border/80">
-        {byPeriod.map((period) => {
-          const isOpen = expanded === period.periodKey;
-          const entries = Object.entries(period.persons);
-          return (
-            <div key={period.periodKey}>
-              <button
-                type="button"
-                onClick={() => setExpanded(isOpen ? null : period.periodKey)}
-                className="w-full flex items-center justify-between gap-4 px-5 py-3 text-left hover:bg-muted/20 transition-colors"
-              >
-                <span className="font-medium text-sm">{period.periodLabel}</span>
-                <span className="text-muted-foreground text-xs">{entries.length} personen</span>
-                {isOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />}
-              </button>
-              {isOpen && entries.length > 0 && (
-                <div className="px-5 pb-4">
-                  <div className="overflow-x-auto rounded-lg border border-border/80">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-muted/30 text-muted-foreground">
-                          <th className="text-left py-2 px-3 font-medium">Persoon</th>
-                          <th className="text-right py-2 px-3 font-medium w-16">Leads</th>
-                          <th className="text-right py-2 px-3 font-medium w-16">Offertes</th>
-                          <th className="text-right py-2 px-3 font-medium">Totaal offerte</th>
-                          <th className="text-right py-2 px-3 font-medium">Omzet</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {entries.map(([person, t]) => (
-                          <tr key={person} className="border-t border-border/80">
-                            <td className="py-2 px-3 break-all">{person}</td>
-                            <td className="py-2 px-3 text-right tabular-nums">{t.leadCount}</td>
-                            <td className="py-2 px-3 text-right tabular-nums">{t.quoteCount}</td>
-                            <td className="py-2 px-3 text-right tabular-nums">€ {t.totalQuoteAmount.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                            <td className="py-2 px-3 text-right tabular-nums font-medium">€ {t.convertedRevenue.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+type TabType = 'overview' | 'leads' | 'revenue' | 'info';
 
 export default function AnalyticsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -169,27 +82,35 @@ export default function AnalyticsPage() {
   const [endDate, setEndDate] = useState(() => {
     return new Date().toISOString().split('T')[0];
   });
-  const [salesData, setSalesData] = useState<SalesData | null>(null);
-  const [salesLoading, setSalesLoading] = useState(false);
-  const [salesStartDate, setSalesStartDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 30);
-    return d.toISOString().split('T')[0];
-  });
-  const [salesEndDate, setSalesEndDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [salesGroupBy, setSalesGroupBy] = useState<'day' | 'week' | 'month'>('week');
 
   useEffect(() => {
-    const fetchData = async () => {      
+    const fetchData = async () => {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'analytics/page.tsx:86',message:'Fetching analytics data',data:{days},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'M'})}).catch(()=>{});
+      // #endregion
+      
       try {
         setLoading(true);
-        const response = await fetch(`/api/analytics/events?days=${days}`);        
+        const response = await fetch(`/api/analytics/events?days=${days}`);
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'analytics/page.tsx:92',message:'Analytics response received',data:{status:response.status,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'M'})}).catch(()=>{});
+        // #endregion
+        
         if (!response.ok) {
           throw new Error('Failed to fetch analytics');
         }
-        const result = await response.json();        setData(result);
+        const result = await response.json();
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'analytics/page.tsx:98',message:'Analytics data loaded',data:{hasData:!!result,hasEvents:!!result?.events},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'M'})}).catch(()=>{});
+        // #endregion
+        setData(result);
         setError(null);
-      } catch (err: unknown) {        const errorMessage = err instanceof Error ? err.message : 'Fout bij ophalen analytics';
+      } catch (err: unknown) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'analytics/page.tsx:103',message:'Analytics fetch error',data:{error:err instanceof Error ? err.message : String(err)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
+        const errorMessage = err instanceof Error ? err.message : 'Fout bij ophalen analytics';
         console.error('Error fetching analytics:', err);
         setError(errorMessage);
       } finally {
@@ -262,35 +183,15 @@ export default function AnalyticsPage() {
     fetchRevenueData();
   }, [leadDays, revenueGroupBy, customDateRange, startDate, endDate]);
 
-  useEffect(() => {
-    if (activeTab !== 'sales') return;
-    const fetchSalesData = async () => {
-      try {
-        setSalesLoading(true);
-        const url = `/api/analytics/sales?startDate=${salesStartDate}&endDate=${salesEndDate}&groupBy=${salesGroupBy}`;
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Fout bij ophalen sales');
-        const result = await response.json();
-        setSalesData(result);
-      } catch (err) {
-        console.error('Sales analytics:', err);
-        setSalesData(null);
-      } finally {
-        setSalesLoading(false);
-      }
-    };
-    fetchSalesData();
-  }, [activeTab, salesStartDate, salesEndDate, salesGroupBy]);
-
   const tabs = [
     { id: 'overview' as TabType, label: 'Overzicht', icon: BarChart3 },
     { id: 'leads' as TabType, label: 'Leads', icon: Users },
     { id: 'revenue' as TabType, label: 'Omzet', icon: Euro },
-    { id: 'sales' as TabType, label: 'Sales / Team', icon: UserCheck },
+    { id: 'info' as TabType, label: 'Informatie', icon: FileText },
   ];
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full min-w-0 max-w-full overflow-x-hidden box-border">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
       <div className="mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold mb-2 break-words">Analyses Dashboard</h1>
         <p className="text-muted-foreground text-sm sm:text-base">
@@ -323,7 +224,14 @@ export default function AnalyticsPage() {
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <p className="text-red-800 text-sm break-words">{error}</p>
+          <p className="text-red-800 text-sm break-words">
+            {error}
+            {error.includes('API key') && (
+              <span className="block mt-2">
+                Voeg <code className="bg-red-100 px-1 rounded">POSTHOG_API_KEY</code> toe aan je <code className="bg-red-100 px-1 rounded">.env.local</code>
+              </span>
+            )}
+          </p>
         </div>
       )}
 
@@ -350,38 +258,31 @@ export default function AnalyticsPage() {
                 </select>
               </div>
 
-              {/* Hint als er nog geen data is (tabel niet aangemaakt) */}
-              {data && (data.pageviews?.count ?? 0) === 0 && (data.events?.cta_click?.count ?? 0) === 0 && (data.events?.form_submitted?.count ?? 0) === 0 && (
-                <div className="bg-muted border border-border rounded-lg p-4 mb-6 text-sm text-muted-foreground">
-                  Geen data? Voer eenmalig <code className="bg-background px-1 rounded">scripts/analytics-events-table.sql</code> uit in Supabase SQL Editor. Daarna verschijnen pageviews en events hier zodra bezoekers de site gebruiken.
-                </div>
-              )}
-
           {/* Key Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <MetricCard
               title="Paginaweergaven"
-              value={data?.pageviews?.count ?? 0}
-              trend={data?.pageviews?.trend}
+              value={data?.pageviews.count || 0}
+              trend={data?.pageviews.trend}
               icon={<Eye className="w-5 h-5" />}
             />
             <MetricCard
               title="CTA Klikken"
-              value={data?.events?.cta_click?.count ?? 0}
-              trend={data?.events?.cta_click?.trend}
+              value={data?.events.cta_click.count || 0}
+              trend={data?.events.cta_click.trend}
               icon={<MousePointerClick className="w-5 h-5" />}
             />
             <MetricCard
               title="Formulierinzendingen"
-              value={data?.events?.form_submitted?.count ?? 0}
-              trend={data?.events?.form_submitted?.trend}
+              value={data?.events.form_submitted.count || 0}
+              trend={data?.events.form_submitted.trend}
               subtitle="Leads gegenereerd"
               icon={<FileText className="w-5 h-5" />}
             />
             <MetricCard
               title="Pakketweergaven"
-              value={data?.events?.package_card_click?.count ?? 0}
-              trend={data?.events?.package_card_click?.trend}
+              value={data?.events.package_card_click.count || 0}
+              trend={data?.events.package_card_click.trend}
               icon={<ShoppingCart className="w-5 h-5" />}
             />
           </div>
@@ -420,7 +321,7 @@ export default function AnalyticsPage() {
                   <div>
                     <div className="text-xs sm:text-sm text-muted-foreground mb-1">CTA Click Rate</div>
                     <div className="text-xl sm:text-2xl font-bold">
-                      {data?.pageviews?.count && data?.events?.cta_click?.count
+                      {data?.pageviews.count && data?.events.cta_click.count
                         ? ((data.events.cta_click.count / data.pageviews.count) * 100).toFixed(1)
                         : '0'}
                       %
@@ -429,7 +330,7 @@ export default function AnalyticsPage() {
                   <div>
                     <div className="text-xs sm:text-sm text-muted-foreground mb-1">Form Conversion</div>
                     <div className="text-xl sm:text-2xl font-bold">
-                      {data?.pageviews?.count && data?.events?.form_submitted?.count
+                      {data?.pageviews.count && data?.events.form_submitted.count
                         ? ((data.events.form_submitted.count / data.pageviews.count) * 100).toFixed(2)
                         : '0'}
                       %
@@ -438,7 +339,7 @@ export default function AnalyticsPage() {
                   <div>
                     <div className="text-xs sm:text-sm text-muted-foreground mb-1">Package Interest</div>
                     <div className="text-xl sm:text-2xl font-bold">
-                      {data?.pageviews?.count && data?.events?.package_card_click?.count
+                      {data?.pageviews.count && data?.events.package_card_click.count
                         ? ((data.events.package_card_click.count / data.pageviews.count) * 100).toFixed(1)
                         : '0'}
                       %
@@ -844,132 +745,54 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {/* Sales / Team Tab */}
-      {activeTab === 'sales' && (
-        <div className="space-y-8">
-          {/* Filters — one clean row */}
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
-              <input
-                type="date"
-                value={salesStartDate}
-                onChange={(e) => setSalesStartDate(e.target.value)}
-                className="px-3 py-2 border border-border rounded-lg bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-              <span className="text-muted-foreground text-sm">t/m</span>
-              <input
-                type="date"
-                value={salesEndDate}
-                onChange={(e) => setSalesEndDate(e.target.value)}
-                className="px-3 py-2 border border-border rounded-lg bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-muted-foreground text-sm">Groeperen</span>
-              <select
-                value={salesGroupBy}
-                onChange={(e) => setSalesGroupBy(e.target.value as 'day' | 'week' | 'month')}
-                className="px-3 py-2 border border-border rounded-lg bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="day">Per dag</option>
-                <option value="week">Per week</option>
-                <option value="month">Per maand</option>
-              </select>
+      {/* Informatie Tab */}
+      {activeTab === 'info' && (
+        <div className="space-y-6 sm:space-y-8">
+          {/* Tracked Events Info */}
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
+            <h2 className="text-lg sm:text-xl font-bold mb-4 break-words">Gevolgde Events</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="font-semibold mb-2 text-sm sm:text-base">Aangepaste Events:</h3>
+                <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm text-muted-foreground break-words">
+                  <li>cta_click - CTA knop klikken</li>
+                  <li>form_started - Form interactie gestart</li>
+                  <li>form_submitted - Form succesvol verzonden</li>
+                  <li>package_card_click - Pakket kaart interacties</li>
+                  <li>faq_expanded - FAQ items uitgeklapt</li>
+                  <li>scroll_depth - Scroll diepte tracking</li>
+                  <li>sticky_cta_click - Mobiele sticky CTA klikken</li>
+                  <li>phone_click - Telefoonnummer klikken</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2 text-sm sm:text-base">Gebruikerseigenschappen:</h3>
+                <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm text-muted-foreground break-words">
+                  <li>UTM parameters (source, medium, campaign, etc.)</li>
+                  <li>Verwijzer</li>
+                  <li>Landingspad</li>
+                  <li>Pakket interesse</li>
+                  <li>Bedrijfsgrootte</li>
+                </ul>
+              </div>
             </div>
           </div>
 
-          {salesLoading ? (
-            <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">Laden…</div>
-          ) : salesData ? (
-            <>
-              {/* Period totals — 4 KPI cards */}
-              {salesData.totals && (
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <MetricCard
-                    title="Leads"
-                    value={salesData.totals.totalLeads}
-                    icon={<Users className="w-4 h-4" />}
-                  />
-                  <MetricCard
-                    title="Offertewaarde"
-                    value={`€ ${salesData.totals.totalQuoteAmount.toLocaleString('nl-BE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
-                    icon={<FileText className="w-4 h-4" />}
-                  />
-                  <MetricCard
-                    title="Omzet (gesloten)"
-                    value={`€ ${salesData.totals.totalConvertedRevenue.toLocaleString('nl-BE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
-                    icon={<Euro className="w-4 h-4" />}
-                  />
-                  <MetricCard
-                    title="Deals"
-                    value={salesData.totals.totalConvertedCount}
-                    subtitle={salesData.totals.totalLeads > 0 ? `${Math.round((salesData.totals.totalConvertedCount / salesData.totals.totalLeads) * 100)}% van leads` : undefined}
-                    icon={<Target className="w-4 h-4" />}
-                  />
-                </div>
-              )}
-
-              {/* Team overview table */}
-              <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="px-5 py-4 border-b border-border">
-                  <h2 className="text-base font-semibold">Teamoverzicht</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">Per persoon: leads toegewezen via «Binnengebracht door» of «Aangemaakt door».</p>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-muted/30 text-muted-foreground">
-                        <th className="text-left py-3 px-4 font-medium">Persoon</th>
-                        <th className="text-right py-3 px-4 font-medium w-20">Leads</th>
-                        <th className="text-right py-3 px-4 font-medium w-20">Offertes</th>
-                        <th className="text-right py-3 px-4 font-medium">Totaal offerte</th>
-                        <th className="text-right py-3 px-4 font-medium">Gem. offerte</th>
-                        <th className="text-right py-3 px-4 font-medium w-20">Deals</th>
-                        <th className="text-right py-3 px-4 font-medium">Conversie</th>
-                        <th className="text-right py-3 px-4 font-medium">Omzet</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {salesData.summary.length === 0 ? (
-                        <tr>
-                          <td colSpan={8} className="py-12 px-4 text-center text-muted-foreground text-sm">
-                            Geen leads in deze periode of geen attributie ingesteld. Vul bij een lead «Binnengebracht door» in voor correcte toewijzing.
-                          </td>
-                        </tr>
-                      ) : (
-                        salesData.summary.map((row, idx) => {
-                          const convPct = row.leadCount > 0 ? Math.round((row.convertedCount / row.leadCount) * 100) : 0;
-                          return (
-                            <tr key={row.person} className="border-t border-border/80 hover:bg-muted/20 transition-colors">
-                              <td className="py-3 px-4 font-medium text-foreground break-all">{row.person}</td>
-                              <td className="py-3 px-4 text-right tabular-nums">{row.leadCount}</td>
-                              <td className="py-3 px-4 text-right tabular-nums">{row.quoteCount}</td>
-                              <td className="py-3 px-4 text-right tabular-nums">€ {row.totalQuoteAmount.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                              <td className="py-3 px-4 text-right tabular-nums">€ {row.avgQuoteAmount.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                              <td className="py-3 px-4 text-right tabular-nums">{row.convertedCount}</td>
-                              <td className="py-3 px-4 text-right tabular-nums text-muted-foreground">{convPct}%</td>
-                              <td className="py-3 px-4 text-right tabular-nums font-semibold">€ {row.convertedRevenue.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Per-period breakdown — collapsible */}
-              {salesData.byPeriod.length > 0 && (
-                <SalesPeriodBreakdown
-                  byPeriod={salesData.byPeriod}
-                  groupBy={salesGroupBy}
-                />
-              )}
-            </>
-          ) : (
-            <div className="py-16 text-center text-muted-foreground text-sm">Geen data of fout bij laden.</div>
-          )}
+          {/* PostHog Link */}
+          <div className="bg-muted border border-border rounded-lg p-4 sm:p-6">
+            <h2 className="text-lg sm:text-xl font-bold mb-4 break-words">Gedetailleerde Analytics</h2>
+            <p className="text-muted-foreground mb-4 text-sm sm:text-base break-words">
+              Voor uitgebreide analytics, session recordings, funnels en meer, open het PostHog dashboard.
+            </p>
+            <a
+              href="https://app.posthog.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block px-4 sm:px-6 py-2 sm:py-3 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm sm:text-base"
+            >
+              PostHog Dashboard openen →
+            </a>
+          </div>
         </div>
       )}
     </div>

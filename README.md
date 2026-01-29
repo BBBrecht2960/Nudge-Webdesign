@@ -51,6 +51,10 @@ Create a `.env.local` file in the root directory:
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
+# PostHog Analytics
+NEXT_PUBLIC_POSTHOG_KEY=your_posthog_project_api_key
+NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
+
 # Authentication
 NEXTAUTH_SECRET=your_random_secret_key_here
 NEXTAUTH_URL=http://localhost:3000
@@ -89,7 +93,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
   /thanks             # Thank you page
 /lib
   /db.ts              # Database client
-  /analytics.ts       # Internal analytics (track)
+  /posthog.ts         # PostHog client
   /utils.ts           # Utility functions
 ```
 

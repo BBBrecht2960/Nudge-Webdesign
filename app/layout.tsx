@@ -1,15 +1,7 @@
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
-import { AnalyticsTracker } from "./components/AnalyticsTracker";
 import { StructuredData } from "./components/StructuredData";
-
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 5,
-  viewportFit: "cover",
-};
 
 const inter = Inter({
   variable: "--font-body",
@@ -64,7 +56,6 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${spaceGrotesk.variable} antialiased`}
       >
-        <AnalyticsTracker />
         {children}
       </body>
     </html>

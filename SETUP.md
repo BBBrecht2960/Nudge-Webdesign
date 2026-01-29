@@ -14,7 +14,6 @@
    - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
    - **anon public** (onder “Project API keys”) → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - **service_role** (onder “Project API keys”, verborgen – klik “Reveal”) → `SUPABASE_SERVICE_ROLE_KEY` *(nodig voor admin-login en het aanmaken van admin-gebruikers)*
-8. **Leads-schema (admin lead aanmaken):** Ga naar **Settings** → **Database** → **Connection string** (URI). Kopieer de connection string naar `.env.local` als `DATABASE_URL`. Voer daarna eenmalig uit in de projectmap: `npm run migrate-leads`. Daarmee worden de kolommen `company_address`, `vat_number`, `created_by`, enz. op de `leads`-tabel toegevoegd. Zonder deze stap geeft "Lead aanmaken" een schema-fout.
 
 ### Neon (Alternatief)
 
@@ -23,9 +22,13 @@
 3. Gebruik de connection string als `DATABASE_URL`
 4. Voer `supabase-schema.sql` uit in de SQL editor
 
-## Stap 2: Analytics (optioneel)
+## Stap 2: PostHog Setup
 
-Analytics zijn intern: pageviews en events worden opgeslagen in je eigen database. Voer eenmalig `scripts/analytics-events-table.sql` uit in Supabase SQL Editor. Daarna toont Admin → Analytics de cijfers.
+1. Maak een account aan op [posthog.com](https://posthog.com)
+2. Maak een nieuw project aan
+3. Ga naar Project Settings
+4. Kopieer de Project API Key → `NEXT_PUBLIC_POSTHOG_KEY`
+5. Noteer de host (standaard: `https://us.i.posthog.com`) → `NEXT_PUBLIC_POSTHOG_HOST`
 
 ## Stap 3: Admin User Aanmaken
 
@@ -110,6 +113,10 @@ NEXT_PUBLIC_SUPABASE_URL=https://jouw-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=jouw_anon_public_key
 SUPABASE_SERVICE_ROLE_KEY=jouw_service_role_key
 
+# PostHog (optioneel)
+NEXT_PUBLIC_POSTHOG_KEY=your_posthog_project_api_key
+NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
+
 # Authentication (voor NextAuth, indien gebruikt)
 NEXTAUTH_SECRET=generate_a_random_secret_here
 NEXTAUTH_URL=http://localhost:3000
@@ -179,7 +186,7 @@ Open [http://localhost:3000](http://localhost:3000)
 1. **Lead Form**: Vul het formulier in op de homepage
 2. **Admin Login**: Ga naar `/admin` en log in
 3. **Leads Dashboard**: Controleer of de lead zichtbaar is
-4. **Analytics**: Voer `scripts/analytics-events-table.sql` uit; daarna toont Admin → Analytics data
+4. **PostHog**: Controleer of events worden getracked
 
 ## Stap 8: Production Deployment
 
@@ -196,6 +203,8 @@ Open [http://localhost:3000](http://localhost:3000)
 Zorg ervoor dat alle environment variables zijn ingesteld:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_POSTHOG_KEY`
+- `NEXT_PUBLIC_POSTHOG_HOST`
 - `NEXTAUTH_SECRET`
 - `NEXTAUTH_URL` (uw productie URL, bijv. `https://yourwebsite.com`)
 
@@ -205,6 +214,11 @@ Zorg ervoor dat alle environment variables zijn ingesteld:
 - Controleer of de Supabase URL en key correct zijn
 - Controleer of de database tables zijn aangemaakt
 - Controleer Supabase logs voor errors
+
+### PostHog tracking werkt niet
+- Controleer of `NEXT_PUBLIC_POSTHOG_KEY` is ingesteld
+- Open browser console en controleer voor errors
+- Controleer PostHog dashboard voor events
 
 ### Admin login werkt niet
 - Controleer of admin user is aangemaakt in database

@@ -73,12 +73,14 @@ export function StickyMobileCTA() {
   };
 
   const handlePhoneClick = () => {
-    track('phone_click', { source: 'sticky_mobile_bar' });
+    track('phone_click', {
+      source: 'sticky_mobile_bar',
+    });
   };
 
   return (
     <div 
-      className={`fixed bottom-0 left-0 right-0 z-[9999] bg-white border-t-2 border-primary shadow-lg transition-all duration-300 w-full min-w-0 pb-[env(safe-area-inset-bottom)] ${
+      className={`fixed bottom-0 left-0 right-0 z-[9999] bg-white border-t-2 border-primary shadow-lg transition-all duration-300 w-full min-w-0 ${
         show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full pointer-events-none'
       }`}
     >

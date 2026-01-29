@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { DoNotTrackControl } from '@/app/components/DoNotTrackControl';
 
 export const metadata: Metadata = {
   title: 'Privacybeleid - Nudge Webdesign',
@@ -90,7 +91,7 @@ export default function PrivacyPage() {
             <li>Hostingproviders</li>
             <li>E-maildiensten</li>
             <li>Boekhoudsoftware</li>
-            <li>Interne analytics (eigen database)</li>
+            <li>Analytics tools (PostHog)</li>
           </ul>
           <p className="break-words">
             Met deze partijen sluiten wij verwerkersovereenkomsten af zodat jouw gegevens beschermd blijven.
@@ -132,6 +133,7 @@ export default function PrivacyPage() {
           <p className="break-words">
             Meer informatie vind je in onze <Link href="/cookie-beleid" className="text-primary hover:underline">cookieverklaring</Link>.
           </p>
+          <DoNotTrackControl />
         </section>
 
         <section className="mb-6 sm:mb-8">
@@ -161,18 +163,12 @@ export default function PrivacyPage() {
           </p>
         </section>
 
-        <div className="mt-10 pt-6 border-t border-border flex flex-wrap gap-4">
+        <div className="mt-10 pt-6 border-t border-border">
           <Link 
             href="/contact" 
             className="inline-block text-primary hover:underline font-medium"
           >
             ← Terug naar contact
-          </Link>
-          <Link href="/algemene-voorwaarden" className="inline-block text-muted-foreground hover:text-foreground">
-            Algemene voorwaarden
-          </Link>
-          <Link href="/cookie-beleid" className="inline-block text-muted-foreground hover:text-foreground">
-            Cookiebeleid
           </Link>
         </div>
       </div>

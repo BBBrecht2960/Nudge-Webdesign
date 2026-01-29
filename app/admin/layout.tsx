@@ -272,11 +272,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
           )}
         </div>
       </nav>
-      <main className="w-full min-w-0 max-w-full overflow-x-hidden box-border">
-        <div className="w-full min-w-0 max-w-full overflow-x-hidden box-border">
-          {children}
-        </div>
-      </main>
+      <main className="w-full min-w-0 overflow-x-hidden">{children}</main>
     </div>
   );
 }

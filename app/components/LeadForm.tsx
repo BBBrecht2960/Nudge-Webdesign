@@ -69,8 +69,16 @@ export function LeadForm() {
     }
   }, []);
 
-  const onSubmit = async (data: FormData) => {    
-    if (isSubmitting) {      return;
+  const onSubmit = async (data: FormData) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeadForm.tsx:72',message:'Form submission started',data:{isSubmitting,email:data.email},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+    
+    if (isSubmitting) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeadForm.tsx:75',message:'Double submission prevented',data:{isSubmitting},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      return;
     }
 
     setIsSubmitting(true);
@@ -78,6 +86,11 @@ export function LeadForm() {
     try {
       // Combine first_name and last_name into name for API
       const fullName = `${data.first_name} ${data.last_name}`.trim();
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeadForm.tsx:85',message:'Preparing API request',data:{fullName,email:data.email,hasPhone:!!data.phone,hasMessage:!!data.message,gdprConsent:data.gdpr_consent},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+
       track('form_submitted', {
         form_type: 'lead_form_simple',
         ...utmData,
@@ -95,23 +108,44 @@ export function LeadForm() {
           ...utmData,
         }),
       });
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeadForm.tsx:104',message:'API response received',data:{status:response.status,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+
       if (!response.ok) {
         let errorMessage = 'Er is iets misgegaan. Probeer het opnieuw.';
         try {
           const errorData = await response.json();
-          if (errorData?.error) errorMessage = errorData.error;        } catch {}
+          if (errorData?.error) errorMessage = errorData.error;
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeadForm.tsx:110',message:'API error response',data:{status:response.status,error:errorData?.error},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
+        } catch {}
         throw new Error(errorMessage);
       }
 
       const responseData = await response.json();
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeadForm.tsx:116',message:'Form submission successful',data:{leadId:responseData.lead_id,success:responseData.success},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+
       setSubmitSuccess(true);
       setTimeout(() => {
         window.location.href = '/thanks';
       }, 2000);
-    } catch (error) {      console.error('Form submission error:', error);
+    } catch (error) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeadForm.tsx:130',message:'Form submission error',data:{error:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
+      console.error('Form submission error:', error);
       alert(error instanceof Error ? error.message : 'Er is iets misgegaan. Probeer het opnieuw.');
     } finally {
-      setIsSubmitting(false);    }
+      setIsSubmitting(false);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeadForm.tsx:135',message:'Form submission finished',data:{isSubmitting:false},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+    }
   };
 
   if (submitSuccess) {
@@ -149,7 +183,7 @@ export function LeadForm() {
               {...register('first_name')}
               type="text"
               id="first_name"
-              className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-base"
+              className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm sm:text-base"
               placeholder="Jan"
             />
             {errors.first_name && (
@@ -165,7 +199,7 @@ export function LeadForm() {
               {...register('last_name')}
               type="text"
               id="last_name"
-              className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-base"
+              className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm sm:text-base"
               placeholder="Janssen"
             />
             {errors.last_name && (
@@ -182,7 +216,7 @@ export function LeadForm() {
             {...register('email')}
             type="email"
             id="email"
-            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-base"
+            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm sm:text-base"
             placeholder="jan@voorbeeld.be"
           />
           {errors.email && (
@@ -198,7 +232,7 @@ export function LeadForm() {
             {...register('phone')}
             type="tel"
             id="phone"
-            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-base"
+            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm sm:text-base"
             placeholder="0491234567"
           />
           {errors.phone && (
@@ -214,27 +248,22 @@ export function LeadForm() {
             {...register('message')}
             id="message"
             rows={3}
-            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none text-base"
+            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none text-sm sm:text-base"
             placeholder="Vertel ons meer over je project of vraag..."
           />
         </div>
 
         <div className="bg-muted/50 rounded-xl p-3 sm:p-4">
-          <label className="flex items-start gap-2 sm:gap-3 cursor-pointer min-h-[44px] py-2 sm:py-0 sm:min-h-0">
+          <label className="flex items-start gap-2 sm:gap-3 cursor-pointer">
             <input
               {...register('gdpr_consent')}
               type="checkbox"
-              className="mt-0.5 sm:mt-1 w-5 h-5 shrink-0 text-primary focus:outline-none rounded border-2 border-border cursor-pointer"
-              aria-label="Akkoord met privacybeleid"
+              className="mt-0.5 sm:mt-1 w-4 h-4 sm:w-5 sm:h-5 shrink-0 text-primary focus:outline-none rounded border-2 border-border cursor-pointer"
             />
             <span className="text-xs sm:text-sm leading-relaxed">
               Ik ga akkoord met het{' '}
               <a href="/privacy" className="text-primary hover:underline font-medium" target="_blank">
                 privacybeleid
-              </a>
-              , de{' '}
-              <a href="/algemene-voorwaarden" className="text-primary hover:underline font-medium" target="_blank">
-                algemene voorwaarden
               </a>{' '}
               en geef toestemming voor het verwerken van mijn gegevens. *
             </span>
@@ -248,7 +277,7 @@ export function LeadForm() {
       <Button
         type="submit"
         disabled={isSubmitting}
-        className="w-full min-h-[48px] py-3 text-base font-semibold"
+        className="w-full py-2.5 sm:py-3 text-sm sm:text-base font-semibold"
       >
         {isSubmitting ? 'Verzenden...' : 'Verstuur aanvraag'}
       </Button>

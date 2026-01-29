@@ -43,8 +43,6 @@ export interface Lead {
   updated_at: string;
   /** E-mail van het admin-account dat deze lead heeft aangemaakt (alleen bij handmatig aanmaken). */
   created_by?: string;
-  /** Lead binnengebracht door (sales/partner); ook in te vullen bij website-leads voor attributie. */
-  brought_in_by?: string;
 }
 
 export interface LeadNote {
