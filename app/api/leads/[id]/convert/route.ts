@@ -2,6 +2,69 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
+// Types for generateCursorPrompt / generateBasicPrompt (DB records are loosely typed)
+interface LeadRecord {
+  name?: string;
+  email?: string;
+  phone?: string;
+  company_name?: string;
+  company_size?: string;
+  vat_number?: string;
+  company_address?: string;
+  company_postal_code?: string;
+  company_city?: string;
+  company_country?: string;
+  company_website?: string;
+  package_interest?: string;
+  pain_points?: string[];
+  current_website_status?: string;
+  message?: string;
+  assigned_to?: string;
+  [key: string]: unknown;
+}
+interface QuoteOption {
+  name?: string;
+  description?: string;
+}
+interface QuoteCustomItem {
+  name?: string;
+  price?: number;
+}
+interface QuoteMaintenance {
+  name?: string;
+  price?: number;
+}
+interface QuoteRecord {
+  total_price?: number;
+  selectedPackage?: { name?: string };
+  selectedOptions?: QuoteOption[];
+  extraPages?: number;
+  contentPages?: string[];
+  customItems?: QuoteCustomItem[];
+  selectedMaintenance?: QuoteMaintenance;
+  [key: string]: unknown;
+}
+interface AttachmentRecord {
+  file_name?: string;
+  file_type?: string;
+  file_url?: string;
+  file_size?: number;
+  description?: string;
+  uploaded_by?: string;
+  [key: string]: unknown;
+}
+interface ActivityRecord {
+  title?: string;
+  activity_type?: string;
+  summary?: string;
+  description?: string;
+  duration_minutes?: number;
+  created_by?: string;
+  scheduled_at?: string;
+  completed_at?: string;
+  [key: string]: unknown;
+}
+
 // POST: Convert a lead to a customer when status is set to "converted"
 export async function POST(
   request: NextRequest,
@@ -164,6 +227,7 @@ export async function POST(
         company_city: lead.company_city,
         company_country: lead.company_country || 'België',
         company_website: lead.company_website,
+        bank_account: lead.bank_account,
         package_interest: lead.package_interest,
         pain_points: lead.pain_points,
         current_website_status: lead.current_website_status,
@@ -262,15 +326,12 @@ export async function POST(
 
 // Generate AI prompt for Cursor based on lead data
 async function generateCursorPrompt(
-  lead: any,
-  quote: any,
-  attachments: any[],
-  activities: any[],
+  lead: LeadRecord,
+  quote: QuoteRecord | null,
+  attachments: AttachmentRecord[],
+  activities: ActivityRecord[],
   quoteTotal: number | null = null
 ): Promise<string> {
-  // Use quoteTotal if available, otherwise fallback to quote.total_price
-  const displayTotal = quoteTotal !== null && quoteTotal !== undefined ? quoteTotal : (quote?.total_price || 0);
-  
   try {
     // Check if OpenAI API key is configured
     const openaiApiKey = process.env.OPENAI_API_KEY;
@@ -281,8 +342,8 @@ async function generateCursorPrompt(
 
     // Analyze attachments (especially images/moodboards)
     let attachmentAnalysis = '';
-    const imageAttachments = attachments?.filter((att: any) => 
-      att.file_type?.startsWith('image/') || 
+    const imageAttachments = attachments?.filter((att: AttachmentRecord) =>
+      att.file_type?.startsWith('image/') ||
       att.file_name?.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)
     ) || [];
 
@@ -290,7 +351,7 @@ async function generateCursorPrompt(
       try {
         // Analyze images with Vision API
         const imageAnalyses = await Promise.all(
-          imageAttachments.map(async (att: any) => {
+          imageAttachments.map(async (att: AttachmentRecord) => {
             try {
               const visionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
@@ -345,28 +406,21 @@ Als het een andere afbeelding is, beschrijf wat je ziet en hoe het relevant is v
           })
         );
 
-        const validAnalyses = imageAnalyses.filter(a => a !== null);
+        const validAnalyses = imageAnalyses.filter((a): a is NonNullable<typeof a> => a !== null);
         if (validAnalyses.length > 0) {
           attachmentAnalysis = '\n## Design Analyse (uit bijlagen)\n\n';
-          validAnalyses.forEach((analysis: any) => {
-            attachmentAnalysis += `### ${analysis.fileName}\n`;
+          validAnalyses.forEach((analysis) => {
+            attachmentAnalysis += `### ${analysis.fileName ?? 'Afbeelding'}\n`;
             if (analysis.description) {
               attachmentAnalysis += `Beschrijving: ${analysis.description}\n\n`;
             }
-            attachmentAnalysis += `${analysis.analysis}\n\n`;
+            attachmentAnalysis += `${analysis.analysis ?? ''}\n\n`;
           });
         }
       } catch (error) {
         console.error('Error analyzing attachments:', error);
       }
     }
-
-    // Analyze text documents if any
-    const textAttachments = attachments?.filter((att: any) => 
-      att.file_type?.includes('text') || 
-      att.file_type?.includes('pdf') ||
-      att.file_name?.match(/\.(txt|md|pdf|doc|docx)$/i)
-    ) || [];
 
     // Build comprehensive context for AI
     let context = `# Project Brief: ${lead.company_name || lead.name}\n\n`;
@@ -410,7 +464,7 @@ Als het een andere afbeelding is, beschrijf wat je ziet en hoe het relevant is v
       
       if (quote.selectedOptions && quote.selectedOptions.length > 0) {
         context += `\n### Functionaliteiten (Verplicht):\n`;
-        quote.selectedOptions.forEach((opt: any) => {
+        quote.selectedOptions.forEach((opt: QuoteOption) => {
           context += `- ${opt.name}`;
           if (opt.description) context += `: ${opt.description}`;
           context += `\n`;
@@ -427,7 +481,7 @@ Als het een andere afbeelding is, beschrijf wat je ziet en hoe het relevant is v
       
       if (quote.customItems && quote.customItems.length > 0) {
         context += `\n### Aangepaste Features:\n`;
-        quote.customItems.forEach((item: any) => {
+        quote.customItems.forEach((item: QuoteCustomItem) => {
           context += `- ${item.name}: €${item.price}\n`;
         });
       }
@@ -446,7 +500,7 @@ Als het een andere afbeelding is, beschrijf wat je ziet en hoe het relevant is v
     // Add ALL attachments info (not just text documents)
     if (attachments && attachments.length > 0) {
       context += `## Alle Bijlagen\n`;
-      attachments.forEach((att: any) => {
+      attachments.forEach((att: AttachmentRecord) => {
         context += `- ${att.file_name}`;
         if (att.file_type) context += ` (${att.file_type})`;
         if (att.file_size) {
@@ -463,7 +517,7 @@ Als het een andere afbeelding is, beschrijf wat je ziet en hoe het relevant is v
     // Add ALL activities (not just important ones)
     if (activities && activities.length > 0) {
       context += `## Alle Activiteiten & Notities\n`;
-      activities.forEach((act: any) => {
+      activities.forEach((act: ActivityRecord) => {
         context += `### ${act.title || act.activity_type || 'Activiteit'}\n`;
         context += `Type: ${act.activity_type || 'Niet gespecificeerd'}\n`;
         if (act.summary) context += `Samenvatting: ${act.summary}\n`;
@@ -546,16 +600,16 @@ Analyseer deze project informatie en genereer een directe, actieve prompt:\n\n${
 
 // Fallback: Generate basic prompt without AI
 function generateBasicPrompt(
-  lead: any,
-  quote: any,
-  attachments: any[],
-  activities: any[],
+  lead: LeadRecord,
+  quote: QuoteRecord | null,
+  attachments: AttachmentRecord[],
+  activities: ActivityRecord[],
   quoteTotal: number | null = null
 ): string {
   // Determine project type from package
   const packageName = quote?.selectedPackage?.name || lead.package_interest || 'Website';
   const isWebshop = packageName.toLowerCase().includes('webshop') || packageName.toLowerCase().includes('e-commerce');
-  const isMultiLang = quote?.selectedOptions?.some((opt: any) => opt.name?.toLowerCase().includes('multi-language') || opt.name?.toLowerCase().includes('meertalig'));
+  const isMultiLang = quote?.selectedOptions?.some((opt: QuoteOption) => opt.name?.toLowerCase().includes('multi-language') || opt.name?.toLowerCase().includes('meertalig'));
   
   // Get total price - prioritize quoteTotal from database, fallback to quote.total_price
   const totalPrice = quoteTotal !== null && quoteTotal !== undefined ? quoteTotal : (quote?.total_price || 0);
@@ -581,7 +635,7 @@ function generateBasicPrompt(
   prompt += `- Typografie: System fonts (Inter, -apple-system, sans-serif)\n`;
   prompt += `- Layout: Responsive, mobile-first design\n`;
   prompt += `- Componenten: Herbruikbare React componenten met Tailwind CSS\n`;
-  if (attachments && attachments.some((att: any) => att.file_type?.startsWith('image/'))) {
+  if (attachments && attachments.some((att: AttachmentRecord) => att.file_type?.startsWith('image/'))) {
     prompt += `- Design referenties: Zie bijgevoegde moodboards/designs voor specifieke kleuren en stijl\n`;
   }
   prompt += `\n`;
@@ -594,7 +648,7 @@ function generateBasicPrompt(
   
   if (quote?.selectedOptions && quote.selectedOptions.length > 0) {
     prompt += `- Extra features:\n`;
-    quote.selectedOptions.forEach((opt: any) => {
+    quote.selectedOptions.forEach((opt: QuoteOption) => {
       prompt += `  - ${opt.name}`;
       if (opt.description) prompt += `: ${opt.description}`;
       prompt += `\n`;
@@ -611,7 +665,7 @@ function generateBasicPrompt(
   
   if (quote?.customItems && quote.customItems.length > 0) {
     prompt += `- Aangepaste features:\n`;
-    quote.customItems.forEach((item: any) => {
+    quote.customItems.forEach((item: QuoteCustomItem) => {
       prompt += `  - ${item.name}\n`;
     });
   }

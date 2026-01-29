@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { MetricCard } from '@/app/components/analytics/MetricCard';
 import { EventChart } from '@/app/components/analytics/EventChart';
 import { LeadChart } from '@/app/components/analytics/LeadChart';
 import { RevenueChart } from '@/app/components/analytics/RevenueChart';
-import { MousePointerClick, FileText, ShoppingCart, TrendingUp, Eye, Users, BarChart3, Calendar, Euro, DollarSign } from 'lucide-react';
+import { MousePointerClick, FileText, ShoppingCart, TrendingUp, Eye, Users, BarChart3, Calendar, Euro, UserCheck, ChevronDown, ChevronUp, ChevronRight, Target } from 'lucide-react';
 
 interface AnalyticsData {
   events: {
@@ -58,7 +58,151 @@ interface RevenueAnalyticsData {
   };
 }
 
-type TabType = 'overview' | 'leads' | 'revenue' | 'info';
+interface SalesPersonStats {
+  person: string;
+  leadCount: number;
+  quoteCount: number;
+  totalQuoteAmount: number;
+  avgQuoteAmount: number;
+  convertedCount: number;
+  convertedRevenue: number;
+}
+interface SalesByPeriodItem {
+  periodLabel: string;
+  periodKey: string;
+  persons: Record<string, Omit<SalesPersonStats, 'person'>>;
+}
+interface SalesTotals {
+  totalLeads: number;
+  totalQuoteAmount: number;
+  totalConvertedRevenue: number;
+  totalConvertedCount: number;
+}
+interface SalesData {
+  summary: SalesPersonStats[];
+  byPeriod: SalesByPeriodItem[];
+  dateRange: { start: string; end: string; groupBy: string };
+  totals?: SalesTotals;
+}
+
+type TabType = 'overview' | 'leads' | 'revenue' | 'sales' | 'info';
+
+type PeriodSortKey = 'person' | 'leadCount' | 'quoteCount' | 'totalQuoteAmount' | 'convertedRevenue';
+
+function SalesPeriodBreakdown({
+  byPeriod,
+  groupBy,
+  defaultSortKey = 'leadCount',
+  defaultSortDir = 'desc',
+}: {
+  byPeriod: SalesByPeriodItem[];
+  groupBy: 'day' | 'week' | 'month';
+  defaultSortKey?: PeriodSortKey;
+  defaultSortDir?: 'asc' | 'desc';
+}) {
+  const [expanded, setExpanded] = useState<string | null>(byPeriod[0]?.periodKey ?? null);
+  const [periodSortBy, setPeriodSortBy] = useState<PeriodSortKey>(defaultSortKey);
+  const [periodSortDir, setPeriodSortDir] = useState<'asc' | 'desc'>(defaultSortDir);
+  const periodLabel = groupBy === 'day' ? 'dag' : groupBy === 'week' ? 'week' : 'maand';
+
+  const handlePeriodSort = (key: PeriodSortKey) => {
+    if (periodSortBy === key) {
+      setPeriodSortDir((d) => (d === 'desc' ? 'asc' : 'desc'));
+    } else {
+      setPeriodSortBy(key);
+      setPeriodSortDir('desc');
+    }
+  };
+
+  const sortEntries = (entries: [string, Omit<SalesPersonStats, 'person'>][]) => {
+    const mult = periodSortDir === 'desc' ? 1 : -1;
+    return [...entries].sort(([personA, a], [personB, b]) => {
+      let av: number | string;
+      let bv: number | string;
+      if (periodSortBy === 'person') {
+        av = personA;
+        bv = personB;
+        return mult * String(av).localeCompare(String(bv));
+      }
+      av = a[periodSortBy] as number;
+      bv = b[periodSortBy] as number;
+      return mult * (av === bv ? 0 : av > bv ? 1 : -1);
+    });
+  };
+
+  const SortableTh = ({ sortKey, label, className = '' }: { sortKey: PeriodSortKey; label: string; className?: string }) => {
+    const isActive = periodSortBy === sortKey;
+    return (
+      <th className={className}>
+        <button
+          type="button"
+          onClick={() => handlePeriodSort(sortKey)}
+          className={`flex items-center justify-end gap-1 w-full hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 rounded ${sortKey === 'person' ? 'text-left justify-start' : 'ml-auto'}`}
+        >
+          {label}
+          <span className="inline-flex w-4 h-4 shrink-0 items-center justify-center">
+            {isActive ? (periodSortDir === 'desc' ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />) : <ChevronDown className="w-4 h-4 opacity-40" />}
+          </span>
+        </button>
+      </th>
+    );
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-border">
+        <h2 className="text-base font-semibold">Uitsplitsing per {periodLabel}</h2>
+        <p className="text-xs text-muted-foreground mt-0.5">Klik op een periode om details te tonen. Klik op een kolomkop om te sorteren.</p>
+      </div>
+      <div className="divide-y divide-border/80">
+        {byPeriod.map((period) => {
+          const isOpen = expanded === period.periodKey;
+          const entries = Object.entries(period.persons);
+          const sortedEntries = sortEntries(entries);
+          return (
+            <div key={period.periodKey}>
+              <button
+                type="button"
+                onClick={() => setExpanded(isOpen ? null : period.periodKey)}
+                className="w-full flex items-center justify-between gap-4 px-5 py-3 text-left hover:bg-muted/20 transition-colors"
+              >
+                <span className="font-medium text-sm">{period.periodLabel}</span>
+                <span className="text-muted-foreground text-xs">{entries.length} personen</span>
+                {isOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />}
+              </button>
+              {isOpen && sortedEntries.length > 0 && (
+                <div className="min-w-0 overflow-x-auto">
+                  <table className="w-full text-sm min-w-[42rem]">
+                    <thead>
+                      <tr className="bg-muted/30 text-muted-foreground">
+                        <SortableTh sortKey="person" label="Persoon" className="text-left py-2 px-3 font-medium" />
+                        <SortableTh sortKey="leadCount" label="Leads" className="text-right py-2 px-3 font-medium w-16" />
+                        <SortableTh sortKey="quoteCount" label="Offertes" className="text-right py-2 px-3 font-medium w-16" />
+                        <SortableTh sortKey="totalQuoteAmount" label="Totaal offerte" className="text-right py-2 px-3 font-medium" />
+                        <SortableTh sortKey="convertedRevenue" label="Omzet" className="text-right py-2 px-3 font-medium" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedEntries.map(([person, t]) => (
+                        <tr key={person} className="border-t border-border/80">
+                          <td className="py-2 px-3 whitespace-nowrap" title={person}>{person}</td>
+                          <td className="py-2 px-3 text-right tabular-nums whitespace-nowrap">{t.leadCount}</td>
+                          <td className="py-2 px-3 text-right tabular-nums whitespace-nowrap">{t.quoteCount}</td>
+                          <td className="py-2 px-3 text-right tabular-nums whitespace-nowrap">€ {t.totalQuoteAmount.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          <td className="py-2 px-3 text-right tabular-nums font-medium whitespace-nowrap">€ {t.convertedRevenue.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export default function AnalyticsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -82,34 +226,34 @@ export default function AnalyticsPage() {
   const [endDate, setEndDate] = useState(() => {
     return new Date().toISOString().split('T')[0];
   });
+  const [salesData, setSalesData] = useState<SalesData | null>(null);
+  const [salesLoading, setSalesLoading] = useState(false);
+  const [salesStartDate, setSalesStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  });
+  const [salesEndDate, setSalesEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [salesGroupBy, setSalesGroupBy] = useState<'day' | 'week' | 'month'>('week');
+  type TeamSortKey = 'person' | 'leadCount' | 'quoteCount' | 'totalQuoteAmount' | 'avgQuoteAmount' | 'convertedCount' | 'conversion' | 'convertedRevenue';
+  const [teamSortBy, setTeamSortBy] = useState<TeamSortKey>('leadCount');
+  const [teamSortDir, setTeamSortDir] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     const fetchData = async () => {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'analytics/page.tsx:86',message:'Fetching analytics data',data:{days},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'M'})}).catch(()=>{});
-      // #endregion
       
       try {
         setLoading(true);
         const response = await fetch(`/api/analytics/events?days=${days}`);
         
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'analytics/page.tsx:92',message:'Analytics response received',data:{status:response.status,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'M'})}).catch(()=>{});
-        // #endregion
         
         if (!response.ok) {
           throw new Error('Failed to fetch analytics');
         }
         const result = await response.json();
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'analytics/page.tsx:98',message:'Analytics data loaded',data:{hasData:!!result,hasEvents:!!result?.events},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'M'})}).catch(()=>{});
-        // #endregion
         setData(result);
         setError(null);
       } catch (err: unknown) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'analytics/page.tsx:103',message:'Analytics fetch error',data:{error:err instanceof Error ? err.message : String(err)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
         const errorMessage = err instanceof Error ? err.message : 'Fout bij ophalen analytics';
         console.error('Error fetching analytics:', err);
         setError(errorMessage);
@@ -183,10 +327,63 @@ export default function AnalyticsPage() {
     fetchRevenueData();
   }, [leadDays, revenueGroupBy, customDateRange, startDate, endDate]);
 
+  const handleTeamSort = (key: TeamSortKey) => {
+    if (teamSortBy === key) {
+      setTeamSortDir((d) => (d === 'desc' ? 'asc' : 'desc'));
+    } else {
+      setTeamSortBy(key);
+      setTeamSortDir('desc');
+    }
+  };
+  const sortedTeamSummary = useMemo(() => {
+    if (!salesData?.summary?.length) return [];
+    const key = teamSortBy;
+    const dir = teamSortDir;
+    const mult = dir === 'desc' ? 1 : -1;
+    return [...salesData.summary].sort((a, b) => {
+      let av: number | string;
+      let bv: number | string;
+      if (key === 'person') {
+        av = a.person;
+        bv = b.person;
+        return mult * (String(av).localeCompare(String(bv)));
+      }
+      if (key === 'conversion') {
+        av = a.leadCount > 0 ? a.convertedCount / a.leadCount : 0;
+        bv = b.leadCount > 0 ? b.convertedCount / b.leadCount : 0;
+      } else {
+        av = a[key] as number;
+        bv = b[key] as number;
+      }
+      return mult * (av === bv ? 0 : av > bv ? 1 : -1);
+    });
+  }, [salesData?.summary, teamSortBy, teamSortDir]);
+
+  useEffect(() => {
+    if (activeTab !== 'sales') return;
+    const fetchSalesData = async () => {
+      try {
+        setSalesLoading(true);
+        const url = `/api/analytics/sales?startDate=${salesStartDate}&endDate=${salesEndDate}&groupBy=${salesGroupBy}`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Fout bij ophalen sales');
+        const result = await response.json();
+        setSalesData(result);
+      } catch (err) {
+        console.error('Sales analytics:', err);
+        setSalesData(null);
+      } finally {
+        setSalesLoading(false);
+      }
+    };
+    fetchSalesData();
+  }, [activeTab, salesStartDate, salesEndDate, salesGroupBy]);
+
   const tabs = [
     { id: 'overview' as TabType, label: 'Overzicht', icon: BarChart3 },
     { id: 'leads' as TabType, label: 'Leads', icon: Users },
     { id: 'revenue' as TabType, label: 'Omzet', icon: Euro },
+    { id: 'sales' as TabType, label: 'Sales / Team', icon: UserCheck },
     { id: 'info' as TabType, label: 'Informatie', icon: FileText },
   ];
 
@@ -262,27 +459,27 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <MetricCard
               title="Paginaweergaven"
-              value={data?.pageviews.count || 0}
-              trend={data?.pageviews.trend}
+              value={data?.pageviews?.count ?? 0}
+              trend={data?.pageviews?.trend}
               icon={<Eye className="w-5 h-5" />}
             />
             <MetricCard
               title="CTA Klikken"
-              value={data?.events.cta_click.count || 0}
-              trend={data?.events.cta_click.trend}
+              value={data?.events?.cta_click?.count ?? 0}
+              trend={data?.events?.cta_click?.trend}
               icon={<MousePointerClick className="w-5 h-5" />}
             />
             <MetricCard
               title="Formulierinzendingen"
-              value={data?.events.form_submitted.count || 0}
-              trend={data?.events.form_submitted.trend}
+              value={data?.events?.form_submitted?.count ?? 0}
+              trend={data?.events?.form_submitted?.trend}
               subtitle="Leads gegenereerd"
               icon={<FileText className="w-5 h-5" />}
             />
             <MetricCard
               title="Pakketweergaven"
-              value={data?.events.package_card_click.count || 0}
-              trend={data?.events.package_card_click.trend}
+              value={data?.events?.package_card_click?.count ?? 0}
+              trend={data?.events?.package_card_click?.trend}
               icon={<ShoppingCart className="w-5 h-5" />}
             />
           </div>
@@ -321,7 +518,7 @@ export default function AnalyticsPage() {
                   <div>
                     <div className="text-xs sm:text-sm text-muted-foreground mb-1">CTA Click Rate</div>
                     <div className="text-xl sm:text-2xl font-bold">
-                      {data?.pageviews.count && data?.events.cta_click.count
+                      {data?.pageviews?.count && data?.events?.cta_click?.count
                         ? ((data.events.cta_click.count / data.pageviews.count) * 100).toFixed(1)
                         : '0'}
                       %
@@ -330,7 +527,7 @@ export default function AnalyticsPage() {
                   <div>
                     <div className="text-xs sm:text-sm text-muted-foreground mb-1">Form Conversion</div>
                     <div className="text-xl sm:text-2xl font-bold">
-                      {data?.pageviews.count && data?.events.form_submitted.count
+                      {data?.pageviews?.count && data?.events?.form_submitted?.count
                         ? ((data.events.form_submitted.count / data.pageviews.count) * 100).toFixed(2)
                         : '0'}
                       %
@@ -339,7 +536,7 @@ export default function AnalyticsPage() {
                   <div>
                     <div className="text-xs sm:text-sm text-muted-foreground mb-1">Package Interest</div>
                     <div className="text-xl sm:text-2xl font-bold">
-                      {data?.pageviews.count && data?.events.package_card_click.count
+                      {data?.pageviews?.count && data?.events?.package_card_click?.count
                         ? ((data.events.package_card_click.count / data.pageviews.count) * 100).toFixed(1)
                         : '0'}
                       %
@@ -407,6 +604,7 @@ export default function AnalyticsPage() {
                         <option value="90">Laatste 90 dagen</option>
                         <option value="180">Laatste 6 maanden</option>
                         <option value="365">Laatste jaar</option>
+                        <option value="730">Laatste 2 jaar</option>
                       </select>
                     </div>
                   </>
@@ -467,6 +665,56 @@ export default function AnalyticsPage() {
                     groupBy={leadGroupBy}
                   />
                 </div>
+
+                {/* Leads per periode — overzicht elke dag/week/maand */}
+                {leadData.timeline.length > 0 && (
+                  <div className="bg-card border border-border rounded-xl overflow-hidden mb-6">
+                    <div className="px-5 py-4 border-b border-border">
+                      <h3 className="text-base font-semibold">Leads per {leadGroupBy === 'day' ? 'dag' : leadGroupBy === 'week' ? 'week' : 'maand'}</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">Volledige geschiedenis in het geselecteerde bereik.</p>
+                    </div>
+                    <div className="w-full min-w-0 overflow-x-auto max-h-[400px] overflow-y-auto">
+                      <div className="px-5 pb-4">
+                        <div className="rounded-lg border border-border/80">
+                          <table className="w-full text-sm">
+                            <thead className="bg-muted/30">
+                          <tr>
+                            <th className="text-left py-3 px-4 font-medium">Periode</th>
+                            <th className="text-right py-3 px-4 font-medium w-24">Leads</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {leadData.timeline.map((row) => {
+                            let periodLabel = row.date;
+                            try {
+                              if (leadGroupBy === 'month' && row.date.length >= 7) {
+                                const [y, m] = row.date.split('-');
+                                const monthNames = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+                                periodLabel = `${monthNames[parseInt(m, 10) - 1]} ${y}`;
+                              } else if (leadGroupBy === 'week') {
+                                const d = new Date(row.date);
+                                periodLabel = `Week ${d.toLocaleDateString('nl-BE', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+                              } else {
+                                const d = new Date(row.date);
+                                periodLabel = d.toLocaleDateString('nl-BE', { day: 'numeric', month: 'short', year: 'numeric' });
+                              }
+                            } catch {
+                              periodLabel = row.date;
+                            }
+                            return (
+                              <tr key={row.date} className="border-t border-border/80 hover:bg-muted/20">
+                                <td className="py-2 px-4">{periodLabel}</td>
+                                <td className="py-2 px-4 text-right tabular-nums font-medium">{row.total}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Breakdowns */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -742,6 +990,168 @@ export default function AnalyticsPage() {
                 </div>
               </>
             ) : null}
+        </div>
+      )}
+
+      {/* Sales / Team Tab */}
+      {activeTab === 'sales' && (
+        <div className="space-y-8">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
+              <input
+                type="date"
+                value={salesStartDate}
+                onChange={(e) => setSalesStartDate(e.target.value)}
+                className="px-3 py-2 border border-border rounded-lg bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+              <span className="text-muted-foreground text-sm">t/m</span>
+              <input
+                type="date"
+                value={salesEndDate}
+                onChange={(e) => setSalesEndDate(e.target.value)}
+                className="px-3 py-2 border border-border rounded-lg bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground text-sm">Groeperen</span>
+              <select
+                value={salesGroupBy}
+                onChange={(e) => setSalesGroupBy(e.target.value as 'day' | 'week' | 'month')}
+                className="px-3 py-2 border border-border rounded-lg bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="day">Per dag</option>
+                <option value="week">Per week</option>
+                <option value="month">Per maand</option>
+              </select>
+            </div>
+          </div>
+
+          {salesLoading ? (
+            <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">Laden…</div>
+          ) : salesData ? (
+            <>
+              {salesData.totals && (
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <MetricCard title="Leads" value={salesData.totals.totalLeads} icon={<Users className="w-4 h-4" />} />
+                  <MetricCard title="Offertewaarde" value={`€ ${salesData.totals.totalQuoteAmount.toLocaleString('nl-BE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`} icon={<FileText className="w-4 h-4" />} />
+                  <MetricCard title="Omzet (gesloten)" value={`€ ${salesData.totals.totalConvertedRevenue.toLocaleString('nl-BE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`} icon={<Euro className="w-4 h-4" />} />
+                  <MetricCard title="Deals" value={salesData.totals.totalConvertedCount} subtitle={salesData.totals.totalLeads > 0 ? `${Math.round((salesData.totals.totalConvertedCount / salesData.totals.totalLeads) * 100)}% van leads` : undefined} icon={<Target className="w-4 h-4" />} />
+                </div>
+              )}
+
+              <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="px-5 py-4 border-b border-border">
+                  <h2 className="text-base font-semibold">Teamoverzicht</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">Per persoon: leads toegewezen via «Binnengebracht door» of «Aangemaakt door».</p>
+                </div>
+
+                <div className="min-w-0 overflow-x-auto">
+                  <table className="w-full text-sm min-w-[42rem]">
+                    <thead>
+                      <tr className="bg-muted/30 text-muted-foreground">
+                        <th className="text-left py-3 px-4 font-medium">
+                          <button type="button" onClick={() => handleTeamSort('person')} className="flex items-center gap-1 hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 rounded">
+                            Persoon
+                            <span className="inline-flex w-4 h-4 shrink-0 items-center justify-center">
+                              {teamSortBy === 'person' ? (teamSortDir === 'desc' ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />) : <ChevronDown className="w-4 h-4 opacity-40" />}
+                            </span>
+                          </button>
+                        </th>
+                        <th className="text-right py-3 px-4 font-medium w-20">
+                          <button type="button" onClick={() => handleTeamSort('leadCount')} className="ml-auto flex items-center justify-end gap-1 w-full hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 rounded">
+                            Leads
+                            <span className="inline-flex w-4 h-4 shrink-0 items-center justify-center">
+                              {teamSortBy === 'leadCount' ? (teamSortDir === 'desc' ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />) : <ChevronDown className="w-4 h-4 opacity-40" />}
+                            </span>
+                          </button>
+                        </th>
+                        <th className="text-right py-3 px-4 font-medium w-20">
+                          <button type="button" onClick={() => handleTeamSort('quoteCount')} className="ml-auto flex items-center justify-end gap-1 w-full hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 rounded">
+                            Offertes
+                            <span className="inline-flex w-4 h-4 shrink-0 items-center justify-center">
+                              {teamSortBy === 'quoteCount' ? (teamSortDir === 'desc' ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />) : <ChevronDown className="w-4 h-4 opacity-40" />}
+                            </span>
+                          </button>
+                        </th>
+                        <th className="text-right py-3 px-4 font-medium">
+                          <button type="button" onClick={() => handleTeamSort('totalQuoteAmount')} className="ml-auto flex items-center justify-end gap-1 w-full hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 rounded">
+                            Totaal offerte
+                            <span className="inline-flex w-4 h-4 shrink-0 items-center justify-center">
+                              {teamSortBy === 'totalQuoteAmount' ? (teamSortDir === 'desc' ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />) : <ChevronDown className="w-4 h-4 opacity-40" />}
+                            </span>
+                          </button>
+                        </th>
+                        <th className="text-right py-3 px-4 font-medium">
+                          <button type="button" onClick={() => handleTeamSort('avgQuoteAmount')} className="ml-auto flex items-center justify-end gap-1 w-full hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 rounded">
+                            Gem. offerte
+                            <span className="inline-flex w-4 h-4 shrink-0 items-center justify-center">
+                              {teamSortBy === 'avgQuoteAmount' ? (teamSortDir === 'desc' ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />) : <ChevronDown className="w-4 h-4 opacity-40" />}
+                            </span>
+                          </button>
+                        </th>
+                        <th className="text-right py-3 px-4 font-medium w-20">
+                          <button type="button" onClick={() => handleTeamSort('convertedCount')} className="ml-auto flex items-center justify-end gap-1 w-full hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 rounded">
+                            Deals
+                            <span className="inline-flex w-4 h-4 shrink-0 items-center justify-center">
+                              {teamSortBy === 'convertedCount' ? (teamSortDir === 'desc' ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />) : <ChevronDown className="w-4 h-4 opacity-40" />}
+                            </span>
+                          </button>
+                        </th>
+                        <th className="text-right py-3 px-4 font-medium">
+                          <button type="button" onClick={() => handleTeamSort('conversion')} className="ml-auto flex items-center justify-end gap-1 w-full hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 rounded">
+                            Conversie
+                            <span className="inline-flex w-4 h-4 shrink-0 items-center justify-center">
+                              {teamSortBy === 'conversion' ? (teamSortDir === 'desc' ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />) : <ChevronDown className="w-4 h-4 opacity-40" />}
+                            </span>
+                          </button>
+                        </th>
+                        <th className="text-right py-3 px-4 font-medium">
+                          <button type="button" onClick={() => handleTeamSort('convertedRevenue')} className="ml-auto flex items-center justify-end gap-1 w-full hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 rounded">
+                            Omzet
+                            <span className="inline-flex w-4 h-4 shrink-0 items-center justify-center">
+                              {teamSortBy === 'convertedRevenue' ? (teamSortDir === 'desc' ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />) : <ChevronDown className="w-4 h-4 opacity-40" />}
+                            </span>
+                          </button>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedTeamSummary.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="py-12 px-4 text-center text-muted-foreground text-sm">
+                            Geen leads in deze periode of geen attributie ingesteld. Vul bij een lead «Binnengebracht door» in voor correcte toewijzing.
+                          </td>
+                        </tr>
+                      ) : (
+                        sortedTeamSummary.map((row) => {
+                          const convPct = row.leadCount > 0 ? Math.round((row.convertedCount / row.leadCount) * 100) : 0;
+                          return (
+                            <tr key={row.person} className="border-t border-border/80 hover:bg-muted/20 transition-colors">
+                              <td className="py-3 px-4 font-medium text-foreground whitespace-nowrap" title={row.person}>{row.person}</td>
+                              <td className="py-3 px-4 text-right tabular-nums whitespace-nowrap">{row.leadCount}</td>
+                              <td className="py-3 px-4 text-right tabular-nums whitespace-nowrap">{row.quoteCount}</td>
+                              <td className="py-3 px-4 text-right tabular-nums whitespace-nowrap">€ {row.totalQuoteAmount.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td className="py-3 px-4 text-right tabular-nums whitespace-nowrap">€ {row.avgQuoteAmount.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td className="py-3 px-4 text-right tabular-nums whitespace-nowrap">{row.convertedCount}</td>
+                              <td className="py-3 px-4 text-right tabular-nums text-muted-foreground whitespace-nowrap">{convPct}%</td>
+                              <td className="py-3 px-4 text-right tabular-nums font-semibold whitespace-nowrap">€ {row.convertedRevenue.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {salesData.byPeriod.length > 0 && (
+                <SalesPeriodBreakdown byPeriod={salesData.byPeriod} groupBy={salesGroupBy} defaultSortKey="leadCount" defaultSortDir="desc" />
+              )}
+            </>
+          ) : (
+            <div className="py-16 text-center text-muted-foreground text-sm">Geen data of fout bij laden.</div>
+          )}
         </div>
       )}
 

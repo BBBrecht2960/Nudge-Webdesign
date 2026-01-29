@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
 // POST: Add assigned_to column if it doesn't exist
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- required by Next.js route signature
 export async function POST(request: NextRequest) {
   try {
     // Check authentication

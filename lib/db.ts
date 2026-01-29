@@ -39,6 +39,7 @@ export interface Lead {
   company_city?: string;
   company_country?: string;
   company_website?: string;
+  bank_account?: string;
   created_at: string;
   updated_at: string;
   /** E-mail van het admin-account dat deze lead heeft aangemaakt (alleen bij handmatig aanmaken). */
@@ -109,11 +110,12 @@ export interface Customer {
   company_city?: string;
   company_country?: string;
   company_website?: string;
+  bank_account?: string;
   package_interest?: string;
   pain_points?: string[];
   current_website_status?: string;
   message?: string;
-  approved_quote?: any;
+  approved_quote?: unknown;
   quote_total?: number;
   quote_status?: string;
   cursor_prompt?: string;

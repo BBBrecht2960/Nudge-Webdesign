@@ -1,15 +1,31 @@
 import { useState, useCallback, useMemo } from 'react';
 import {
-  packages,
-  scopeOptions,
-  complexityOptions,
-  growthOptions,
-  maintenanceOptions,
   getOptionsForPackage,
   isOptionIncludedInPackage,
   type PricingPackage,
   type PricingOption,
 } from '@/lib/pricing';
+
+/** Alleen deze kortingspercentages zijn toegestaan (dropdown). */
+export const ALLOWED_DISCOUNT_PERCENTAGES = [5, 10, 15, 20, 25, 30] as const;
+
+/** Betalingsschema: wanneer betaald de klant. */
+export type PaymentSchedule = 'once' | 'twice_25' | 'thrice_33';
+
+export const PAYMENT_SCHEDULE_OPTIONS: { value: PaymentSchedule; label: string }[] = [
+  { value: 'once', label: 'In 1 keer op voorhand' },
+  { value: 'twice_25', label: 'In 2 keer: 25% voorschot aan begin, 75% bij aflevering' },
+  { value: 'thrice_33', label: 'In 3 keer: 33% begin, 33% midden, 33% bij aflevering' },
+];
+
+function normalizeDiscountPercentage(value: number): number {
+  if (value <= 0) return 0;
+  const allowed = [...ALLOWED_DISCOUNT_PERCENTAGES];
+  const nearest = allowed.reduce((prev, curr) =>
+    Math.abs(curr - value) < Math.abs(prev - value) ? curr : prev
+  );
+  return nearest;
+}
 
 export interface CustomLineItem {
   id: string;
@@ -30,6 +46,7 @@ export interface OfferBuilderState {
     type: 'percentage' | 'fixed' | null;
     value: number;
   };
+  paymentSchedule: PaymentSchedule;
   scopeDescription: string; // Detailed scope description
   timeline: string; // Project timeline/duration
 }
@@ -46,6 +63,7 @@ export interface OfferBuilderActions {
   removeCustomLineItem: (id: string) => void;
   updateCustomLineItem: (id: string, name: string, price: number) => void;
   setDiscount: (type: 'percentage' | 'fixed' | null, value: number) => void;
+  setPaymentSchedule: (schedule: PaymentSchedule) => void;
   setScopeDescription: (description: string) => void;
   setTimeline: (timeline: string) => void;
   reset: () => void;
@@ -65,6 +83,7 @@ const initialState: OfferBuilderState = {
     type: null,
     value: 0,
   },
+  paymentSchedule: 'once',
   scopeDescription: '',
   timeline: '',
 };
@@ -87,8 +106,8 @@ export function useOfferBuilder() {
     setState((prev) => {
       const isSelected = prev.selectedOptions.some((opt) => opt.id === option.id);
       let newOptions: PricingOption[];
-      let newCustomPrices = { ...prev.customPrices };
-      let newOptionNotes = { ...prev.optionNotes };
+      const newCustomPrices = { ...prev.customPrices };
+      const newOptionNotes = { ...prev.optionNotes };
 
       if (isSelected) {
         newOptions = prev.selectedOptions.filter((opt) => opt.id !== option.id);
@@ -168,10 +187,19 @@ export function useOfferBuilder() {
   }, []);
 
   const setDiscount = useCallback((type: 'percentage' | 'fixed' | null, value: number) => {
-    setState((prev) => ({
-      ...prev,
-      discount: { type, value: Math.max(0, value) },
-    }));
+    setState((prev) => {
+      let finalType = type;
+      let finalValue = Math.max(0, value);
+      if (type === 'percentage') {
+        finalValue = normalizeDiscountPercentage(value);
+        if (finalValue === 0) finalType = null;
+      }
+      return { ...prev, discount: { type: finalType, value: finalValue } };
+    });
+  }, []);
+
+  const setPaymentSchedule = useCallback((paymentSchedule: PaymentSchedule) => {
+    setState((prev) => ({ ...prev, paymentSchedule }));
   }, []);
 
   const setScopeDescription = useCallback((description: string) => {
@@ -193,7 +221,16 @@ export function useOfferBuilder() {
   }, []);
 
   const loadState = useCallback((newState: Partial<OfferBuilderState>) => {
-    setState((prev) => ({ ...prev, ...newState }));
+    setState((prev) => {
+      const merged = { ...prev, ...newState };
+      if (merged.discount?.type === 'percentage' && merged.discount.value != null) {
+        const normalized = normalizeDiscountPercentage(merged.discount.value);
+        merged.discount = normalized > 0
+          ? { type: 'percentage', value: normalized }
+          : { type: null, value: 0 };
+      }
+      return merged;
+    });
   }, []);
 
   // Calculate subtotal before discount (excluding VAT)
@@ -205,7 +242,7 @@ export function useOfferBuilder() {
     }
 
     state.selectedOptions.forEach((option) => {
-      if (isOptionIncludedInPackage(option, state.selectedPackage)) {
+      if (state.selectedPackage && isOptionIncludedInPackage(option, state.selectedPackage)) {
         return;
       }
       const price = state.customPrices[option.id] ?? option.price;
@@ -276,6 +313,7 @@ export function useOfferBuilder() {
     removeCustomLineItem,
     updateCustomLineItem,
     setDiscount,
+    setPaymentSchedule,
     setScopeDescription,
     setTimeline,
     reset,

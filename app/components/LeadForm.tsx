@@ -70,14 +70,8 @@ export function LeadForm() {
   }, []);
 
   const onSubmit = async (data: FormData) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeadForm.tsx:72',message:'Form submission started',data:{isSubmitting,email:data.email},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     
     if (isSubmitting) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeadForm.tsx:75',message:'Double submission prevented',data:{isSubmitting},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       return;
     }
 
@@ -87,9 +81,6 @@ export function LeadForm() {
       // Combine first_name and last_name into name for API
       const fullName = `${data.first_name} ${data.last_name}`.trim();
 
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeadForm.tsx:85',message:'Preparing API request',data:{fullName,email:data.email,hasPhone:!!data.phone,hasMessage:!!data.message,gdprConsent:data.gdpr_consent},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
 
       track('form_submitted', {
         form_type: 'lead_form_simple',
@@ -109,42 +100,27 @@ export function LeadForm() {
         }),
       });
 
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeadForm.tsx:104',message:'API response received',data:{status:response.status,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
 
       if (!response.ok) {
         let errorMessage = 'Er is iets misgegaan. Probeer het opnieuw.';
         try {
           const errorData = await response.json();
           if (errorData?.error) errorMessage = errorData.error;
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeadForm.tsx:110',message:'API error response',data:{status:response.status,error:errorData?.error},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-          // #endregion
         } catch {}
         throw new Error(errorMessage);
       }
 
       const responseData = await response.json();
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeadForm.tsx:116',message:'Form submission successful',data:{leadId:responseData.lead_id,success:responseData.success},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
 
       setSubmitSuccess(true);
       setTimeout(() => {
         window.location.href = '/thanks';
       }, 2000);
     } catch (error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeadForm.tsx:130',message:'Form submission error',data:{error:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       console.error('Form submission error:', error);
       alert(error instanceof Error ? error.message : 'Er is iets misgegaan. Probeer het opnieuw.');
     } finally {
       setIsSubmitting(false);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeadForm.tsx:135',message:'Form submission finished',data:{isSubmitting:false},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
     }
   };
 

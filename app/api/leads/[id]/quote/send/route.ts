@@ -36,15 +36,10 @@ export async function POST(
     const leadId = id;
     
     // Try to parse body, but don't require it
-    let body = null;
     try {
-      const bodyText = await request.text();
-      if (bodyText) {
-        body = JSON.parse(bodyText);
-      }
+      await request.text();
     } catch {
       // Body is optional for this endpoint
-      body = null;
     }
 
     // Get lead information

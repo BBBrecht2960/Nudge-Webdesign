@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Button } from '../components/Button';
-import { LogOut, LayoutDashboard, Users, BarChart3, Menu, X, Briefcase, Moon, Sun } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, BarChart3, Menu, X, Briefcase, Moon, Sun, Plus } from 'lucide-react';
 
 function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -16,15 +16,15 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
 
-  // Load dark mode preference from localStorage
+  // Sync dark mode preference from localStorage after mount
   useEffect(() => {
     const savedDarkMode = localStorage.getItem('adminDarkMode') === 'true';
-    setDarkMode(savedDarkMode);
     if (savedDarkMode) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
+    queueMicrotask(() => setDarkMode(savedDarkMode));
   }, []);
 
   const toggleDarkMode = () => {
@@ -90,6 +90,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
               <div className="flex-shrink-0 flex items-center gap-2 sm:gap-3 min-w-0">
                 <Image
                   src="/Nudge websdesign & marketing Hasselt logo.png"
+                  loading="eager"
                   alt="Nudge Webdesign"
                   width={40}
                   height={40}
@@ -211,6 +212,16 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                 <div className="flex items-center">
                   <Users className="w-4 h-4 mr-2" />
                   Leads
+                </div>
+              </Link>
+              <Link
+                href="/admin/leads/new"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-4 py-2 pl-10 rounded-md text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <div className="flex items-center">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Lead toevoegen
                 </div>
               </Link>
               <Link

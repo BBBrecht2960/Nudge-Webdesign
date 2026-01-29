@@ -1,24 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { use, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { supabase, type Customer, type CustomerActivity, type CustomerAttachment, type CustomerUpdate, type CustomerProgressHistory } from '@/lib/db';
 import { Button } from '@/app/components/Button';
 import {
   ArrowLeft,
   Mail,
   Phone,
-  Building,
   FileText,
   Image as ImageIcon,
   File,
   Code,
   Copy,
   CheckCircle2,
-  Clock,
-  XCircle,
-  AlertCircle,
-  PlayCircle,
   Plus,
   TrendingUp,
   Flag,
@@ -28,17 +24,17 @@ import {
   Trash2,
   Download,
   User,
-  Briefcase,
   Paperclip,
+  Upload,
+  Pencil,
+  X,
 } from 'lucide-react';
 import { generateQuotePdfBlob, type ApprovedQuoteData } from '@/lib/quotePdf';
 
 type CustomerTabId = 'overview' | 'offerte' | 'updates' | 'activiteiten' | 'bijlagen';
 
-export default function CustomerDetailPage() {
-  const params = useParams();
+function CustomerDetailClientInner({ customerId }: { customerId: string }) {
   const router = useRouter();
-  const customerId = params.id as string;
 
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [activities, setActivities] = useState<CustomerActivity[]>([]);
@@ -55,7 +51,12 @@ export default function CustomerDetailPage() {
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [activeCustomerTab, setActiveCustomerTab] = useState<CustomerTabId>('overview');
-  
+  const [showEditCompany, setShowEditCompany] = useState(false);
+  const [editCompany, setEditCompany] = useState<Partial<Customer>>({});
+  const [isSavingCompany, setIsSavingCompany] = useState(false);
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Update form state
   const [showUpdateForm, setShowUpdateForm] = useState(false);
   const [updateTitle, setUpdateTitle] = useState('');
@@ -69,6 +70,7 @@ export default function CustomerDetailPage() {
     if (customerId) {
       loadCustomerData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadCustomerData is stable, customerId is the trigger
   }, [customerId]);
 
   useEffect(() => {
@@ -144,21 +146,12 @@ export default function CustomerDetailPage() {
   };
 
   const handleStatusChange = async (newStatus: string) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:128',message:'Customer status change initiated',data:{customerId,currentStatus:customer?.project_status,newStatus,isSaving},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
-    // #endregion
     
     if (!customer || customer.project_status === newStatus) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:130',message:'Customer status change skipped',data:{reason:!customer ? 'no customer' : 'same status'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
-      // #endregion
       return;
     }
 
     if (isSaving) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:133',message:'Customer status change prevented - already saving',data:{isSaving},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
       return;
     }
 
@@ -180,11 +173,12 @@ export default function CustomerDetailPage() {
         console.error('updateError type:', typeof updateError);
         console.error('updateError keys:', Object.keys(updateError || {}));
         
-        // Extract error information more safely
-        const errorCode = (updateError as any)?.code || (updateError as any)?.error_code;
-        const errorMessage = (updateError as any)?.message || (updateError as any)?.error_message || String(updateError);
-        const errorDetails = (updateError as any)?.details || (updateError as any)?.error_details;
-        const errorHint = (updateError as any)?.hint || (updateError as any)?.error_hint;
+        type ErrShape = { code?: string; error_code?: string; message?: string; error_message?: string; details?: unknown; error_details?: unknown; hint?: string; error_hint?: string };
+        const err = updateError as ErrShape;
+        const errorCode = err?.code || err?.error_code;
+        const errorMessage = err?.message || err?.error_message || String(updateError);
+        const errorDetails = err?.details || err?.error_details;
+        const errorHint = err?.hint || err?.error_hint;
         
         const errorInfo = {
           code: errorCode,
@@ -211,9 +205,6 @@ export default function CustomerDetailPage() {
 
       // If customer is canceled, also update related lead to "lost"
       if (newStatus === 'canceled' && customer.lead_id) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:179',message:'Updating related lead to lost',data:{customerId,leadId:customer.lead_id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
-        // #endregion
         
         try {
           const { error: leadUpdateError } = await supabase
@@ -221,18 +212,12 @@ export default function CustomerDetailPage() {
             .update({ status: 'lost' })
             .eq('id', customer.lead_id);
 
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:186',message:'Lead update result',data:{hasError:!!leadUpdateError,error:leadUpdateError?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
-          // #endregion
 
           if (leadUpdateError) {
             console.warn('Error updating related lead to lost:', leadUpdateError);
             // Don't fail the customer update, just log the warning
           }
         } catch (leadErr) {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:191',message:'Lead update exception',data:{error:leadErr instanceof Error ? leadErr.message : String(leadErr)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
-          // #endregion
           console.warn('Error updating related lead to lost:', leadErr);
         }
       }
@@ -316,67 +301,43 @@ export default function CustomerDetailPage() {
   };
 
   const handleDeleteCustomer = async () => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:300',message:'Delete customer initiated',data:{customerId,customerName:customer?.name,deleteConfirmName,isDeleting},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
-    // #endregion
     
     if (!customer || !customerId) return;
     
     const customerDisplayName = customer.company_name || customer.name;
     if (deleteConfirmName !== customerDisplayName) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:305',message:'Delete confirmation failed',data:{expected:customerDisplayName,provided:deleteConfirmName},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
-      // #endregion
       alert('De naam komt niet overeen. Typ de exacte naam om te bevestigen.');
       return;
     }
 
     if (isDeleting) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:311',message:'Delete prevented - already deleting',data:{isDeleting},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
       return;
     }
 
     try {
       setIsDeleting(true);
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:316',message:'Sending delete request',data:{customerId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
-      // #endregion
       
       const response = await fetch(`/api/customers/${customerId}`, {
         method: 'DELETE',
       });
 
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:322',message:'Delete response received',data:{status:response.status,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
-      // #endregion
 
       if (!response.ok) {
         let errorMessage = 'Fout bij verwijderen';
         try {
           const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:329',message:'Delete error response',data:{status:response.status,error:errorData?.error},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-          // #endregion
-        } catch (parseError) {
+        } catch {
           errorMessage = `HTTP ${response.status}: ${response.statusText}`;
         }
         throw new Error(errorMessage);
       }
 
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:338',message:'Delete successful',data:{customerId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
-      // #endregion
 
       // Redirect to customers list
       router.push('/admin/customers');
     } catch (error: unknown) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:344',message:'Delete error',data:{error:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       const errorMessage = error instanceof Error ? error.message : 'Fout bij verwijderen van klant';
       console.error('Error deleting customer:', {
         error,
@@ -389,9 +350,6 @@ export default function CustomerDetailPage() {
   };
 
   const handleAddUpdate = async () => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:373',message:'Customer update initiated',data:{customerId,updateType,hasTitle:!!updateTitle.trim(),hasDescription:!!updateDescription.trim(),isSavingUpdate},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'L'})}).catch(()=>{});
-    // #endregion
     
     if (!updateTitle.trim() || !updateDescription.trim()) {
       alert('Titel en beschrijving zijn verplicht');
@@ -399,18 +357,12 @@ export default function CustomerDetailPage() {
     }
 
     if (isSavingUpdate) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:380',message:'Update prevented - already saving',data:{isSavingUpdate},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
       return;
     }
 
     setIsSavingUpdate(true);
     
     try {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:387',message:'Sending update request',data:{customerId,updateType},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'L'})}).catch(()=>{});
-      // #endregion
       
       const response = await fetch(`/api/customers/${customerId}/updates`, {
         method: 'POST',
@@ -425,9 +377,6 @@ export default function CustomerDetailPage() {
         }),
       });
 
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:404',message:'Update response received',data:{status:response.status,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'L'})}).catch(()=>{});
-      // #endregion
 
       if (!response.ok) {
         let errorMessage = 'Fout bij opslaan update';
@@ -435,15 +384,12 @@ export default function CustomerDetailPage() {
           const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
           
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:412',message:'Update error response',data:{status:response.status,error:errorData?.error},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-          // #endregion
           
           // Check for specific error about missing table
           if (errorData.error?.includes('tabel bestaat niet')) {
             errorMessage = `${errorData.error}\n\nVoer het SQL script uit in Supabase om de tabel aan te maken.`;
           }
-        } catch (parseError) {
+        } catch {
           const responseText = await response.text();
           errorMessage = responseText || `HTTP ${response.status}: ${response.statusText}`;
         }
@@ -452,9 +398,6 @@ export default function CustomerDetailPage() {
 
       const responseData = await response.json();
       const { update } = responseData;
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7f84300c-ac62-4dd7-94e2-7611dcdf26c7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'customers/[id]/page.tsx:426',message:'Update successful',data:{updateId:update?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'L'})}).catch(()=>{});
-      // #endregion
       
       setUpdates([update, ...updates]);
       
@@ -550,6 +493,50 @@ export default function CustomerDetailPage() {
       canceled: 'Geannuleerd',
     };
     return labels[status] || status;
+  };
+
+  const handleSaveCompany = async () => {
+    if (!customerId || isSavingCompany) return;
+    setIsSavingCompany(true);
+    try {
+      const payload = Object.fromEntries(Object.entries(editCompany).filter(([, v]) => v !== undefined && v !== ''));
+      const res = await fetch(`/api/customers/${customerId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Fout bij opslaan');
+      }
+      const updated = await res.json();
+      setCustomer(updated);
+      setShowEditCompany(false);
+      setEditCompany({});
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Fout bij opslaan');
+    } finally {
+      setIsSavingCompany(false);
+    }
+  };
+
+  const handleUploadAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !customerId || isUploadingAttachment) return;
+    setIsUploadingAttachment(true);
+    e.target.value = '';
+    try {
+      const formData = new FormData();
+      formData.set('file', file);
+      const res = await fetch(`/api/customers/${customerId}/upload`, { method: 'POST', body: formData });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Upload mislukt');
+      setAttachments((prev) => [data.attachment, ...prev]);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Fout bij uploaden');
+    } finally {
+      setIsUploadingAttachment(false);
+    }
   };
 
   if (isLoading) {
@@ -730,48 +717,133 @@ export default function CustomerDetailPage() {
 
           {/* Overzicht: Klant- en projectinfo (voorheen sidebar) */}
           <div className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0">
-            <h3 className="font-semibold mb-4 break-words">Klant Informatie</h3>
-            <div className="space-y-3 text-sm">
-              <div className="min-w-0">
-                <p className="text-muted-foreground mb-1 break-words">Naam</p>
-                <p className="font-medium break-words">{customer.name}</p>
-              </div>
-              {customer.company_name && (
-                <div className="min-w-0">
-                  <p className="text-muted-foreground mb-1 break-words">Bedrijf</p>
-                  <p className="font-medium break-words">{customer.company_name}</p>
-                </div>
-              )}
-              {customer.vat_number && (
-                <div className="min-w-0">
-                  <p className="text-muted-foreground mb-1 break-words">BTW Nummer</p>
-                  <p className="font-medium break-words">{customer.vat_number}</p>
-                </div>
-              )}
-              {customer.company_address && (
-                <div className="min-w-0">
-                  <p className="text-muted-foreground mb-1 break-words">Adres</p>
-                  <p className="font-medium break-words">
-                    {customer.company_address}
-                    {customer.company_postal_code && ` ${customer.company_postal_code}`}
-                    {customer.company_city && ` ${customer.company_city}`}
-                  </p>
-                </div>
-              )}
-              {customer.company_website && (
-                <div className="min-w-0">
-                  <p className="text-muted-foreground mb-1 break-words">Website</p>
-                  <a
-                    href={customer.company_website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-medium text-primary hover:underline break-all"
-                  >
-                    {customer.company_website}
-                  </a>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold break-words">Klant Informatie</h3>
+              {!showEditCompany ? (
+                <Button variant="outline" size="sm" onClick={() => { setShowEditCompany(true); setEditCompany({ name: customer.name, email: customer.email, phone: customer.phone ?? '', company_name: customer.company_name ?? '', vat_number: customer.vat_number ?? '', company_address: customer.company_address ?? '', company_postal_code: customer.company_postal_code ?? '', company_city: customer.company_city ?? '', company_country: customer.company_country ?? '', company_website: customer.company_website ?? '', bank_account: customer.bank_account ?? '' }); }}>
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Bewerken
+                </Button>
+              ) : (
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => { setShowEditCompany(false); setEditCompany({}); }} disabled={isSavingCompany}>
+                    <X className="w-4 h-4 mr-2" />
+                    Annuleren
+                  </Button>
+                  <Button size="sm" onClick={handleSaveCompany} disabled={isSavingCompany}>
+                    {isSavingCompany ? 'Opslaan...' : 'Opslaan'}
+                  </Button>
                 </div>
               )}
             </div>
+            {!showEditCompany ? (
+              <div className="space-y-3 text-sm">
+                <div className="min-w-0">
+                  <p className="text-muted-foreground mb-1 break-words">Naam</p>
+                  <p className="font-medium break-words">{customer.name}</p>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-muted-foreground mb-1 break-words">E-mail</p>
+                  <p className="font-medium break-words">{customer.email}</p>
+                </div>
+                {customer.phone && (
+                  <div className="min-w-0">
+                    <p className="text-muted-foreground mb-1 break-words">Telefoon</p>
+                    <p className="font-medium break-words">{customer.phone}</p>
+                  </div>
+                )}
+                {customer.company_name && (
+                  <div className="min-w-0">
+                    <p className="text-muted-foreground mb-1 break-words">Bedrijf</p>
+                    <p className="font-medium break-words">{customer.company_name}</p>
+                  </div>
+                )}
+                {customer.vat_number && (
+                  <div className="min-w-0">
+                    <p className="text-muted-foreground mb-1 break-words">BTW Nummer</p>
+                    <p className="font-medium break-words">{customer.vat_number}</p>
+                  </div>
+                )}
+                {customer.company_address && (
+                  <div className="min-w-0">
+                    <p className="text-muted-foreground mb-1 break-words">Adres</p>
+                    <p className="font-medium break-words">
+                      {customer.company_address}
+                      {customer.company_postal_code && ` ${customer.company_postal_code}`}
+                      {customer.company_city && ` ${customer.company_city}`}
+                    </p>
+                  </div>
+                )}
+                {customer.company_website && (
+                  <div className="min-w-0">
+                    <p className="text-muted-foreground mb-1 break-words">Website</p>
+                    <a
+                      href={customer.company_website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-primary hover:underline break-all"
+                    >
+                      {customer.company_website}
+                    </a>
+                  </div>
+                )}
+                {customer.bank_account && (
+                  <div className="min-w-0">
+                    <p className="text-muted-foreground mb-1 break-words">Rekeningnummer</p>
+                    <p className="font-medium break-all font-mono text-xs sm:text-sm">{customer.bank_account}</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3 text-sm">
+                <div>
+                  <label className="block text-muted-foreground mb-1">Naam</label>
+                  <input type="text" value={editCompany.name ?? ''} onChange={(e) => setEditCompany((p) => ({ ...p, name: e.target.value }))} className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm" />
+                </div>
+                <div>
+                  <label className="block text-muted-foreground mb-1">E-mail</label>
+                  <input type="email" value={editCompany.email ?? ''} onChange={(e) => setEditCompany((p) => ({ ...p, email: e.target.value }))} className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm" />
+                </div>
+                <div>
+                  <label className="block text-muted-foreground mb-1">Telefoon</label>
+                  <input type="text" value={editCompany.phone ?? ''} onChange={(e) => setEditCompany((p) => ({ ...p, phone: e.target.value }))} className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm" />
+                </div>
+                <div>
+                  <label className="block text-muted-foreground mb-1">Bedrijf</label>
+                  <input type="text" value={editCompany.company_name ?? ''} onChange={(e) => setEditCompany((p) => ({ ...p, company_name: e.target.value }))} className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm" />
+                </div>
+                <div>
+                  <label className="block text-muted-foreground mb-1">BTW Nummer</label>
+                  <input type="text" value={editCompany.vat_number ?? ''} onChange={(e) => setEditCompany((p) => ({ ...p, vat_number: e.target.value }))} className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm" />
+                </div>
+                <div>
+                  <label className="block text-muted-foreground mb-1">Adres</label>
+                  <input type="text" value={editCompany.company_address ?? ''} onChange={(e) => setEditCompany((p) => ({ ...p, company_address: e.target.value }))} className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm" placeholder="Straat en nummer" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-muted-foreground mb-1">Postcode</label>
+                    <input type="text" value={editCompany.company_postal_code ?? ''} onChange={(e) => setEditCompany((p) => ({ ...p, company_postal_code: e.target.value }))} className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-muted-foreground mb-1">Plaats</label>
+                    <input type="text" value={editCompany.company_city ?? ''} onChange={(e) => setEditCompany((p) => ({ ...p, company_city: e.target.value }))} className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-muted-foreground mb-1">Land</label>
+                  <input type="text" value={editCompany.company_country ?? ''} onChange={(e) => setEditCompany((p) => ({ ...p, company_country: e.target.value }))} className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm" />
+                </div>
+                <div>
+                  <label className="block text-muted-foreground mb-1">Website</label>
+                  <input type="url" value={editCompany.company_website ?? ''} onChange={(e) => setEditCompany((p) => ({ ...p, company_website: e.target.value }))} className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm" />
+                </div>
+                <div>
+                  <label className="block text-muted-foreground mb-1">Rekeningnummer (optioneel)</label>
+                  <input type="text" value={editCompany.bank_account ?? ''} onChange={(e) => setEditCompany((p) => ({ ...p, bank_account: e.target.value }))} className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm font-mono" placeholder="IBAN of rekeningnummer voor facturatie" />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0">
@@ -867,13 +939,29 @@ export default function CustomerDetailPage() {
         </div>
         )}
 
-        {activeCustomerTab === 'offerte' && customer.approved_quote && (
-            <section className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0" aria-label="Goedgekeurde offerte">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Goedgekeurde offerte</p>
+        {activeCustomerTab === 'offerte' && (
+            <section className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0" aria-label="Offerte">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Offerte</p>
               <h2 className="text-lg font-bold mb-4 flex items-center gap-2 break-words">
                 <FileText className="w-5 h-5 text-primary shrink-0" />
-                Offerte
+                {customer.approved_quote ? 'Goedgekeurde offerte' : 'Offerte'}
               </h2>
+              {!customer.approved_quote ? (
+                <div className="space-y-4">
+                  <p className="text-muted-foreground">Er is nog geen goedgekeurde offerte voor deze klant.</p>
+                  {customer.lead_id ? (
+                    <Button asChild variant="default" size="sm">
+                      <Link href={`/admin/leads/${customer.lead_id}/quote`}>
+                        <FileText className="w-4 h-4 mr-2" />
+                        Offerte aanmaken of bewerken
+                      </Link>
+                    </Button>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Deze klant heeft geen gekoppelde lead. Converteer eerst een lead naar deze klant om een offerte te koppelen.</p>
+                  )}
+                </div>
+              ) : (
+                <>
               {customer.project_status === 'canceled' ? (
                 <div className="mb-4">
                   <p className="text-sm text-muted-foreground mb-1">Totaal:</p>
@@ -893,6 +981,14 @@ export default function CustomerDetailPage() {
                 </div>
               ) : null}
               <div className="flex flex-wrap gap-2 mb-4">
+                {customer.lead_id && (
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={`/admin/leads/${customer.lead_id}/quote`}>
+                      <Edit className="w-4 h-4 mr-2" />
+                      Offerte aanpassen
+                    </Link>
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -984,6 +1080,8 @@ export default function CustomerDetailPage() {
                   />
                 </div>
               )}
+                </>
+              )}
             </section>
         )}
 
@@ -1011,7 +1109,7 @@ export default function CustomerDetailPage() {
                     <label className="block text-sm font-medium mb-1">Type</label>
                     <select
                       value={updateType}
-                      onChange={(e) => setUpdateType(e.target.value as any)}
+                      onChange={(e) => setUpdateType(e.target.value as 'progress' | 'milestone' | 'issue' | 'change' | 'note')}
                       className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
                     >
                       <option value="progress">Voortgang</option>
@@ -1177,7 +1275,25 @@ export default function CustomerDetailPage() {
         {activeCustomerTab === 'bijlagen' && (
           <section className="bg-card border border-border rounded-lg p-4 sm:p-6 min-w-0" aria-label="Bijlagen">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Bijlagen</p>
-            <h2 className="text-lg font-bold mb-4 break-words">Bijlagen</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold break-words">Bijlagen</h2>
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                accept="*"
+                onChange={handleUploadAttachment}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isUploadingAttachment}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                {isUploadingAttachment ? 'Uploaden...' : 'Bijlage toevoegen'}
+              </Button>
+            </div>
             {attachments.length === 0 ? (
               <p className="text-muted-foreground text-center py-4 break-words">Geen bijlagen</p>
             ) : (
@@ -1284,4 +1400,9 @@ export default function CustomerDetailPage() {
       )}
     </div>
   );
+}
+
+export default function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  return <CustomerDetailClientInner customerId={id} />;
 }

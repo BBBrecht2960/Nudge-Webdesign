@@ -108,7 +108,42 @@ export async function GET(request: NextRequest) {
       groupedData[key].byStatus[status] = (groupedData[key].byStatus[status] || 0) + revenue;
     });
 
-    const timeline = Object.values(groupedData).sort((a, b) => a.date.localeCompare(b.date));
+    // Bouw volledige tijdlijn: alle periodes in het bereik, ook met €0
+    const timeline: { date: string; total: number; count: number }[] = [];
+
+    if (groupBy === 'day') {
+      const cursor = new Date(start);
+      cursor.setHours(0, 0, 0, 0);
+      while (cursor <= end) {
+        const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
+        const bucket = groupedData[key];
+        timeline.push({ date: key, total: bucket ? bucket.total : 0, count: bucket ? bucket.count : 0 });
+        cursor.setDate(cursor.getDate() + 1);
+      }
+    } else if (groupBy === 'week') {
+      const weekStart = new Date(start);
+      const dayOfWeek = weekStart.getDay();
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      weekStart.setDate(weekStart.getDate() - daysToMonday);
+      weekStart.setHours(0, 0, 0, 0);
+      const cursor = new Date(weekStart);
+      while (cursor <= end) {
+        const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
+        const bucket = groupedData[key];
+        timeline.push({ date: key, total: bucket ? bucket.total : 0, count: bucket ? bucket.count : 0 });
+        cursor.setDate(cursor.getDate() + 7);
+      }
+    } else {
+      // month
+      const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+      while (cursor <= end) {
+        const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
+        const bucket = groupedData[key];
+        timeline.push({ date: key, total: bucket ? bucket.total : 0, count: bucket ? bucket.count : 0 });
+        cursor.setMonth(cursor.getMonth() + 1);
+      }
+    }
+
     const totalRevenue = activeCustomers.reduce((sum, customer) => sum + (Number(customer.quote_total) || 0), 0);
 
     const periodDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
@@ -132,8 +167,9 @@ export async function GET(request: NextRequest) {
       .neq('project_status', 'canceled');
 
     // Filter out canceled customers from previous period
-    const previousActiveCustomers = previousCustomers?.filter((c: any) => c.project_status !== 'canceled') || [];
-    const previousTotal = previousActiveCustomers.reduce((sum: number, customer: any) => sum + (Number(customer.quote_total) || 0), 0);
+    type CustomerRow = { project_status?: string; quote_total?: number };
+    const previousActiveCustomers = previousCustomers?.filter((c: CustomerRow) => c.project_status !== 'canceled') || [];
+    const previousTotal = previousActiveCustomers.reduce((sum: number, customer: CustomerRow) => sum + (Number(customer.quote_total) || 0), 0);
     const trend = previousTotal > 0 ? ((totalRevenue - previousTotal) / previousTotal) * 100 : (totalRevenue > 0 ? 100 : 0);
     const averageDealSize = activeCustomers.length > 0 ? totalRevenue / activeCustomers.length : 0;
 

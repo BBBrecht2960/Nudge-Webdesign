@@ -101,7 +101,7 @@ async function handleLookup(request: NextRequest): Promise<NextResponse> {
 export async function GET(request: NextRequest) {
   try {
     return await handleLookup(request);
-  } catch (_err) {
+  } catch {
     return NextResponse.json({ error: 'Fout bij ophalen bedrijfsgegevens.' }, { status: 500 });
   }
 }

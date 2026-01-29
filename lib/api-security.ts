@@ -5,6 +5,7 @@ import { requireAuth, checkRateLimit, getClientIP, getRateLimitHeaders, isValidU
  * Middleware to protect admin API routes
  * Returns null if authorized, or a NextResponse with error if not
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- required by middleware signature
 export async function requireAdminAuth(request: NextRequest): Promise<NextResponse | null> {
   const auth = await requireAuth();
   

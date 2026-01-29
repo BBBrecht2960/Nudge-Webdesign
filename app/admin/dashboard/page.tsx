@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase, type Lead } from '@/lib/db';
-import { Users, Mail, CheckCircle, XCircle, Clock, Briefcase, Euro, PlayCircle, PauseCircle } from 'lucide-react';
+import { Users, Mail, Briefcase, Euro } from 'lucide-react';
 import { type Customer } from '@/lib/db';
 
 interface DashboardStats {
@@ -248,8 +248,9 @@ export default function DashboardPage() {
         {/* Recent Leads */}
         <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
           <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 break-words">Recente Leads</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[500px]">
+          <div className="w-full min-w-0 overflow-x-auto">
+            <div className="rounded-lg border border-border/80">
+              <table className="w-full min-w-[500px]">
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left p-2 text-sm font-semibold">Naam</th>
@@ -284,7 +285,8 @@ export default function DashboardPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+              </table>
+            </div>
           </div>
           <div className="mt-4">
             <Link
@@ -305,8 +307,9 @@ export default function DashboardPage() {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[500px]">
+              <div className="w-full min-w-0 overflow-x-auto">
+                <div className="rounded-lg border border-border/80">
+                  <table className="w-full min-w-[500px]">
                   <thead>
                     <tr className="border-b border-border">
                       <th className="text-left p-2 text-sm font-semibold">Klant</th>
@@ -357,7 +360,8 @@ export default function DashboardPage() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                  </table>
+                </div>
               </div>
               <div className="mt-4">
                 <Link

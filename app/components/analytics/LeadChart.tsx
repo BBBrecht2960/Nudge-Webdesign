@@ -59,6 +59,9 @@ export function LeadChart({ title, startDate, endDate, groupBy }: LeadChartProps
 
   const maxValue = Math.max(...data.map((d) => d.total), 1);
   const chartHeight = 200;
+  // Toon maar een deel van de x-as-labels zodat ze niet overlappen (max ~8 labels)
+  const labelStep = Math.max(1, Math.floor(data.length / 8));
+  const showLabel = (index: number) => index % labelStep === 0 || index === data.length - 1;
 
   const formatDate = (dateStr: string) => {
     try {
@@ -69,13 +72,11 @@ export function LeadChart({ title, startDate, endDate, groupBy }: LeadChartProps
       }
       const date = new Date(dateStr);
       if (isNaN(date.getTime())) return dateStr;
-      
+
       switch (groupBy) {
         case 'day':
-          // Format as "27 jan" or "28 jan"
           return date.toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' });
         case 'week':
-          // Format as "27 jan - 3 feb" or just the start date
           return date.toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' });
         case 'month':
           return date.toLocaleDateString('nl-BE', { month: 'short', year: 'numeric' });
@@ -114,8 +115,10 @@ export function LeadChart({ title, startDate, endDate, groupBy }: LeadChartProps
                     </div>
                   </div>
                 </div>
-                <div className="text-xs text-muted-foreground mt-3 text-center whitespace-nowrap w-full overflow-hidden">
-                  {formatDate(item.date)}
+                <div className="text-xs text-muted-foreground mt-3 text-center w-full min-w-0 h-4">
+                  {showLabel(index) ? (
+                    <span title={formatDate(item.date)}>{formatDate(item.date)}</span>
+                  ) : null}
                 </div>
               </div>
             );

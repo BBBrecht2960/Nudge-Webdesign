@@ -56,27 +56,6 @@ export async function GET(request: NextRequest) {
     const startISO = start.toISOString().split('T')[0];
     const endISO = end.toISOString().split('T')[0];
 
-    // Build date grouping SQL
-    let dateGroupSQL = '';
-    let dateFormat = '';
-    switch (groupBy) {
-      case 'day':
-        dateGroupSQL = "DATE(created_at)";
-        dateFormat = 'YYYY-MM-DD';
-        break;
-      case 'week':
-        dateGroupSQL = "DATE_TRUNC('week', created_at)";
-        dateFormat = 'YYYY-MM-DD';
-        break;
-      case 'month':
-        dateGroupSQL = "DATE_TRUNC('month', created_at)";
-        dateFormat = 'YYYY-MM';
-        break;
-      default:
-        dateGroupSQL = "DATE(created_at)";
-        dateFormat = 'YYYY-MM-DD';
-    }
-
     // Get leads grouped by date
     // Use gte for start (includes the day) and lte for end with full timestamp (includes entire end day)
     const { data: leadsByDate, error: leadsError } = await supabase
@@ -168,6 +147,38 @@ export async function GET(request: NextRequest) {
         groupedData[key].byCampaign[lead.utm_campaign] = (groupedData[key].byCampaign[lead.utm_campaign] || 0) + 1;
       }
     });
+
+    // Fill in all periods in range (so we show every day/week/month, also with 0 leads)
+    const emptyEntry = (key: string) => ({
+      date: key,
+      total: 0,
+      byStatus: {} as Record<string, number>,
+      bySource: {} as Record<string, number>,
+      byMedium: {} as Record<string, number>,
+      byCampaign: {} as Record<string, number>,
+    });
+    const walk = new Date(start);
+    walk.setHours(0, 0, 0, 0);
+    while (walk <= end) {
+      let key = '';
+      if (groupBy === 'day') {
+        key = `${walk.getFullYear()}-${String(walk.getMonth() + 1).padStart(2, '0')}-${String(walk.getDate()).padStart(2, '0')}`;
+        if (!groupedData[key]) groupedData[key] = emptyEntry(key);
+        walk.setDate(walk.getDate() + 1);
+      } else if (groupBy === 'week') {
+        const d = new Date(walk);
+        const dayOfWeek = d.getDay();
+        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        d.setDate(d.getDate() - daysToMonday);
+        key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        if (!groupedData[key]) groupedData[key] = emptyEntry(key);
+        walk.setDate(walk.getDate() + 7);
+      } else {
+        key = `${walk.getFullYear()}-${String(walk.getMonth() + 1).padStart(2, '0')}`;
+        if (!groupedData[key]) groupedData[key] = emptyEntry(key);
+        walk.setMonth(walk.getMonth() + 1);
+      }
+    }
 
     // Convert to array and sort by date
     const timeline = Object.values(groupedData).sort((a, b) => 

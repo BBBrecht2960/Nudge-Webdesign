@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { generateSessionToken, verifySessionToken } from './security';
+import { generateSessionToken } from './security';
 import { createClient } from '@supabase/supabase-js';
 
 export type AdminSessionCookieOptions = {

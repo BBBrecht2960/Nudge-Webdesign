@@ -14,3 +14,27 @@ You must follow the project security rules in SECURITY_RULES.md for all code in 
 8. **If unsure:** stop and propose the safest default. Prefer deny over allow.
 
 For full wording and context, read SECURITY_RULES.md.
+
+## Table layout (admin tabellen)
+
+Gebruik voor alle admin-tabellen hetzelfde layoutpatroon: scroll-container volle breedte, binnen de scroll padding + rand, dan de tabel. Zo vult de tabel de kaart en scrollt hij horizontaal op kleine schermen.
+
+**Standaard (kaart met header, bv. leads/klanten/analytics):**
+```tsx
+<div className="w-full min-w-0 overflow-x-auto">
+  <div className="px-5 pb-4">
+    <div className="rounded-lg border border-border/80">
+      <table className="w-full min-w-[640px] ...">...</table>
+    </div>
+  </div>
+</div>
+```
+
+**Kaart met eigen padding (bv. dashboard recent leads):** alleen scroll + rand, geen extra `px-5 pb-4`:
+```tsx
+<div className="w-full min-w-0 overflow-x-auto">
+  <div className="rounded-lg border border-border/80">
+    <table className="w-full min-w-[500px] ...">...</table>
+  </div>
+</div>
+```

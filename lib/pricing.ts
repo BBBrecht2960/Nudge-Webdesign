@@ -254,6 +254,33 @@ export const maintenanceOptions: PricingOption[] = [
   },
 ];
 
+export function getDisplayFeatures(pkg: PricingPackage): string[] {
+  return pkg.features;
+}
+
+/** Check of een optie in het pakket inbegrepen is (featuretekst matcht optienaam of sleutelwoord). */
+export function isOptionIncludedInPackage(option: PricingOption, pkg: PricingPackage): boolean {
+  const optionNameLower = option.name.toLowerCase();
+  const firstWord = option.name.split(/[\s(]+/)[0]?.toLowerCase() ?? '';
+  return pkg.features.some((f) => {
+    const fl = f.toLowerCase();
+    if (fl.includes(optionNameLower)) return true;
+    if (firstWord.length >= 3 && fl.includes(firstWord)) return true;
+    return false;
+  });
+}
+
+/** Geeft alle opties terug die bij dit pakket inbegrepen zijn (worden automatisch aangevinkt). */
+export function getOptionsForPackage(pkg: PricingPackage): PricingOption[] {
+  const allOptions: PricingOption[] = [
+    ...scopeOptions,
+    ...complexityOptions,
+    ...growthOptions,
+    ...maintenanceOptions,
+  ];
+  return allOptions.filter((option) => isOptionIncludedInPackage(option, pkg));
+}
+
 export function calculateTotal(
   selectedPackage: PricingPackage | null,
   selectedOptions: PricingOption[],

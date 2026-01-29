@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
 // GET: Fetch all admin users
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- required by Next.js route signature
 export async function GET(request: NextRequest) {
   try {
     // Check authentication

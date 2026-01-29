@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase, type Customer } from '@/lib/db';
 import { useRouter } from 'next/navigation';
-import { Users, Search, Filter, Euro, TrendingUp, Briefcase, ArrowUpDown, Clock, FileText } from 'lucide-react';
+import { Search, Euro, TrendingUp, Briefcase, ArrowUpDown, LayoutGrid, CheckCircle, Wrench, Sparkles, ClipboardCheck, PauseCircle, XCircle } from 'lucide-react';
 
 export default function CustomersPage() {
   const router = useRouter();
@@ -40,7 +40,7 @@ export default function CustomersPage() {
       setCustomers(data || []);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Onbekende fout';
-      const errorCode = (error as any)?.code;
+      const errorCode = (error as { code?: string })?.code;
       console.error('Error loading customers:', {
         error,
         message: errorMessage,
@@ -170,65 +170,114 @@ export default function CustomersPage() {
         </div>
       )}
 
-      {/* Quick Stats */}
+      {/* Quick Stats — belangrijkste groot, rest compact en mooi */}
       <section className="mb-8" aria-label="Statistieken">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Statistieken</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           <button
             type="button"
             onClick={() => setFilter('all')}
-            className={`bg-card border-2 rounded-lg p-3 sm:p-4 text-left hover:bg-accent transition-colors ${filter === 'all' ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
+            className={`rounded-xl p-4 sm:p-5 text-left transition-all duration-200 sm:col-span-2 ${
+              filter === 'all'
+                ? 'bg-primary/10 border-2 border-primary shadow-sm ring-2 ring-primary/20'
+                : 'bg-card border border-border hover:border-primary/40 hover:bg-primary/5'
+            }`}
           >
-            <div className="text-xs sm:text-sm text-muted-foreground mb-1">Totaal</div>
-            <div className="text-xl sm:text-2xl font-bold">{stats.total}</div>
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilter('new')}
-            className={`bg-card border-2 rounded-lg p-3 sm:p-4 text-left hover:bg-accent transition-colors ${filter === 'new' ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
-          >
-            <div className="text-xs sm:text-sm text-muted-foreground mb-1">Nieuw</div>
-            <div className="text-xl sm:text-2xl font-bold text-blue-600">{stats.new}</div>
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilter('in_progress')}
-            className={`bg-card border-2 rounded-lg p-3 sm:p-4 text-left hover:bg-accent transition-colors ${filter === 'in_progress' ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
-          >
-            <div className="text-xs sm:text-sm text-muted-foreground mb-1">In Uitvoering</div>
-            <div className="text-xl sm:text-2xl font-bold text-purple-600">{stats.in_progress}</div>
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilter('review')}
-            className={`bg-card border-2 rounded-lg p-3 sm:p-4 text-left hover:bg-accent transition-colors ${filter === 'review' ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
-          >
-            <div className="text-xs sm:text-sm text-muted-foreground mb-1">In Review</div>
-            <div className="text-xl sm:text-2xl font-bold text-yellow-600">{stats.review}</div>
+            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
+              <LayoutGrid className="w-4 h-4 shrink-0 opacity-70" />
+              Totaal
+            </div>
+            <div className="text-2xl sm:text-3xl font-bold tabular-nums tracking-tight">{stats.total}</div>
           </button>
           <button
             type="button"
             onClick={() => setFilter('completed')}
-            className={`bg-card border-2 rounded-lg p-3 sm:p-4 text-left hover:bg-accent transition-colors ${filter === 'completed' ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
+            className={`rounded-xl p-3 sm:p-4 text-left transition-all duration-200 ${
+              filter === 'completed'
+                ? 'bg-green-500/10 border-2 border-green-500/50 ring-2 ring-green-500/20'
+                : 'bg-card border border-border hover:border-green-500/30 hover:bg-green-500/5'
+            }`}
           >
-            <div className="text-xs sm:text-sm text-muted-foreground mb-1">Voltooid</div>
-            <div className="text-xl sm:text-2xl font-bold text-green-600">{stats.completed}</div>
+            <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1">
+              <CheckCircle className="w-3.5 h-3.5 shrink-0 text-green-600 dark:text-green-400" />
+              Voltooid
+            </div>
+            <div className="text-xl font-bold tabular-nums text-green-600 dark:text-green-400">{stats.completed}</div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter('in_progress')}
+            className={`rounded-xl p-3 sm:p-4 text-left transition-all duration-200 ${
+              filter === 'in_progress'
+                ? 'bg-violet-500/10 border-2 border-violet-500/50 ring-2 ring-violet-500/20'
+                : 'bg-card border border-border hover:border-violet-500/30 hover:bg-violet-500/5'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1">
+              <Wrench className="w-3.5 h-3.5 shrink-0 text-violet-600 dark:text-violet-400" />
+              In Uitvoering
+            </div>
+            <div className="text-xl font-bold tabular-nums text-violet-600 dark:text-violet-400">{stats.in_progress}</div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter('new')}
+            className={`rounded-lg p-2.5 sm:p-3 text-left transition-all duration-200 border ${
+              filter === 'new'
+                ? 'bg-blue-500/10 border-blue-500/40 ring-2 ring-blue-500/20'
+                : 'bg-muted/30 border-border/80 hover:bg-muted/50 hover:border-blue-500/20'
+            }`}
+          >
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Sparkles className="w-3.5 h-3.5 shrink-0 text-blue-600 dark:text-blue-400" />
+              Nieuw
+            </span>
+            <span className="mt-1 block text-sm font-semibold tabular-nums text-blue-600 dark:text-blue-400">{stats.new}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter('review')}
+            className={`rounded-lg p-2.5 sm:p-3 text-left transition-all duration-200 border ${
+              filter === 'review'
+                ? 'bg-amber-500/10 border-amber-500/40 ring-2 ring-amber-500/20'
+                : 'bg-muted/30 border-border/80 hover:bg-muted/50 hover:border-amber-500/20'
+            }`}
+          >
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <ClipboardCheck className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+              In Review
+            </span>
+            <span className="mt-1 block text-sm font-semibold tabular-nums text-amber-600 dark:text-amber-400">{stats.review}</span>
           </button>
           <button
             type="button"
             onClick={() => setFilter('on_hold')}
-            className={`bg-card border-2 rounded-lg p-3 sm:p-4 text-left hover:bg-accent transition-colors ${filter === 'on_hold' ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
+            className={`rounded-lg p-2.5 sm:p-3 text-left transition-all duration-200 border ${
+              filter === 'on_hold'
+                ? 'bg-red-500/10 border-red-500/40 ring-2 ring-red-500/20'
+                : 'bg-muted/30 border-border/80 hover:bg-muted/50 hover:border-red-500/20'
+            }`}
           >
-            <div className="text-xs sm:text-sm text-muted-foreground mb-1">On Hold</div>
-            <div className="text-xl sm:text-2xl font-bold text-red-600">{stats.on_hold}</div>
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <PauseCircle className="w-3.5 h-3.5 shrink-0 text-red-600 dark:text-red-400" />
+              On Hold
+            </span>
+            <span className="mt-1 block text-sm font-semibold tabular-nums text-red-600 dark:text-red-400">{stats.on_hold}</span>
           </button>
           <button
             type="button"
             onClick={() => setFilter('canceled')}
-            className={`bg-card border-2 rounded-lg p-3 sm:p-4 text-left hover:bg-accent transition-colors ${filter === 'canceled' ? 'border-primary ring-2 ring-primary/20' : 'border-border'}`}
+            className={`rounded-lg p-2.5 sm:p-3 text-left transition-all duration-200 border ${
+              filter === 'canceled'
+                ? 'bg-gray-500/10 border-gray-500/40 ring-2 ring-gray-500/20 dark:bg-gray-400/10 dark:border-gray-400/40'
+                : 'bg-muted/30 border-border/80 hover:bg-muted/50 hover:border-gray-500/20'
+            }`}
           >
-            <div className="text-xs sm:text-sm text-muted-foreground mb-1">Geannuleerd</div>
-            <div className="text-xl sm:text-2xl font-bold text-gray-600">{stats.canceled}</div>
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <XCircle className="w-3.5 h-3.5 shrink-0 text-gray-600 dark:text-gray-400" />
+              Geannuleerd
+            </span>
+            <span className="mt-1 block text-sm font-semibold tabular-nums text-gray-600 dark:text-gray-400">{stats.canceled}</span>
           </button>
         </div>
       </section>
@@ -310,7 +359,7 @@ export default function CustomersPage() {
             <ArrowUpDown className="w-4 h-4 text-muted-foreground shrink-0" />
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
+              onChange={(e) => setSortBy(e.target.value as 'date' | 'name' | 'status' | 'revenue')}
               className="px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="date">Sorteer op datum</option>
@@ -332,101 +381,92 @@ export default function CustomersPage() {
 
       {/* Customers Table */}
       <section aria-label="Overzicht klanten">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Overzicht klanten</h2>
-      <div className="bg-card border border-border rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px]">
-            <thead className="bg-muted/80">
-              <tr>
-                <th className="p-3 sm:p-4 text-left text-sm font-semibold">Klant</th>
-                <th className="p-3 sm:p-4 text-left text-sm font-semibold">Bedrijf</th>
-                <th className="p-3 sm:p-4 text-left text-sm font-semibold">Pakket</th>
-                <th className="p-3 sm:p-4 text-left text-sm font-semibold">Omzet</th>
-                <th className="p-3 sm:p-4 text-left text-sm font-semibold">Status</th>
-                <th className="p-3 sm:p-4 text-left text-sm font-semibold">Toegewezen</th>
-                <th className="p-3 sm:p-4 text-left text-sm font-semibold">Geconverteerd</th>
-                <th className="p-3 sm:p-4 text-left text-sm font-semibold">Acties</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredCustomers.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="p-8 text-center text-muted-foreground">
-                    Geen klanten gevonden
-                  </td>
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-border">
+            <h2 className="text-base font-semibold">Overzicht klanten</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Klik op een rij om de klant te openen.</p>
+          </div>
+          <div className="min-w-0 overflow-x-auto">
+            <table className="w-full text-sm min-w-[640px]">
+              <thead>
+                <tr className="bg-muted/30 text-muted-foreground">
+                  <th className="text-left py-3 px-4 font-medium">Klant</th>
+                  <th className="text-left py-3 px-4 font-medium">Bedrijf</th>
+                  <th className="text-left py-3 px-4 font-medium">Pakket</th>
+                  <th className="text-left py-3 px-4 font-medium">Omzet</th>
+                  <th className="text-left py-3 px-4 font-medium">Status</th>
+                  <th className="text-left py-3 px-4 font-medium">Toegewezen</th>
+                  <th className="text-left py-3 px-4 font-medium">Geconverteerd</th>
+                  <th className="text-left py-3 px-4 font-medium">Acties</th>
                 </tr>
-              ) : (
-                filteredCustomers.map((customer) => {
-                  const isCanceled = customer.project_status === 'canceled';
-                  return (
-                  <tr
-                    key={customer.id}
-                    className={`border-b border-border hover:bg-accent/50 cursor-pointer transition-colors ${
-                      isCanceled ? 'bg-gray-50 dark:bg-gray-800/50 opacity-75' : ''
-                    }`}
-                    onClick={() => router.push(`/admin/customers/${customer.id}`)}
-                  >
-                    <td className="p-3 sm:p-4 break-words min-w-0">
-                      <div className={`font-medium ${isCanceled ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>
-                        {customer.name}
-                      </div>
-                      <div className={`text-xs break-all ${isCanceled ? 'line-through text-gray-400 dark:text-gray-500' : 'text-muted-foreground'}`}>
-                        {customer.email}
-                      </div>
-                    </td>
-                    <td className={`p-3 sm:p-4 break-words min-w-0 ${isCanceled ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>
-                      {customer.company_name || '-'}
-                    </td>
-                    <td className={`p-3 sm:p-4 break-words min-w-0 ${isCanceled ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>
-                      {customer.package_interest || '-'}
-                    </td>
-                    <td className="p-3 sm:p-4 min-w-0">
-                      {isCanceled ? (
-                        <span className="text-muted-foreground text-sm italic">Geannuleerd</span>
-                      ) : customer.quote_total ? (
-                        <div className="flex items-center gap-1">
-                          <Euro className="w-3 h-3 text-primary shrink-0" />
-                          <span className="font-semibold">
-                            {customer.quote_total.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">-</span>
-                      )}
-                    </td>
-                    <td className="p-3 sm:p-4 min-w-0">
-                      <span className={`px-2 py-1 rounded text-xs whitespace-nowrap font-semibold ${getStatusColor(customer.project_status)}`}>
-                        {getStatusLabel(customer.project_status)}
-                      </span>
-                    </td>
-                    <td className={`p-3 sm:p-4 break-words min-w-0 ${isCanceled ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>
-                      {customer.assigned_to || <span className="text-muted-foreground text-sm">-</span>}
-                    </td>
-                    <td className={`p-3 sm:p-4 text-sm whitespace-nowrap min-w-0 ${isCanceled ? 'line-through text-gray-400 dark:text-gray-500' : 'text-muted-foreground'}`}>
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-3 h-3 shrink-0" />
-                        {new Date(customer.converted_at).toLocaleDateString('nl-BE')}
-                      </div>
-                    </td>
-                    <td className="p-3 sm:p-4 min-w-0">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(`/admin/customers/${customer.id}`);
-                        }}
-                        className="text-primary hover:underline text-sm whitespace-nowrap font-medium"
-                      >
-                        Openen →
-                      </button>
+              </thead>
+              <tbody>
+                {filteredCustomers.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-12 px-4 text-center text-muted-foreground text-sm">
+                      Geen klanten gevonden
                     </td>
                   </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  filteredCustomers.map((customer) => {
+                    const isCanceled = customer.project_status === 'canceled';
+                    return (
+                      <tr
+                        key={customer.id}
+                        className={`border-t border-border/80 hover:bg-muted/20 transition-colors cursor-pointer ${
+                          isCanceled ? 'bg-muted/10 opacity-75' : ''
+                        }`}
+                        onClick={() => router.push(`/admin/customers/${customer.id}`)}
+                      >
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <div className={`font-medium text-foreground ${isCanceled ? 'line-through text-muted-foreground' : ''}`}>
+                            {customer.name}
+                          </div>
+                          <div className={`text-xs text-muted-foreground ${isCanceled ? 'line-through' : ''}`}>
+                            {customer.email}
+                          </div>
+                        </td>
+                        <td className={`py-3 px-4 whitespace-nowrap ${isCanceled ? 'line-through text-muted-foreground' : ''}`}>
+                          {customer.company_name || '-'}
+                        </td>
+                        <td className={`py-3 px-4 whitespace-nowrap ${isCanceled ? 'line-through text-muted-foreground' : ''}`}>
+                          {customer.package_interest || '-'}
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          {isCanceled ? (
+                            <span className="text-muted-foreground text-sm italic">Geannuleerd</span>
+                          ) : customer.quote_total ? (
+                            <span className="tabular-nums font-medium">
+                              € {customer.quote_total.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(customer.project_status)}`}>
+                            {getStatusLabel(customer.project_status)}
+                          </span>
+                        </td>
+                        <td className={`py-3 px-4 whitespace-nowrap ${isCanceled ? 'line-through text-muted-foreground' : ''}`}>
+                          {customer.assigned_to || '-'}
+                        </td>
+                        <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">
+                          <span className={isCanceled ? 'line-through' : ''}>
+                            {customer.converted_at ? new Date(customer.converted_at).toLocaleDateString('nl-BE') : '-'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                              —
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
       </section>
 
       {/* Footer Stats */}
@@ -442,7 +482,7 @@ export default function CustomersPage() {
         </div>
         {search && (
           <div className="text-xs">
-            Zoekresultaten voor: <strong className="text-foreground">"{search}"</strong>
+            Zoekresultaten voor: <strong className="text-foreground">&quot;{search}&quot;</strong>
           </div>
         )}
       </div>

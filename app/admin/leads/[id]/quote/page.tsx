@@ -9,7 +9,6 @@ import {
   Plus,
   Minus,
   Check,
-  Calculator,
   Mail,
   FileText,
   ChevronDown,
@@ -21,10 +20,10 @@ import {
   TrendingUp,
   Wrench,
   Download,
-  AlertTriangle,
   Trash2,
   Percent,
   Euro,
+  CreditCard,
 } from 'lucide-react';
 import { generateQuotePdfBlob } from '@/lib/quotePdf';
 import {
@@ -35,10 +34,10 @@ import {
   maintenanceOptions,
   getDisplayFeatures,
   isOptionIncludedInPackage,
-  type PricingPackage,
   type PricingOption,
+  type PricingPackage,
 } from '@/lib/pricing';
-import { useOfferBuilder } from '@/lib/hooks/useOfferBuilder';
+import { useOfferBuilder, ALLOWED_DISCOUNT_PERCENTAGES, PAYMENT_SCHEDULE_OPTIONS } from '@/lib/hooks/useOfferBuilder';
 import { OfferSummary } from '@/app/components/OfferSummary';
 import { presets, applyPreset } from '@/lib/presets';
 import { exportQuoteAsJSON, downloadQuoteAsJSON } from '@/lib/quoteExport';
@@ -84,7 +83,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
       loadLead();
       loadSavedQuote();
     }
-    
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- leadId is the only trigger
   }, [leadId]);
 
   // Auto-save quote when selections change (debounced)
@@ -96,6 +95,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
     }, 2000); // Save 2 seconds after last change
 
     return () => clearTimeout(saveTimeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- state/lead trigger save, saveQuoteDraft is stable
   }, [state, lead]);
 
   const loadLead = async () => {
@@ -128,7 +128,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
           
           // Restore package
           if (data.selectedPackage) {
-            const pkg = packages.find(p => p.id === data.selectedPackage.id);
+            const pkg = packages.find((p: PricingPackage) => p.id === data.selectedPackage.id);
             if (pkg) restoredState.selectedPackage = pkg;
           }
           
@@ -158,7 +158,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
           
           // Restore maintenance
           if (data.selectedMaintenance) {
-            const maint = maintenanceOptions.find(m => m.id === data.selectedMaintenance.id);
+            const maint = maintenanceOptions.find((m: PricingOption) => m.id === data.selectedMaintenance.id);
             if (maint) restoredState.selectedMaintenance = maint;
           }
           
@@ -169,6 +169,15 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
           // Restore scope and timeline
           if (data.scopeDescription !== undefined) restoredState.scopeDescription = data.scopeDescription;
           if (data.timeline !== undefined) restoredState.timeline = data.timeline;
+          
+          // Restore discount and payment schedule
+          if (data.discount) restoredState.discount = data.discount;
+          if (data.paymentSchedule && ['once', 'twice_25', 'thrice_33'].includes(data.paymentSchedule)) {
+            restoredState.paymentSchedule = data.paymentSchedule;
+          }
+          if (data.customLineItems && Array.isArray(data.customLineItems)) {
+            restoredState.customLineItems = data.customLineItems;
+          }
           
           actions.loadState(restoredState);
           
@@ -213,6 +222,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
         contentPages: state.contentPages,
         customLineItems: state.customLineItems,
         discount: state.discount,
+        paymentSchedule: state.paymentSchedule,
         scopeDescription: state.scopeDescription,
         timeline: state.timeline,
       };
@@ -255,8 +265,9 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
   const updateCustomPrice = (optionId: string, price: number) => {
     actions.setCustomPrice(optionId, price);
   };
-  
-  const handleExportJSON = () => {
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- reserved for future export UI
+  const _handleExportJSON = () => {
     if (!isValid) {
       alert('Selecteer eerst een basispakket voordat je de offerte exporteert.');
       return;
@@ -271,8 +282,9 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
     
     downloadQuoteAsJSON(exportData);
   };
-  
-  const handleApplyPreset = (presetId: string) => {
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- reserved for preset UI
+  const _handleApplyPreset = (presetId: string) => {
     const preset = presets.find(p => p.id === presetId);
     if (!preset) return;
     
@@ -507,7 +519,14 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
         contentPages: state.contentPages,
         selectedMaintenance: state.selectedMaintenance ? { id: state.selectedMaintenance.id, name: state.selectedMaintenance.name, price: state.selectedMaintenance.price } : null,
         customLineItems: state.customLineItems,
-        discount: state.discount.type ? { type: state.discount.type, value: state.discount.value } : null,
+        discount: state.discount.type ? { type: state.discount.type, value: state.discount.value } : undefined,
+        paymentSchedule: state.paymentSchedule,
+        pricing: {
+          subtotal: calculations.subtotalBeforeDiscount,
+          vat: calculations.vat,
+          total: calculations.total,
+          discountAmount: calculations.discountAmount ?? 0,
+        },
       };
       const blob = await generateQuotePdfBlob(clientInfo, approvedQuote, calculations.total);
       const url = URL.createObjectURL(blob);
@@ -521,7 +540,8 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
       setIsDownloadingPDF(false);    }
   };
 
-  const handleSendQuote = async () => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- reserved for send-quote UI
+  const _handleSendQuote = async () => {
     if (!lead || !selectedPackage) {
       alert('Selecteer eerst een pakket voordat je de offerte verzendt.');
       return;
@@ -556,6 +576,11 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
         } : null,
         extraPages,
         contentPages,
+        customLineItems: state.customLineItems,
+        discount: state.discount,
+        paymentSchedule: state.paymentSchedule,
+        scopeDescription: state.scopeDescription,
+        timeline: state.timeline,
       };
 
       // Save quote first
@@ -574,7 +599,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
         try {
           const errorData = await saveResponse.json();
           errorMessage = errorData.error || errorMessage;
-        } catch (parseError) {
+        } catch {
           errorMessage = `HTTP ${saveResponse.status}: ${saveResponse.statusText}`;
         }
         throw new Error(errorMessage);
@@ -600,26 +625,21 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
           } else {
             errorMessage = `HTTP ${sendResponse.status}: ${sendResponse.statusText}`;
           }
-        } catch (parseError) {
+        } catch {
           errorMessage = `HTTP ${sendResponse.status}: ${sendResponse.statusText}`;
         }
         throw new Error(errorMessage);
       }
 
-      // Parse response safely
-      let result;
+      // Parse response safely (ensure response is consumed)
       try {
         const responseText = await sendResponse.text();
         if (responseText) {
-          result = JSON.parse(responseText);
-        } else {
-          // Empty response but status is OK - assume success
-          result = { success: true, message: 'Offerte verzonden' };
+          JSON.parse(responseText);
         }
-      } catch (parseError) {
+      } catch {
         // If parsing fails but status is OK, assume success
-        console.warn('Could not parse response, but status is OK:', parseError);
-        result = { success: true, message: 'Offerte verzonden' };
+        console.warn('Could not parse response, but status is OK');
       }
       
       setLastSaved(new Date());
@@ -670,6 +690,11 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
         } : null,
         extraPages,
         contentPages,
+        customLineItems: state.customLineItems,
+        discount: state.discount,
+        paymentSchedule: state.paymentSchedule,
+        scopeDescription: state.scopeDescription,
+        timeline: state.timeline,
       };
 
       // Save quote to database
@@ -688,7 +713,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
         throw new Error(errorData.error || 'Fout bij opslaan offerte');
       }
 
-      const { quote } = await quoteResponse.json();
+      await quoteResponse.json();
       
       // Create activity log
       try {
@@ -720,7 +745,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
     }
   };
 
-  const filteredPackages = packages.filter((pkg) => pkg.category === packageCategory);
+  const filteredPackages = packages.filter((pkg: PricingPackage) => pkg.category === packageCategory);
 
   if (isLoading) {
     return (
@@ -738,8 +763,8 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
     );
   }
 
-  // Show save indicator
-  const SaveIndicator = () => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- reserved for save indicator UI
+  const _SaveIndicator = () => {
     if (isSaving) {
       return (
         <div className="fixed top-4 right-4 bg-primary text-primary-foreground px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2">
@@ -757,8 +782,6 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
     }
     return null;
   };
-
-  const total = getTotal();
 
   return (
     <>
@@ -904,7 +927,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                       Inbegrepen in {selectedPackage.name}
                     </h3>
                     <ul className="space-y-2">
-                      {getDisplayFeatures(selectedPackage).map((feature, idx) => (
+                      {getDisplayFeatures(selectedPackage).map((feature: string, idx: number) => (
                         <li key={idx} className="flex items-start gap-2 text-sm text-muted-foreground">
                           <span className="text-primary shrink-0">✓</span>
                           <span>{feature}</span>
@@ -1036,7 +1059,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                       </div>
                     </div>
 
-                    {scopeOptions.filter((o) => o.id !== 'extra-pages').map((option) => {
+                    {scopeOptions.filter((o: PricingOption) => o.id !== 'extra-pages').map((option: PricingOption) => {
                       const isSelected = state.selectedOptions.some((o) => o.id === option.id);
                       const isIncludedInPackage = selectedPackage && isOptionIncludedInPackage(option, selectedPackage);
                       return (
@@ -1183,7 +1206,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
 
                 {expandedSections.has('complexity') && (
                   <div className="px-6 pb-6 space-y-3">
-                    {complexityOptions.map((option) => {
+                    {complexityOptions.map((option: PricingOption) => {
                       const isSelected = state.selectedOptions.some((o) => o.id === option.id);
                       const isIncludedInPackage = selectedPackage && isOptionIncludedInPackage(option, selectedPackage);
                       return (
@@ -1364,7 +1387,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                       </div>
                     </div>
 
-                    {growthOptions.filter((o) => o.id !== 'content-creation').map((option) => {
+                    {growthOptions.filter((o: PricingOption) => o.id !== 'content-creation').map((option: PricingOption) => {
                       const isSelected = state.selectedOptions.some((o) => o.id === option.id);
                       const isIncludedInPackage = selectedPackage && isOptionIncludedInPackage(option, selectedPackage);
                       return (
@@ -1512,7 +1535,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                 {expandedSections.has('maintenance') && (
                   <div className="px-6 pb-6 space-y-3">
                     {/* Maintenance Packages */}
-                    {maintenanceOptions.filter(opt => opt.id.startsWith('maintenance-')).map((option) => {
+                    {maintenanceOptions.filter((opt: PricingOption) => opt.id.startsWith('maintenance-')).map((option: PricingOption) => {
                       const isSelected = selectedMaintenance?.id === option.id;
                       return (
                         <div
@@ -1551,7 +1574,7 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                     })}
                     
                     {/* Analytics & Reporting (as separate option) */}
-                    {maintenanceOptions.filter(opt => opt.id === 'analytics-reporting').map((option) => {
+                    {maintenanceOptions.filter((opt: PricingOption) => opt.id === 'analytics-reporting').map((option: PricingOption) => {
                       const isSelected = state.selectedOptions.some((o) => o.id === option.id);
                       return (
                         <div
@@ -1647,49 +1670,48 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
             {/* Discount Section - Above Summary */}
             <div className="bg-card border-2 border-border rounded-lg p-4 space-y-3">
               <h3 className="text-sm font-semibold text-foreground">Korting</h3>
-              <div className="space-y-2">
-                <div className="flex gap-2">
-                  <select
-                    value={state.discount.type || ''}
-                    onChange={(e) => {
-                      const type = e.target.value as 'percentage' | 'fixed' | '';
-                      actions.setDiscount(type === '' ? null : type, state.discount.value);
-                    }}
-                    className="flex-1 px-3 py-2 border border-border rounded-lg text-sm bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="">Geen korting</option>
-                    <option value="percentage">Percentage</option>
-                    <option value="fixed">Vast bedrag</option>
-                  </select>
+              <div className="flex gap-2 items-center">
+                <Percent className="w-4 h-4 text-muted-foreground shrink-0" />
+                <select
+                  value={state.discount.type === 'percentage' ? state.discount.value : ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '') {
+                      actions.setDiscount(null, 0);
+                    } else {
+                      actions.setDiscount('percentage', Number(val));
+                    }
+                  }}
+                  className="flex-1 px-3 py-2 border border-border rounded-lg text-sm bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">Geen korting</option>
+                  {ALLOWED_DISCOUNT_PERCENTAGES.map((p) => (
+                    <option key={p} value={p}>{p}%</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Payment Schedule - Betaling */}
+            <div className="bg-card border-2 border-border rounded-lg p-4 space-y-3">
+              <h3 className="text-sm font-semibold text-foreground">Betaling</h3>
+              <div className="flex gap-2 items-start">
+                <CreditCard className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div className="flex-1 space-y-2">
+                  {PAYMENT_SCHEDULE_OPTIONS.map((opt) => (
+                    <label key={opt.value} className="flex items-start gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="paymentSchedule"
+                        value={opt.value}
+                        checked={state.paymentSchedule === opt.value}
+                        onChange={() => actions.setPaymentSchedule(opt.value)}
+                        className="mt-1 rounded border-border text-primary focus:ring-primary"
+                      />
+                      <span className="text-sm text-foreground">{opt.label}</span>
+                    </label>
+                  ))}
                 </div>
-                
-                {state.discount.type && (
-                  <div className="flex gap-2 items-center">
-                    {state.discount.type === 'percentage' ? (
-                      <Percent className="w-4 h-4 text-muted-foreground shrink-0" />
-                    ) : (
-                      <Euro className="w-4 h-4 text-muted-foreground shrink-0" />
-                    )}
-                    <input
-                      type="number"
-                      value={state.discount.value || ''}
-                      onChange={(e) => {
-                        const value = parseFloat(e.target.value) || 0;
-                        actions.setDiscount(state.discount.type!, value);
-                      }}
-                      placeholder={state.discount.type === 'percentage' ? '10' : '100'}
-                      min="0"
-                      max={state.discount.type === 'percentage' ? 100 : undefined}
-                      className="flex-1 px-3 py-2 border border-border rounded-lg text-sm bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                    {state.discount.type === 'percentage' && (
-                      <span className="text-sm text-muted-foreground shrink-0">%</span>
-                    )}
-                    {state.discount.type === 'fixed' && (
-                      <span className="text-sm text-muted-foreground shrink-0">€</span>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
 
@@ -1933,6 +1955,9 @@ export default function QuoteBuilderPage({ params }: { params: Promise<{ id: str
                       € {calculations.total.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Betaling: {PAYMENT_SCHEDULE_OPTIONS.find((o) => o.value === state.paymentSchedule)?.label ?? 'In 1 keer op voorhand'}
+                  </p>
                 </div>
 
                 {/* Maintenance */}

@@ -26,6 +26,7 @@ export function generateSessionToken(): string {
   // Fallback for Node.js (should not be needed in modern Node.js)
   if (typeof require !== 'undefined') {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- Node fallback for crypto
       const nodeCrypto = require('crypto');
       return nodeCrypto.randomBytes(32).toString('hex');
     } catch {

@@ -59,27 +59,32 @@ export function RevenueChart({ title, startDate, endDate, groupBy }: RevenueChar
 
   const maxValue = Math.max(...data.map((d) => d.total), 1);
   const chartHeight = 200;
+  // Toon maar een deel van de x-as-labels zodat ze leesbaar blijven (niet 8px breed)
+  const labelStep = Math.max(1, Math.floor(data.length / 8));
+  const showLabel = (index: number) => index % labelStep === 0 || index === data.length - 1;
 
   const formatDate = (dateStr: string) => {
     try {
-      if (groupBy === 'month' && dateStr.includes('-')) {
-        const [year, month] = dateStr.split('-');
-        const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+      const parts = dateStr.split('-').map(Number);
+      if (groupBy === 'month' && parts.length >= 2) {
+        const date = new Date(parts[0], parts[1] - 1, 1);
         return date.toLocaleDateString('nl-BE', { month: 'short', year: 'numeric' });
+      }
+      if (parts.length >= 3) {
+        const date = new Date(parts[0], parts[1] - 1, parts[2]);
+        if (isNaN(date.getTime())) return dateStr;
+        switch (groupBy) {
+          case 'day':
+            return date.toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' });
+          case 'week':
+            return date.toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' });
+          default:
+            return date.toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' });
+        }
       }
       const date = new Date(dateStr);
       if (isNaN(date.getTime())) return dateStr;
-      
-      switch (groupBy) {
-        case 'day':
-          return date.toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' });
-        case 'week':
-          return date.toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' });
-        case 'month':
-          return date.toLocaleDateString('nl-BE', { month: 'short', year: 'numeric' });
-        default:
-          return dateStr;
-      }
+      return date.toLocaleDateString('nl-BE', { day: 'numeric', month: 'short' });
     } catch {
       return dateStr;
     }
@@ -112,8 +117,12 @@ export function RevenueChart({ title, startDate, endDate, groupBy }: RevenueChar
                     </div>
                   </div>
                 </div>
-                <div className="text-xs text-muted-foreground mt-3 text-center whitespace-nowrap w-full overflow-hidden">
-                  {formatDate(item.date)}
+                <div className="text-xs text-muted-foreground mt-3 text-center w-full min-w-0 h-4">
+                  {showLabel(index) ? (
+                    <span title={`${formatDate(item.date)}: €${item.total.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}>
+                      {formatDate(item.date)}
+                    </span>
+                  ) : null}
                 </div>
               </div>
             );

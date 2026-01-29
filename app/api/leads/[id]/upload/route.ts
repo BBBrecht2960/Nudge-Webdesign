@@ -67,7 +67,7 @@ export async function POST(
     
     if (!bucketExists) {
       // Try to create the bucket
-      const { data: newBucket, error: createError } = await supabase.storage.createBucket(bucketName, {
+      const { error: createError } = await supabase.storage.createBucket(bucketName, {
         public: true,
         fileSizeLimit: 52428800, // 50MB
         allowedMimeTypes: null, // Allow all file types
@@ -90,7 +90,7 @@ export async function POST(
     const filePath = fileName;
 
     // Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from(bucketName)
       .upload(filePath, file, {
         cacheControl: '3600',

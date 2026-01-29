@@ -26,7 +26,7 @@ export default function CookieBeleidPage() {
             Wij gebruiken PostHog voor analytische doeleinden om te begrijpen hoe bezoekers onze website gebruiken. Deze cookies verzamelen informatie over:
           </p>
           <ul>
-            <li>Welke pagina's u bezoekt</li>
+            <li>Welke pagina&apos;s u bezoekt</li>
             <li>Hoe lang u op elke pagina blijft</li>
             <li>Hoe u op onze website bent gekomen</li>
             <li>Welke acties u onderneemt (bijv. formulier invullen, knop klikken)</li>

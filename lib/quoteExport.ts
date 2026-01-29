@@ -1,5 +1,4 @@
 import { type OfferBuilderState } from './hooks/useOfferBuilder';
-import { type PricingPackage, type PricingOption } from './pricing';
 
 export interface QuoteExport {
   quoteId?: string;
@@ -35,6 +34,7 @@ export interface QuoteExport {
     type: 'percentage' | 'fixed' | null;
     value: number;
   };
+  paymentSchedule: 'once' | 'twice_25' | 'thrice_33';
   pricing: {
     subtotal: number;
     vat: number;
@@ -84,6 +84,7 @@ export function exportQuoteAsJSON(
     contentPages: state.contentPages,
     customLineItems: state.customLineItems,
     discount: state.discount,
+    paymentSchedule: state.paymentSchedule,
     pricing: {
       subtotal: calculations.subtotal,
       vat: calculations.vat,
