@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { type Lead } from '@/lib/db';
-import { Users, Mail, Briefcase, Euro, TrendingUp } from 'lucide-react';
+import { Users, Mail, Briefcase, Euro, TrendingUp, Target, Check } from 'lucide-react';
 import { type Customer } from '@/lib/db';
 
 interface DashboardStats {
@@ -47,13 +47,10 @@ export default function DashboardPage() {
   const [salesTarget, setSalesTarget] = useState<SalesTargetData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [savingTarget, setSavingTarget] = useState(false);
+  const [targetSavedFeedback, setTargetSavedFeedback] = useState(false);
   const [targetForm, setTargetForm] = useState({ daily: '', weekly: '' });
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     try {
       const sessionRes = await fetch('/api/auth/session', { credentials: 'include' });
       const sessionData = sessionRes.ok ? await sessionRes.json() : null;
@@ -130,7 +127,12 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only run on mount; targetForm prefill is intentional once
+  }, []);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
 
   if (isLoading) {
     return (
@@ -222,7 +224,9 @@ export default function DashboardPage() {
                     <p className="text-xl sm:text-2xl font-bold text-primary">
                       {(salesTarget.progress_daily_pct ?? 0)}%
                     </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">van streefdoel</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {(salesTarget.daily_target_eur ?? 0) === 0 ? 'Stel een doel in op het dashboard (beheer)' : 'van streefdoel'}
+                    </p>
                   </div>
                   <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-primary shrink-0" />
                 </div>
@@ -234,7 +238,9 @@ export default function DashboardPage() {
                     <p className="text-xl sm:text-2xl font-bold text-primary">
                       {(salesTarget.progress_weekly_pct ?? 0)}%
                     </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">van streefdoel</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {(salesTarget.weekly_target_eur ?? 0) === 0 ? 'Stel een doel in op het dashboard (beheer)' : 'van streefdoel'}
+                    </p>
                   </div>
                   <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-primary shrink-0" />
                 </div>
@@ -245,44 +251,48 @@ export default function DashboardPage() {
       </div>
 
       {permissions?.can_manage_users && (
-      <div className="mb-6 sm:mb-8 bg-card border border-border rounded-lg p-4 sm:p-6">
-        <h2 className="text-lg sm:text-xl font-semibold mb-4 text-muted-foreground">Salesdoelen (team)</h2>
-        <p className="text-sm text-muted-foreground mb-4">Stel dag- en weekdoel in euro in. Het sales team ziet alleen het percentage van het doel, niet de exacte omzet.</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
+      <div className="mb-6 sm:mb-8 bg-card border border-border rounded-xl p-5 sm:p-6 shadow-sm">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Target className="w-5 h-5 text-primary" />
+          </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Dagdoel (€)</label>
+            <h2 className="text-lg sm:text-xl font-semibold text-foreground">Salesdoelen (team)</h2>
+            <p className="text-sm text-muted-foreground">Het sales team ziet alleen het percentage van het doel, niet de exacte omzet.</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-xl mt-5">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">Dagdoel (€)</label>
             <input
               type="number"
               min={0}
               step={100}
               value={targetForm.daily}
               onChange={(e) => setTargetForm((f) => ({ ...f, daily: e.target.value }))}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+              className="w-full rounded-lg border-2 border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
             />
-            {salesTarget?.revenue_today != null && (
-              <p className="text-xs text-muted-foreground mt-1">Vandaag: €{salesTarget.revenue_today.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-            )}
+            <p className="text-xs text-muted-foreground mt-1.5">Vandaag: €{(salesTarget?.revenue_today ?? 0).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (conversies vandaag, tijdzone België)</p>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Weekdoel (€)</label>
+            <label className="block text-sm font-medium text-foreground mb-2">Weekdoel (€)</label>
             <input
               type="number"
               min={0}
               step={500}
               value={targetForm.weekly}
               onChange={(e) => setTargetForm((f) => ({ ...f, weekly: e.target.value }))}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+              className="w-full rounded-lg border-2 border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
             />
-            {salesTarget?.revenue_this_week != null && (
-              <p className="text-xs text-muted-foreground mt-1">Deze week: €{salesTarget.revenue_this_week.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-            )}
+            <p className="text-xs text-muted-foreground mt-1.5">Deze week: €{(salesTarget?.revenue_this_week ?? 0).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (conversies deze week, tijdzone België)</p>
           </div>
         </div>
-        <div className="mt-4">
+        <div className="mt-5 flex flex-wrap items-center gap-3">
           <button
             type="button"
             disabled={savingTarget}
             onClick={async () => {
+              setTargetSavedFeedback(false);
               setSavingTarget(true);
               try {
                 const res = await fetch('/api/admin/sales-target', {
@@ -297,15 +307,32 @@ export default function DashboardPage() {
                 if (res.ok) {
                   const targetRes = await fetch('/api/admin/sales-target', { credentials: 'include' });
                   if (targetRes.ok) setSalesTarget(await targetRes.json());
+                  setTargetSavedFeedback(true);
+                  setTimeout(() => setTargetSavedFeedback(false), 3000);
                 }
               } finally {
                 setSavingTarget(false);
               }
             }}
-            className="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-5 py-2.5 text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity shadow-sm"
           >
-            {savingTarget ? 'Opslaan...' : 'Doelen opslaan'}
+            {savingTarget ? (
+              <>Opslaan...</>
+            ) : targetSavedFeedback ? (
+              <>
+                <Check className="w-4 h-4" />
+                Opgeslagen
+              </>
+            ) : (
+              <>Doelen opslaan</>
+            )}
           </button>
+          {targetSavedFeedback && (
+            <span className="inline-flex items-center gap-1.5 text-sm text-green-600 dark:text-green-400 font-medium">
+              <Check className="w-4 h-4 shrink-0" />
+              Doelen opgeslagen
+            </span>
+          )}
         </div>
       </div>
       )}

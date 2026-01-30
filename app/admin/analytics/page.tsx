@@ -5,7 +5,19 @@ import { MetricCard } from '@/app/components/analytics/MetricCard';
 import { EventChart } from '@/app/components/analytics/EventChart';
 import { LeadChart } from '@/app/components/analytics/LeadChart';
 import { RevenueChart } from '@/app/components/analytics/RevenueChart';
-import { MousePointerClick, FileText, ShoppingCart, TrendingUp, Eye, Users, BarChart3, Calendar, Euro, UserCheck, ChevronDown, ChevronUp, ChevronRight, Target } from 'lucide-react';
+import { MousePointerClick, FileText, ShoppingCart, TrendingUp, Eye, Users, BarChart3, Calendar, Euro, UserCheck, ChevronDown, ChevronUp, ChevronRight, Target, Download } from 'lucide-react';
+
+function downloadCsv(rows: string[][], filename: string) {
+  const BOM = '\uFEFF';
+  const csv = BOM + rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(';')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 interface AnalyticsData {
   events: {
@@ -158,11 +170,40 @@ function SalesPeriodBreakdown({
     );
   };
 
+  const handleExportCsv = () => {
+    const headers = ['Periode', 'Persoon', 'Leads', 'Offertes', ...(canSeeRevenue ? ['Totaal offerte (€)', 'Omzet (€)'] : [])];
+    const rows: string[][] = [headers];
+    byPeriod.forEach((period) => {
+      const entries = Object.entries(period.persons);
+      const sorted = sortEntries(entries);
+      sorted.forEach(([person, t]) => {
+        rows.push([
+          period.periodLabel,
+          person,
+          String(t.leadCount),
+          String(t.quoteCount),
+          ...(canSeeRevenue ? [t.totalQuoteAmount.toFixed(2), t.convertedRevenue.toFixed(2)] : []),
+        ]);
+      });
+    });
+    downloadCsv(rows, `sales-per-${periodLabel}-${byPeriod[0]?.periodKey ?? 'export'}.csv`);
+  };
+
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
-      <div className="px-5 py-4 border-b border-border">
-        <h2 className="text-base font-semibold">Uitsplitsing per {periodLabel}</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">Klik op een periode om details te tonen. Klik op een kolomkop om te sorteren.</p>
+      <div className="px-5 py-4 border-b border-border flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="text-base font-semibold">Uitsplitsing per {periodLabel}</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Klik op een periode om details te tonen. Klik op een kolomkop om te sorteren.</p>
+        </div>
+        <button
+          type="button"
+          onClick={handleExportCsv}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors"
+        >
+          <Download className="w-4 h-4 shrink-0" />
+          CSV download
+        </button>
       </div>
       <div className="divide-y divide-border/80">
         {byPeriod.map((period) => {
@@ -740,9 +781,37 @@ export default function AnalyticsPage() {
                 {/* Leads per periode — overzicht elke dag/week/maand */}
                 {leadData.timeline.length > 0 && (
                   <div className="bg-card border border-border rounded-xl overflow-hidden mb-6">
-                    <div className="px-5 py-4 border-b border-border">
-                      <h3 className="text-base font-semibold">Leads per {leadGroupBy === 'day' ? 'dag' : leadGroupBy === 'week' ? 'week' : leadGroupBy === 'quarter' ? 'kwartaal' : 'maand'}</h3>
-                      <p className="text-xs text-muted-foreground mt-0.5">Volledige geschiedenis in het geselecteerde bereik.</p>
+                    <div className="px-5 py-4 border-b border-border flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <h3 className="text-base font-semibold">Leads per {leadGroupBy === 'day' ? 'dag' : leadGroupBy === 'week' ? 'week' : leadGroupBy === 'quarter' ? 'kwartaal' : 'maand'}</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">Volledige geschiedenis in het geselecteerde bereik.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const periodLabel = (row: { date: string }) => {
+                            try {
+                              if (leadGroupBy === 'month' && row.date.length >= 7) {
+                                const [y, m] = row.date.split('-');
+                                const monthNames = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+                                return `${monthNames[parseInt(m, 10) - 1]} ${y}`;
+                              }
+                              if (leadGroupBy === 'week') {
+                                return `Week ${new Date(row.date).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+                              }
+                              return new Date(row.date).toLocaleDateString('nl-BE', { day: 'numeric', month: 'short', year: 'numeric' });
+                            } catch {
+                              return row.date;
+                            }
+                          };
+                          const rows: string[][] = [['Periode', 'Leads'], ...leadData.timeline.map((row) => [periodLabel(row), String(row.total)])];
+                          downloadCsv(rows, `leads-per-${leadGroupBy}-${leadData.dateRange.start}-${leadData.dateRange.end}.csv`);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                      >
+                        <Download className="w-4 h-4 shrink-0" />
+                        CSV download
+                      </button>
                     </div>
                     <div className="w-full min-w-0 overflow-x-auto max-h-[400px] overflow-y-auto">
                       <div className="px-5 pb-4">
@@ -1022,10 +1091,39 @@ export default function AnalyticsPage() {
 
                 {/* Omzet per Status */}
                 <div className="bg-card border border-border rounded-lg p-6 mb-8">
-                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-primary" />
-                    Omzet Per Project Status
-                  </h3>
+                  <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5 text-primary" />
+                      Omzet Per Project Status
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const statusLabels: Record<string, string> = {
+                          new: 'Nieuw',
+                          in_progress: 'In Uitvoering',
+                          review: 'In Review',
+                          completed: 'Voltooid',
+                          on_hold: 'On Hold',
+                          canceled: 'Geannuleerd',
+                        };
+                        const rows: string[][] = [
+                          ['Status', 'Omzet (€)', 'Percentage'],
+                          ...Object.entries(revenueData.byStatus)
+                            .sort(([, a], [, b]) => b - a)
+                            .map(([status, revenue]) => {
+                              const pct = revenueData.total > 0 ? ((revenue / revenueData.total) * 100).toFixed(1) : '0';
+                              return [statusLabels[status] || status, revenue.toFixed(2), `${pct}%`];
+                            }),
+                        ];
+                        downloadCsv(rows, `omzet-per-status-${revenueData.dateRange.start}-${revenueData.dateRange.end}.csv`);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                    >
+                      <Download className="w-4 h-4 shrink-0" />
+                      CSV download
+                    </button>
+                  </div>
                   <div className="space-y-3">
                     {Object.entries(revenueData.byStatus)
                       .sort(([, a], [, b]) => b - a)
@@ -1137,9 +1235,62 @@ export default function AnalyticsPage() {
               )}
 
               <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="px-5 py-4 border-b border-border">
-                  <h2 className="text-base font-semibold">Teamoverzicht</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">Per persoon: leads toegewezen via «Binnengebracht door» of «Aangemaakt door».</p>
+                <div className="px-5 py-4 border-b border-border flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-base font-semibold">Teamoverzicht</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">Per persoon: leads toegewezen via «Binnengebracht door» of «Aangemaakt door».</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const headers = [
+                        'Persoon',
+                        'Leads',
+                        'Nieuw',
+                        'Gekwal.',
+                        'Verloren',
+                        'Offertes',
+                        ...(canSeeRevenue ? ['Totaal offerte (€)', 'Gem. offerte (€)'] : []),
+                        'Deals',
+                        'Review',
+                        'Afwacht.',
+                        'Geannul.',
+                        'Conversie %',
+                        ...(canSeeRevenue ? ['Omzet (€)'] : []),
+                      ];
+                      const rows: string[][] = [
+                        headers,
+                        ...sortedTeamSummary.map((row) => {
+                          const convPct = row.leadCount > 0 ? Math.round((row.convertedCount / row.leadCount) * 100) : 0;
+                          const base = [
+                            row.person,
+                            String(row.leadCount),
+                            String(row.leadNew ?? 0),
+                            String(row.leadQualified ?? 0),
+                            String(row.leadLost ?? 0),
+                            String(row.quoteCount),
+                          ];
+                          if (canSeeRevenue) {
+                            base.push(row.totalQuoteAmount.toFixed(2), row.avgQuoteAmount.toFixed(2));
+                          }
+                          base.push(
+                            String(row.convertedCount),
+                            String(row.customerInReview ?? 0),
+                            String(row.customerOnHold ?? 0),
+                            String(row.customerCanceled ?? 0),
+                            `${convPct}%`
+                          );
+                          if (canSeeRevenue) base.push(row.convertedRevenue.toFixed(2));
+                          return base;
+                        }),
+                      ];
+                      downloadCsv(rows, `teamoverzicht-${salesData.dateRange.start}-${salesData.dateRange.end}.csv`);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                  >
+                    <Download className="w-4 h-4 shrink-0" />
+                    CSV download
+                  </button>
                 </div>
 
                 <div className="min-w-0 overflow-x-auto">

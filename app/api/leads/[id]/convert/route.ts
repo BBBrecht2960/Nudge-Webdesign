@@ -181,7 +181,9 @@ export async function POST(
 
     if (quote) {
       approvedQuote = quote.quote_data;
-      quoteTotal = quote.total_price;
+      quoteTotal = quote.total_price ?? (typeof (approvedQuote as { pricing?: { total?: number } })?.pricing?.total === 'number'
+        ? (approvedQuote as { pricing: { total: number } }).pricing.total
+        : null);
       console.log(`[Convert] Found quote for lead ${leadId}: total_price = ${quoteTotal}, status = ${quote.status}`);
     } else {
       console.warn(`[Convert] No quote found for lead ${leadId}. Revenue will be 0.`);

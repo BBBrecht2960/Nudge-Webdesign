@@ -55,34 +55,60 @@ export async function GET() {
   const dailyTarget = Number(targetRow?.daily_target_eur ?? 0) || 0;
   const weeklyTarget = Number(targetRow?.weekly_target_eur ?? 0) || 0;
 
+  const tz = 'Europe/Brussels';
   const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
-  const dayOfWeek = now.getDay();
+  const todayBrussels = now.toLocaleDateString('en-CA', { timeZone: tz });
+  const [ty, tm, td] = todayBrussels.split('-').map(Number);
+  const todayJs = new Date(ty, tm - 1, td);
+  const dayOfWeek = todayJs.getDay();
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-  const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() + mondayOffset);
-  weekStart.setHours(0, 0, 0, 0);
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekStart.getDate() + 7);
+  const weekStartJs = new Date(todayJs);
+  weekStartJs.setDate(todayJs.getDate() + mondayOffset);
+  const weekEndJs = new Date(weekStartJs);
+  weekEndJs.setDate(weekStartJs.getDate() + 7);
+  const weekStartStr = `${weekStartJs.getFullYear()}-${String(weekStartJs.getMonth() + 1).padStart(2, '0')}-${String(weekStartJs.getDate()).padStart(2, '0')}`;
+  const weekEndStr = `${weekEndJs.getFullYear()}-${String(weekEndJs.getMonth() + 1).padStart(2, '0')}-${String(weekEndJs.getDate()).padStart(2, '0')}`;
 
   const { data: customers } = await supabase
     .from('customers')
-    .select('converted_at, quote_total, project_status')
+    .select('converted_at, quote_total, project_status, lead_id')
     .not('converted_at', 'is', null)
     .neq('project_status', 'canceled');
 
   const list = customers ?? [];
+  const convertedLeadIds = new Set((list as { lead_id?: string }[]).map((c) => c.lead_id).filter(Boolean));
   let revenueToday = 0;
   let revenueThisWeek = 0;
   for (const c of list) {
-    const conv = new Date(c.converted_at);
+    const convDateBrussels = new Date(c.converted_at).toLocaleDateString('en-CA', { timeZone: tz });
     const rev = Number(c.quote_total) || 0;
-    if (conv >= todayStart && conv < todayEnd) revenueToday += rev;
-    if (conv >= weekStart && conv < weekEnd) revenueThisWeek += rev;
+    if (convDateBrussels === todayBrussels) revenueToday += rev;
+    if (convDateBrussels >= weekStartStr && convDateBrussels < weekEndStr) revenueThisWeek += rev;
+  }
+
+  // Verzonden offertes tellen ook mee (alleen leads die nog niet geconverteerd zijn, om dubbel tellen te vermijden)
+  const { data: sentQuotes } = await supabase
+    .from('lead_quotes')
+    .select('lead_id, sent_at, total_price')
+    .eq('status', 'sent')
+    .not('sent_at', 'is', null);
+
+  const sentList = sentQuotes ?? [];
+  for (const q of sentList) {
+    if (convertedLeadIds.has(q.lead_id)) continue;
+    const sentDateBrussels = new Date(q.sent_at).toLocaleDateString('en-CA', { timeZone: tz });
+    const rev = Number(q.total_price) || 0;
+    if (sentDateBrussels === todayBrussels) revenueToday += rev;
+    if (sentDateBrussels >= weekStartStr && sentDateBrussels < weekEndStr) revenueThisWeek += rev;
   }
 
   const canManageUsers = authResult.permissions.can_manage_users === true;
+  const progressDailyPct = dailyTarget > 0
+    ? Math.min(999, Math.round((revenueToday / dailyTarget) * 100))
+    : 0;
+  const progressWeeklyPct = weeklyTarget > 0
+    ? Math.min(999, Math.round((revenueThisWeek / weeklyTarget) * 100))
+    : 0;
 
   if (canManageUsers) {
     return NextResponse.json({
@@ -90,15 +116,10 @@ export async function GET() {
       weekly_target_eur: weeklyTarget,
       revenue_today: Math.round(revenueToday * 100) / 100,
       revenue_this_week: Math.round(revenueThisWeek * 100) / 100,
+      progress_daily_pct: progressDailyPct,
+      progress_weekly_pct: progressWeeklyPct,
     });
   }
-
-  const progressDailyPct = dailyTarget > 0
-    ? Math.min(999, Math.round((revenueToday / dailyTarget) * 100))
-    : 0;
-  const progressWeeklyPct = weeklyTarget > 0
-    ? Math.min(999, Math.round((revenueThisWeek / weeklyTarget) * 100))
-    : 0;
 
   return NextResponse.json({
     daily_target_eur: dailyTarget,

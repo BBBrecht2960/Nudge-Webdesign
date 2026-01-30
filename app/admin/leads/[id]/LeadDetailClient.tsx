@@ -143,6 +143,7 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [hasQuote, setHasQuote] = useState(false);
+  const [hasAnyQuote, setHasAnyQuote] = useState(false);
   
   // Form states
   const [showActivityForm, setShowActivityForm] = useState(false);
@@ -266,12 +267,14 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
         // Don't throw - attachments are optional
       }
 
-      // Check if quote exists (non-blocking)
+      // Check if quote exists en verzonden/geaccepteerd (vereist voor status Geconverteerd)
       try {
         const quoteRes = await fetch(`/api/leads/${leadId}/quote`);
         if (quoteRes.ok) {
           const data = await quoteRes.json();
-          setHasQuote(!!data.quote);
+          const q = data.quote;
+          setHasAnyQuote(!!q);
+          setHasQuote(!!q && (q.status === 'sent' || q.status === 'accepted'));
         }
       } catch (err) {
         console.warn('Error checking quote:', err);
@@ -382,13 +385,20 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
       return { allowed: true };
     }
 
-    // Don't allow going backwards in workflow
     const statusOrder = ['new', 'contacted', 'qualified', 'converted'];
     const currentIndex = statusOrder.indexOf(currentStatus);
     const newIndex = statusOrder.indexOf(newStatus);
 
     if (newIndex < currentIndex) {
       return { allowed: false, reason: 'Je kunt niet teruggaan naar een eerdere status' };
+    }
+
+    // Alleen de directe volgende stap toestaan (geen status overslaan)
+    if (newIndex > currentIndex + 1) {
+      return {
+        allowed: false,
+        reason: 'Je kunt geen status overslaan. Volg de stappen: Nieuw → Gecontacteerd → Gekwalificeerd → Geconverteerd.',
+      };
     }
 
     // Vooruit in de flow: bedrijfsgegevens zijn verplicht
@@ -399,7 +409,7 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
       };
     }
 
-    // Status-specifieke validaties
+    // new → contacted: contactactiviteit verplicht
     if (currentStatus === 'new' && newStatus === 'contacted') {
       const hasContact = activities.some(act =>
         ['call', 'email', 'meeting'].includes(act.activity_type)
@@ -412,6 +422,7 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
       }
     }
 
+    // contacted → qualified: gesprek met beschrijving verplicht
     if (currentStatus === 'contacted' && newStatus === 'qualified') {
       const hasPositiveContact = activities.some(act =>
         ['call', 'meeting'].includes(act.activity_type) &&
@@ -426,14 +437,12 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
       }
     }
 
+    // qualified → converted: offerte verplicht (in DB)
     if (currentStatus === 'qualified' && newStatus === 'converted') {
-      const hasQuoteActivity = activities.some(act =>
-        act.activity_type === 'quote_sent' || act.activity_type === 'contract_sent'
-      );
-      if (!hasQuoteInDB && !hasQuoteActivity) {
+      if (!hasQuoteInDB) {
         return {
           allowed: false,
-          reason: 'Maak eerst een offerte via de "Offerte" knop',
+          reason: 'Maak eerst een offerte via de tab "Offerte & bijlagen" en sla deze op (of verstuur deze)',
         };
       }
     }
@@ -834,7 +843,8 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        alert(err.error || 'Fout bij opslaan bedrijfsgegevens');
+        const msg = err.details ? `${err.error}\n\n${err.details}` : (err.error || 'Fout bij opslaan bedrijfsgegevens');
+        alert(msg);
         return;
       }
 
@@ -853,6 +863,29 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
 
       setShowCompanyForm(false);
       alert('Bedrijfsgegevens opgeslagen');
+
+      // Track as activity so it appears in Activiteiten & geschiedenis
+      try {
+        const activityRes = await fetch(`/api/leads/${leadId}/activities`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            activity_type: 'note',
+            title: 'Bedrijfsgegevens opgeslagen',
+            summary: 'BTW, adres, website en overige bedrijfsgegevens bijgewerkt.',
+          }),
+        });
+        if (activityRes.ok) {
+          const activitiesRes = await fetch(`/api/leads/${leadId}/activities`, { credentials: 'include' });
+          if (activitiesRes.ok) {
+            const data = await activitiesRes.json();
+            setActivities(data.activities || []);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not log company-update activity:', err);
+      }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('Error saving company info:', error);
@@ -901,6 +934,18 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
 
   const getStatusDescription = (status: string) => {
     return statusDescriptions.find((s) => s.status === status);
+  };
+
+  /** Short label for use in dropdown (e.g. "Nog niet gecontacteerd") */
+  const getShortStatusLabel = (status: string): string => {
+    const short: Record<string, string> = {
+      new: 'Nog niet gecontacteerd',
+      contacted: 'Eerste contact gelegd',
+      qualified: 'Interesse getoond',
+      converted: 'Klant geworden',
+      lost: 'Afgehaakt',
+    };
+    return short[status] ?? status;
   };
 
   const getActivityIcon = (type: LeadActivity['activity_type']) => {
@@ -964,8 +1009,6 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
       </div>
     );
   }
-
-  const currentStatusDesc = getStatusDescription(lead.status);
 
   return (
     <div className="p-3 sm:p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden">
@@ -1038,34 +1081,30 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
                     { status: 'lost', name_nl: 'Verloren' },
                   ]).map((statusDesc) => {
                     const validation = canChangeToStatus(lead.status, statusDesc.status, hasQuote);
+                    const shortLabel = getShortStatusLabel(statusDesc.status);
                     return (
                       <option 
                         key={statusDesc.status} 
                         value={statusDesc.status}
                         disabled={!validation.allowed && statusDesc.status !== lead.status}
                       >
-                        {statusDesc.name_nl}
+                        {statusDesc.name_nl} – {shortLabel}
                         {!validation.allowed && statusDesc.status !== lead.status ? ' (niet beschikbaar)' : ''}
                       </option>
                     );
                   })}
                 </select>
-                {currentStatusDesc && (
-                  <div className="text-xs text-muted-foreground max-w-xs text-left sm:text-right break-words">
-                    <p>{currentStatusDesc.description_nl}</p>
-                    {(() => {
-                      const hint = getNextStatusHint(lead.status);
-                      if (hint && lead.status !== 'converted' && lead.status !== 'lost') {
-                        return (
-                          <p className="mt-1 text-orange-600 font-medium">
-                            💡 {hint}
-                          </p>
-                        );
-                      }
-                      return null;
-                    })()}
-                  </div>
-                )}
+                {(() => {
+                  const hint = getNextStatusHint(lead.status);
+                  if (hint && lead.status !== 'converted' && lead.status !== 'lost') {
+                    return (
+                      <div className="text-xs text-orange-600 font-medium text-left sm:text-right break-words">
+                        💡 {hint}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             </div>
 
@@ -1681,12 +1720,22 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
           <div className="bg-card border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
             <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 break-words">Offerte</h2>
             <p className="text-muted-foreground text-xs sm:text-sm mb-3 sm:mb-4 break-words">
-              Stel een offerte op maat samen voor deze lead.
+              Stel een offerte op maat samen en verstuur per e-mail. Het dag- en weekdoel gaan omhoog zodra je een offerte verstuurt.
             </p>
             <Button
               onClick={() => router.push(`/admin/leads/${leadId}/quote`)}
-              className="w-full mb-3 text-xs sm:text-sm"
+              disabled={!hasAnyQuote}
+              className="w-full mb-2 text-xs sm:text-sm bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:pointer-events-none"
               variant="default"
+              title={hasAnyQuote ? 'Ga naar de offerte-pagina om te versturen' : 'Maak eerst een offerte in de Offerte Builder'}
+            >
+              <Mail className="w-3 h-3 sm:w-4 sm:h-4 mr-2 shrink-0" />
+              <span className="break-words">Verstuur offerte</span>
+            </Button>
+            <Button
+              onClick={() => router.push(`/admin/leads/${leadId}/quote`)}
+              variant="outline"
+              className="w-full mb-3 text-xs sm:text-sm"
             >
               <Quote className="w-3 h-3 sm:w-4 sm:h-4 mr-2 shrink-0" />
               <span className="break-words">Offerte Builder</span>

@@ -67,6 +67,63 @@ export async function PATCH(
   }
 
   const supabase = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+
+  if (parsed.data.status !== undefined) {
+    const newStatus = parsed.data.status;
+    const { data: currentLead, error: fetchError } = await supabase
+      .from('leads')
+      .select('status')
+      .eq('id', leadId)
+      .single();
+    if (fetchError || !currentLead) {
+      if (fetchError?.code === 'PGRST116') return NextResponse.json({ error: 'Lead niet gevonden' }, { status: 404 });
+      return NextResponse.json({ error: 'Fout bij ophalen lead' }, { status: 500 });
+    }
+    const currentStatus = currentLead.status as string;
+
+    const statusOrder = ['new', 'contacted', 'qualified', 'converted'] as const;
+    const currentIndex = statusOrder.indexOf(currentStatus as (typeof statusOrder)[number]);
+    const newIndex = statusOrder.indexOf(newStatus as (typeof statusOrder)[number]);
+
+    if (newStatus !== currentStatus && newStatus !== 'lost') {
+      if (newIndex < 0 || currentIndex < 0) {
+        return NextResponse.json({ error: 'Ongeldige status' }, { status: 400 });
+      }
+      if (newIndex < currentIndex) {
+        return NextResponse.json({ error: 'Je kunt niet teruggaan naar een eerdere status.' }, { status: 400 });
+      }
+      if (newIndex > currentIndex + 1) {
+        return NextResponse.json({
+          error: 'Je kunt geen status overslaan. Volg de stappen: Nieuw → Gecontacteerd → Gekwalificeerd → Geconverteerd.',
+        }, { status: 400 });
+      }
+      if (newStatus === 'contacted' && currentStatus !== 'new') {
+        return NextResponse.json({ error: 'Status "Gecontacteerd" is alleen mogelijk vanuit "Nieuw".' }, { status: 400 });
+      }
+      if (newStatus === 'qualified' && currentStatus !== 'contacted') {
+        return NextResponse.json({ error: 'Status "Gekwalificeerd" is alleen mogelijk vanuit "Gecontacteerd".' }, { status: 400 });
+      }
+      if (newStatus === 'converted') {
+        if (currentStatus !== 'qualified') {
+          return NextResponse.json({
+            error: 'Status "Geconverteerd" is alleen mogelijk vanuit "Gekwalificeerd". Doorloop eerst Gecontacteerd en Gekwalificeerd.',
+          }, { status: 400 });
+        }
+        const { data: quotes } = await supabase
+          .from('lead_quotes')
+          .select('id, status')
+          .eq('lead_id', leadId)
+          .in('status', ['sent', 'accepted']);
+        const hasQuote = Array.isArray(quotes) && quotes.length > 0;
+        if (!hasQuote) {
+          return NextResponse.json({
+            error: 'Er moet minimaal één offerte zijn (verzonden of geaccepteerd) voordat je naar Geconverteerd kunt gaan. Maak een offerte via de Offerte-tab en verstuur deze.',
+          }, { status: 400 });
+        }
+      }
+    }
+  }
+
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   for (const [key, value] of Object.entries(parsed.data)) {
     if (value !== undefined) updates[key] = value;
@@ -75,7 +132,22 @@ export async function PATCH(
   const { data, error } = await supabase.from('leads').update(updates).eq('id', leadId).select().single();
   if (error) {
     console.error('Error updating lead:', error);
-    return NextResponse.json({ error: 'Fout bij bijwerken lead' }, { status: 500 });
+    const msg = (error as { message?: string }).message ?? '';
+    const missingColumn = msg.includes('does not exist') || (msg.includes('column') && msg.includes('not exist'));
+    if (missingColumn) {
+      return NextResponse.json(
+        {
+          error:
+            'Een veld ontbreekt in de database. Voer in Supabase SQL Editor het script add-company-fields.sql uit (en eventueel supabase-schema-extensions.sql voor toegewezen aan).',
+        },
+        { status: 500 }
+      );
+    }
+    // Return actual error so user can see what fails (e.g. RLS, constraint, type)
+    return NextResponse.json(
+      { error: 'Fout bij bijwerken lead', details: msg || String(error) },
+      { status: 500 }
+    );
   }
   return NextResponse.json(data);
 }

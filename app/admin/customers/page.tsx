@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { type Customer } from '@/lib/db';
 import { useRouter } from 'next/navigation';
-import { Search, Euro, TrendingUp, Briefcase, ArrowUpDown, LayoutGrid, CheckCircle, Wrench, Sparkles, ClipboardCheck, PauseCircle, XCircle } from 'lucide-react';
+import { Search, TrendingUp, Briefcase, ArrowUpDown, LayoutGrid, CheckCircle, Wrench, Sparkles, ClipboardCheck, PauseCircle, XCircle } from 'lucide-react';
 
 type Permissions = { can_manage_users?: boolean };
 type SalesTargetData = {
@@ -35,10 +35,8 @@ export default function CustomersPage() {
       const sessionData = sessionRes.ok ? await sessionRes.json() : null;
       const perms = sessionData?.permissions ?? null;
       setPermissions(perms);
-      if (perms?.can_manage_users === false) {
-        const targetRes = await fetch('/api/admin/sales-target', { credentials: 'include' });
-        if (targetRes.ok) setSalesTarget(await targetRes.json());
-      }
+      const targetRes = await fetch('/api/admin/sales-target', { credentials: 'include' });
+      if (targetRes.ok) setSalesTarget(await targetRes.json());
     };
     loadSessionAndTarget();
   }, []);
@@ -290,41 +288,12 @@ export default function CustomersPage() {
         </div>
       </section>
 
-      {/* Revenue / Sales goals: beheer ziet omzet, sales team ziet alleen dagdoel/weekdoel */}
-      <section className="mb-8" aria-label={canSeeRevenue ? 'Omzet' : 'Doelen'}>
+      {/* Salesdoelen:zelfde blok voor iedereen (toegang/omzet blijft per rechten elders) */}
+      <section className="mb-8" aria-label="Salesdoelen">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-          {canSeeRevenue ? 'Omzet' : 'Salesdoelen'}
+          Salesdoelen
         </h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {canSeeRevenue ? (
-          <>
-            <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-lg p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-sm text-muted-foreground">Totaal Omzet</div>
-                <Euro className="w-5 h-5 text-primary shrink-0" />
-              </div>
-              <div className="text-2xl sm:text-3xl font-bold">
-                €{stats.totalRevenue.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">
-                Van {stats.total} klant{stats.total !== 1 ? 'en' : ''}
-              </div>
-            </div>
-            <div className="bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/20 rounded-lg p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-sm text-muted-foreground">Gemiddelde Deal</div>
-                <TrendingUp className="w-5 h-5 text-green-600 shrink-0" />
-              </div>
-              <div className="text-2xl sm:text-3xl font-bold text-green-600">
-                €{stats.averageDeal.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">
-                Per project
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
             <div className="bg-card border border-border rounded-lg p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -332,7 +301,9 @@ export default function CustomersPage() {
                   <p className="text-2xl font-bold text-primary">
                     {(salesTarget?.progress_daily_pct ?? 0)}%
                   </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">van streefdoel</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {(salesTarget?.daily_target_eur ?? 0) === 0 ? 'Stel een doel in op het dashboard (beheer)' : 'van streefdoel'}
+                  </p>
                 </div>
                 <TrendingUp className="w-8 h-8 text-primary shrink-0" />
               </div>
@@ -344,13 +315,13 @@ export default function CustomersPage() {
                   <p className="text-2xl font-bold text-primary">
                     {(salesTarget?.progress_weekly_pct ?? 0)}%
                   </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">van streefdoel</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {(salesTarget?.weekly_target_eur ?? 0) === 0 ? 'Stel een doel in op het dashboard (beheer)' : 'van streefdoel'}
+                  </p>
                 </div>
                 <TrendingUp className="w-8 h-8 text-primary shrink-0" />
               </div>
             </div>
-          </>
-        )}
       </div>
       </section>
 
