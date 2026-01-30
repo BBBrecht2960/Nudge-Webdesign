@@ -71,7 +71,7 @@ async function updateCustomerRevenue() {
     let quote = null;
 
     // First try accepted
-    const { data: acceptedQuote } = await supabase
+    let { data: acceptedQuote } = await supabase
       .from('lead_quotes')
       .select('*')
       .eq('lead_id', customer.lead_id)

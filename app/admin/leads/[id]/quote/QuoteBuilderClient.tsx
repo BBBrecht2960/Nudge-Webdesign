@@ -46,7 +46,6 @@ export default function QuoteBuilderClient({ leadId }: { leadId: string }) {
 
   const [lead, setLead] = useState<Lead | null>(null);
   const [savedQuoteId, setSavedQuoteId] = useState<string | null>(null);
-  const [savedQuoteStatus, setSavedQuoteStatus] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showReview, setShowReview] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -120,8 +119,6 @@ export default function QuoteBuilderClient({ leadId }: { leadId: string }) {
       if (response.ok) {
         const { quote } = await response.json();
         if (quote && quote.quote_data) {
-          if (quote.id) setSavedQuoteId(quote.id);
-          if (quote.status) setSavedQuoteStatus(quote.status);
           const data = quote.quote_data;
           
           // Restore state using hook
@@ -243,7 +240,6 @@ export default function QuoteBuilderClient({ leadId }: { leadId: string }) {
         setLastSaved(new Date());
         const json = await response.json().catch(() => ({}));
         if (json?.quote?.id) setSavedQuoteId(json.quote.id);
-        if (json?.quote?.status) setSavedQuoteStatus(json.quote.status);
       }
     } catch (error) {
       console.error('Error auto-saving quote:', error);
@@ -533,8 +529,25 @@ export default function QuoteBuilderClient({ leadId }: { leadId: string }) {
           discountAmount: calculations.discountAmount ?? 0,
         },
         quoteNumber: savedQuoteId ?? undefined,
+        timeline: state.timeline?.trim() || undefined,
+        scopeDescription: state.scopeDescription?.trim() || undefined,
       };
-      const blob = await generateQuotePdfBlob(clientInfo, approvedQuote, calculations.total);
+      let logoDataUrl: string | null = null;
+      try {
+        const logoRes = await fetch('/Nudge%20websdesign%20%26%20marketing%20Hasselt%20logo.png');
+        if (logoRes.ok) {
+          const logoBlob = await logoRes.blob();
+          logoDataUrl = await new Promise<string>((res, rej) => {
+            const r = new FileReader();
+            r.onload = () => res(r.result as string);
+            r.onerror = rej;
+            r.readAsDataURL(logoBlob);
+          });
+        }
+      } catch {
+        // PDF zonder logo
+      }
+      const blob = await generateQuotePdfBlob(clientInfo, approvedQuote, calculations.total, logoDataUrl);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -556,18 +569,6 @@ export default function QuoteBuilderClient({ leadId }: { leadId: string }) {
     if (!lead.email) {
       alert('Deze lead heeft geen e-mailadres. Voeg eerst een e-mailadres toe aan de lead.');
       return;
-    }
-
-    if (!savedQuoteId) {
-      alert('Sla de offerte eerst op als concept (knop "Opslaan als concept") voordat je kunt versturen.');
-      return;
-    }
-
-    if (savedQuoteStatus === 'sent' || savedQuoteStatus === 'accepted') {
-      const opnieuw = window.confirm(
-        'Deze offerte is al eerder verzonden. Weer versturen? De ontvanger krijgt opnieuw een e-mail.'
-      );
-      if (!opnieuw) return;
     }
 
     // First save the quote if not already saved
@@ -661,7 +662,6 @@ export default function QuoteBuilderClient({ leadId }: { leadId: string }) {
       }
       
       setLastSaved(new Date());
-      setSavedQuoteStatus('sent');
       setShowReview(false);
       alert('Offerte succesvol verzonden via e-mail!');
       router.push(`/admin/leads/${leadId}`);
@@ -1743,21 +1743,10 @@ export default function QuoteBuilderClient({ leadId }: { leadId: string }) {
               customLineItems={state.customLineItems}
             />
 
-            <div className="grid grid-cols-2 gap-2 mt-6">
-              <Button
-                onClick={_handleSendQuote}
-                disabled={!selectedPackage || isSending || !savedQuoteId}
-                className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-                size="lg"
-                title={!savedQuoteId ? 'Sla eerst op als concept (Opslaan als concept)' : 'Verstuur per e-mail naar de lead'}
-              >
-                <Mail className="w-4 h-4 mr-2" />
-                {isSending ? 'Verzenden...' : 'Verstuur offerte'}
-              </Button>
+            <div className="space-y-2 mt-6">
               <Button
                 onClick={() => setShowReview(true)}
                 disabled={!selectedPackage}
-                variant="outline"
                 className="w-full"
                 size="lg"
               >
@@ -1779,7 +1768,6 @@ export default function QuoteBuilderClient({ leadId }: { leadId: string }) {
                 disabled={isSaving || isSending || !selectedPackage}
                 variant="outline"
                 className="w-full"
-                size="lg"
               >
                 {isSaving ? 'Opslaan...' : 'Opslaan als concept'}
               </Button>
@@ -2015,13 +2003,19 @@ export default function QuoteBuilderClient({ leadId }: { leadId: string }) {
                 Sluiten
               </Button>
               <Button
-                onClick={_handleSendQuote}
-                disabled={isSending || !selectedPackage || !savedQuoteId}
-                className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
-                title={!savedQuoteId ? 'Sla eerst op als concept' : 'Verstuur de offerte per e-mail naar de lead'}
+                onClick={() => _handleSendQuote()}
+                disabled={!selectedPackage || isSending || !lead?.email}
+                className="flex-1"
+                title={!lead?.email ? 'Lead heeft geen e-mailadres' : !selectedPackage ? 'Selecteer eerst een pakket' : 'Verstuur offerte per e-mail'}
               >
-                <Mail className="w-4 h-4 mr-2" />
-                {isSending ? 'Verzenden...' : 'Verstuur offerte per e-mail'}
+                {isSending ? (
+                  <>Bezig...</>
+                ) : (
+                  <>
+                    <Mail className="w-4 h-4 mr-2" />
+                    Verstuur offerte
+                  </>
+                )}
               </Button>
             </div>
           </div>

@@ -1,73 +1,7 @@
 /**
- * Deterministic PDF offerte generator.
- *
- * ——— ROLE ———
- * Je bent een deterministic document generator.
- * Je gebruikt ALTIJD exact dezelfde offerte-template.
- * Je mag NOOIT layout, volgorde of stijl aanpassen op basis van input.
- *
- * ——— DOEL ———
- * Genereer een 1-page premium offerte (A4, PDF-ready) voor een digital agency
- * met een vaste, onveranderlijke structuur en branding.
- *
- * ——— ABSOLUTE REGELS (BREKEN = FOUT) ———
- * - Gebruik ALTIJD dezelfde template.
- * - Wijzig NOOIT: layout, volgorde van secties, typografie, spacing, kleurgebruik.
- * - Alleen tekst en cijfers mogen veranderen.
- * - Maximaal 1 pagina A4.
- * - Extra pagina ALLEEN als content objectief niet past
- *   (meer dan 6 prijsitems of meer dan 12 scope-items).
- * - Geen emojis. Geen gradients. Geen marketingtaal. Veel witruimte.
- *
- * ——— TEMPLATE STRUCTUUR (LOCKED) ———
- *
- * [HEADER — LOCKED]
- * - Logo links
- * - Agency naam + contact klein
- * - Offerte datum, nummer, geldig tot rechts
- * - Subtiele horizontale lijn
- *
- * [SECTION 1 — SAMENVATTING]
- * - Titel: "Offerte – {{Projecttype}} voor {{Klantnaam}}"
- * - Subtitel (1 zin, resultaatgericht)
- * - Bullets (exact 3): Doel, Oplossing, Resultaat
- *
- * [SECTION 2 — SCOPE] Twee kolommen.
- * Links — Inbegrepen: Pagina's, Functionaliteiten, Admin, Integraties
- * Rechts — Niet inbegrepen: Hosting, Contentcreatie (tenzij vermeld), Marketingcampagnes (tenzij vermeld)
- *
- * [SECTION 3 — INVESTERING]
- * Blok 1 — Basis: {{PakketNaam}}, korte omschrijving (max 1 zin), prijs excl. btw
- * Blok 2 — Optioneel: lijst uitbreidingen + prijs; "Op aanvraag" waar van toepassing
- * Blok 3 — Onderhoud (maandelijks): Starter, Business, Growth
- *
- * [SECTION 4 — PLANNING & BETALING]
- * - Start: na goedkeuring
- * - Doorlooptijd: {{X}} weken
- * - Feedbackrondes: {{X}}
- * - Betaling: 100% vooraf (of gekozen schema)
- * - Factuur bij akkoord
- *
- * [FOOTER — LOCKED]
- * - Bedrijfsnaam, Locatie, Bedrijfsgegevens, Korte tagline (optioneel, klein)
- *
- * ——— DESIGN TOKENS (LOCKED) ———
- * - Font family: Inter (fallback: helvetica in jsPDF)
- * - Titel: 18–22pt, semibold
- * - Body: 10–11pt, regular
- * - Line-height: ruim
- * - Kleur: primary brand, grijswaarden voor tekst, accent alleen bij prijzen
- * - Grid: consistente margins, geen afwijkingen
- * - Geen gradients, geen iconen, geen decoratieve elementen
- *
- * ——— CONTENT REGELS ———
- * - Professioneel, helder Nederlands. Korte zinnen.
- * - Geen uitleg. Geen aannames.
- * - Onbekende data = leeg laten of "n.t.b."
- *
- * ——— OUTPUT ———
- * - Print-ready document, geschikt voor PDF-export
- * - Exact dezelfde visuele output voor elke offerte; alleen content verschilt
+ * Nudge Webdesign – Offerte PDF
+ * Toont alleen wat in de offerte builder is ingevuld/aan geduid:
+ * bedrijfsinfo, klant, gekozen pakket, gekozen scope, extra kosten en korting.
  */
 
 import { jsPDF } from 'jspdf';
@@ -108,12 +42,11 @@ export interface ApprovedQuoteData {
     total: number;
     discountAmount: number;
   };
-  /** Offerte-/referentienummer; toont "n.t.b." indien leeg. */
   quoteNumber?: string | null;
-  /** Doorlooptijd in weken; toont "n.t.b." indien niet gezet. */
   timelineWeeks?: number | null;
-  /** Aantal feedbackrondes; toont "n.t.b." indien niet gezet. */
   feedbackRounds?: number | null;
+  timeline?: string | null;
+  scopeDescription?: string | null;
 }
 
 export interface QuotePdfClientInfo {
@@ -129,18 +62,22 @@ export interface QuotePdfClientInfo {
   company_website?: string;
 }
 
-// ——— LOCKED LAYOUT ———
 const PAGE_WIDTH = 210;
 const PAGE_HEIGHT = 297;
 const MARGIN = 18;
 const MARGIN_RIGHT = 18;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN - MARGIN_RIGHT;
-const AMOUNT_X = PAGE_WIDTH - MARGIN_RIGHT - 32;
-const DESC_WIDTH = CONTENT_WIDTH - 38;
+const AMOUNT_X = PAGE_WIDTH - MARGIN_RIGHT - 36;
+const DESC_WIDTH = CONTENT_WIDTH - 42;
+const FOOTER_TOP = PAGE_HEIGHT - 22;
 
-// ——— LOCKED TYPOGRAPHY ———
+const NUDGE_PRIMARY = { r: 144, g: 103, b: 198 };
+const NUDGE_FOREGROUND = { r: 36, g: 32, b: 56 };
+const NUDGE_MUTED = { r: 141, g: 134, b: 201 };
+const NUDGE_BORDER = { r: 202, g: 196, b: 206 };
+
 const FONT_TITLE = 20;
-const FONT_SECTION = 11;
+const FONT_SECTION = 12;
 const FONT_BODY = 10;
 const FONT_SMALL = 9;
 const FONT_FOOTER = 8;
@@ -149,138 +86,244 @@ const LINE_LOOSE = 6;
 const SPACE_SECTION = 6;
 const SPACE_BLOCK = 4;
 
-// ——— LOCKED BRAND ———
 const BRAND_NAME = 'Nudge Webdesign & Marketing';
 const BRAND_TAGLINE = 'Hasselt';
-const COLOR_TEXT = 40;
-const COLOR_MUTED = 100;
-const COLOR_ACCENT = 0;
 
-// ——— LOCKED ONDERHOUD (Starter, Business, Growth) ———
-const MAINTENANCE_TIERS: { name: string; price: number }[] = [
-  { name: 'Starter', price: 24.99 },
-  { name: 'Business', price: 59.99 },
-  { name: 'Growth', price: 119 },
-];
+const PAYMENT_LABELS: Record<string, string> = {
+  once: 'Betaling: 100% vooraf',
+  twice_25: 'Betaling: 25% voorschot, 75% bij aflevering',
+  thrice_33: 'Betaling: 33% begin, 33% midden, 33% aflevering',
+};
 
 function formatCurrency(amount: number): string {
   return '€ ' + amount.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function setColor(doc: jsPDF, c: { r: number; g: number; b: number }) {
+  doc.setTextColor(c.r, c.g, c.b);
+}
+function setDrawColor(doc: jsPDF, c: { r: number; g: number; b: number }) {
+  doc.setDrawColor(c.r, c.g, c.b);
+}
+
 function hr(doc: jsPDF, y: number): number {
-  doc.setDrawColor(220, 220, 220);
-  doc.setLineWidth(0.25);
+  setDrawColor(doc, NUDGE_BORDER);
+  doc.setLineWidth(0.35);
   doc.line(MARGIN, y, PAGE_WIDTH - MARGIN_RIGHT, y);
   return y + SPACE_BLOCK;
+}
+
+/** Reserve ruimte boven footer; bij tekort nieuwe pagina met header. */
+function ensureSpace(
+  doc: jsPDF,
+  y: number,
+  needMm: number,
+  drawHeader: (doc: jsPDF, isContinuation: boolean) => number
+): number {
+  const reserve = needMm + SPACE_BLOCK;
+  if (y + reserve > FOOTER_TOP) {
+    doc.addPage();
+    return drawHeader(doc, true);
+  }
+  return y;
+}
+
+/** Schrijft meerdere regels tekst met max breedte; retourneert aantal regels. */
+function writeWrapped(
+  doc: jsPDF,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number = LINE
+): number {
+  if (!text.trim()) return 0;
+  const lines = doc.splitTextToSize(text.trim(), maxWidth);
+  lines.forEach((line: string) => {
+    doc.text(line, x, y);
+    y += lineHeight;
+  });
+  return lines.length;
 }
 
 export async function generateQuotePdfBlob(
   clientInfo: QuotePdfClientInfo,
   quoteData: ApprovedQuoteData,
-  totalPrice: number
+  totalPrice: number,
+  logoDataUrl?: string | null
 ): Promise<Blob> {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  let y = MARGIN;
-  const footerY = PAGE_HEIGHT - 18;
+  const footerY = PAGE_HEIGHT - 6;
 
   const projectType = quoteData.selectedPackage?.name ?? 'Website';
   const clientName = clientInfo.company_name?.trim() || clientInfo.name?.trim() || 'n.t.b.';
   const subtotalExVat = quoteData.pricing?.subtotal ?? 0;
   const discountAmount = quoteData.pricing?.discountAmount ?? 0;
   const vatAmount = quoteData.pricing?.vat ?? 0;
-
-  // ——— [HEADER — LOCKED] ———
-  doc.setFontSize(FONT_SECTION);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(COLOR_TEXT);
-  doc.text(BRAND_NAME, MARGIN, y);
-  y += LINE;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(FONT_SMALL);
-  doc.setTextColor(COLOR_MUTED);
-  doc.text(BRAND_TAGLINE, MARGIN, y);
-  y += LINE;
   const dateStr = new Date().toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' });
   const validUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' });
-  const quoteNum = (quoteData.quoteNumber ?? '').trim() || 'n.t.b.';
-  doc.text(`Datum: ${dateStr}  ·  Nr: ${quoteNum}  ·  Geldig tot: ${validUntil}`, PAGE_WIDTH - MARGIN_RIGHT, y, { align: 'right' });
-  y += LINE_LOOSE;
-  y = hr(doc, y);
-  y += SPACE_SECTION;
+  const quoteNum = (quoteData.quoteNumber ?? '').toString().trim() || 'n.t.b.';
 
-  // ——— [SECTION 1 — SAMENVATTING] ———
+  const drawHeader = (pdf: jsPDF, isContinuation: boolean): number => {
+    let y = MARGIN;
+    if (logoDataUrl) {
+      try {
+        const format = logoDataUrl.startsWith('data:image/jpeg') || logoDataUrl.startsWith('data:image/jpg') ? 'JPEG' : 'PNG';
+        pdf.addImage(logoDataUrl, format, MARGIN, y - 3, 36, 14);
+        y += 14 + 4;
+      } catch {
+        // geen logo
+      }
+    }
+    if (!logoDataUrl || isContinuation) {
+      pdf.setFontSize(FONT_SECTION);
+      pdf.setFont('helvetica', 'bold');
+      setColor(pdf, NUDGE_PRIMARY);
+      pdf.text(BRAND_NAME, MARGIN, y);
+      y += LINE;
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(FONT_SMALL);
+      setColor(pdf, NUDGE_MUTED);
+      pdf.text(BRAND_TAGLINE, MARGIN, y);
+      y += LINE;
+    }
+    if (!isContinuation) {
+      pdf.setFontSize(FONT_SMALL);
+      setColor(pdf, NUDGE_MUTED);
+      pdf.text(`Datum: ${dateStr}  ·  Nr: ${quoteNum}  ·  Geldig tot: ${validUntil}`, PAGE_WIDTH - MARGIN_RIGHT, y, { align: 'right' });
+      y += LINE_LOOSE;
+    }
+    y = hr(pdf, y);
+    y += SPACE_SECTION;
+    return y;
+  };
+
+  const drawFooter = (pdf: jsPDF) => {
+    setDrawColor(pdf, NUDGE_BORDER);
+    pdf.setLineWidth(0.25);
+    pdf.line(MARGIN, FOOTER_TOP, PAGE_WIDTH - MARGIN_RIGHT, FOOTER_TOP);
+    pdf.setFontSize(FONT_FOOTER);
+    setColor(pdf, NUDGE_MUTED);
+    pdf.text(BRAND_NAME + ' · ' + BRAND_TAGLINE, MARGIN, footerY - 4);
+    pdf.text('Deze offerte is geldig zoals opgesteld. Voorwaarden zoals overeengekomen.', MARGIN, footerY);
+  };
+
+  let y = drawHeader(doc, false);
+
+  // ——— Klantgegevens (alleen ingevulde velden) ———
+  const hasClient = !!(clientInfo.company_name || clientInfo.name || clientInfo.email || clientInfo.phone
+    || clientInfo.company_address || clientInfo.company_postal_code || clientInfo.company_city
+    || clientInfo.vat_number || clientInfo.company_website);
+  if (hasClient) {
+    doc.setFontSize(FONT_SMALL);
+    const clientLines = [
+      [clientInfo.company_name, clientInfo.name].filter(Boolean).join(' – ') || 'n.t.b.',
+      clientInfo.email ?? '',
+      clientInfo.phone ?? '',
+      [clientInfo.company_address, clientInfo.company_postal_code, clientInfo.company_city, clientInfo.company_country].filter(Boolean).join(' '),
+      clientInfo.vat_number ? 'BTW: ' + clientInfo.vat_number : '',
+      clientInfo.company_website ?? '',
+    ].filter(Boolean);
+    let clientLineCount = 10;
+    for (const line of clientLines) {
+      clientLineCount += doc.splitTextToSize(line, CONTENT_WIDTH).length;
+    }
+    const clientHeight = clientLineCount * LINE + SPACE_BLOCK;
+    y = ensureSpace(doc, y, clientHeight, drawHeader);
+    doc.setFontSize(FONT_SECTION);
+    doc.setFont('helvetica', 'bold');
+    setColor(doc, NUDGE_PRIMARY);
+    doc.text('Klantgegevens', MARGIN, y);
+    y += LINE_LOOSE;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(FONT_SMALL);
+    setColor(doc, NUDGE_FOREGROUND);
+    for (const line of clientLines) {
+      const n = writeWrapped(doc, line, MARGIN, y, CONTENT_WIDTH);
+      y += n * LINE;
+    }
+    y += SPACE_BLOCK;
+    y = hr(doc, y);
+    y += SPACE_SECTION;
+  }
+
+  // ——— Titel ———
+  const titleText = `Offerte – ${projectType} voor ${clientName}`;
   doc.setFontSize(FONT_TITLE);
+  const titleLines = doc.splitTextToSize(titleText, CONTENT_WIDTH);
+  const titleHeight = titleLines.length * (LINE_LOOSE + 1) + LINE_LOOSE + SPACE_SECTION;
+  y = ensureSpace(doc, y, titleHeight, drawHeader);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(COLOR_TEXT);
-  doc.text(`Offerte – ${projectType} voor ${clientName}`, MARGIN, y);
-  y += LINE_LOOSE;
+  setColor(doc, NUDGE_FOREGROUND);
+  titleLines.forEach((line: string) => {
+    doc.text(line, MARGIN, y);
+    y += LINE_LOOSE + 1;
+  });
+  y += LINE;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(FONT_BODY);
   doc.text('Op maat gemaakte oplossing volgens onderstaande scope en investering.', MARGIN, y);
-  y += LINE_LOOSE + 2;
-  doc.setFontSize(FONT_SMALL);
-  doc.setTextColor(COLOR_MUTED);
-  doc.text('• Doel: professionele online aanwezigheid', MARGIN, y);
-  y += LINE;
-  doc.text('• Oplossing: website of webapp conform offerte', MARGIN, y);
-  y += LINE;
-  doc.text('• Resultaat: levering na goedkeuring', MARGIN, y);
-  y += SPACE_SECTION;
-  doc.setTextColor(COLOR_TEXT);
-  doc.setFontSize(FONT_BODY);
+  y += LINE_LOOSE + SPACE_SECTION;
   y = hr(doc, y);
   y += SPACE_SECTION;
 
-  // ——— [SECTION 2 — SCOPE] Twee kolommen ———
-  doc.setFontSize(FONT_SECTION);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Scope', MARGIN, y);
-  y += LINE_LOOSE;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(FONT_SMALL);
-  const colLeft = MARGIN;
-  const colRight = MARGIN + CONTENT_WIDTH / 2 + 4;
-  doc.setTextColor(COLOR_MUTED);
-  doc.text('Inbegrepen:', colLeft, y);
-  doc.text('Niet inbegrepen:', colRight, y);
-  y += LINE;
-  doc.setTextColor(COLOR_TEXT);
-  const inBegrepen: string[] = ['Pagina\'s', 'Functionaliteiten', 'Admin', 'Integraties'];
-  (quoteData.selectedOptions || []).forEach((o) => inBegrepen.push(o.name));
-  inBegrepen.slice(0, 12).forEach((line) => {
-    doc.text('· ' + line, colLeft, y);
-    y += LINE;
-  });
-  const scopeLineCount = Math.min(inBegrepen.length, 12);
-  const yScopeRight = y - scopeLineCount * LINE;
-  doc.text('· Hosting', colRight, yScopeRight);
-  doc.text('· Contentcreatie (tenzij vermeld)', colRight, yScopeRight + LINE);
-  doc.text('· Marketingcampagnes (tenzij vermeld)', colRight, yScopeRight + LINE * 2);
-  y += SPACE_SECTION;
-  y = hr(doc, y);
-  y += SPACE_SECTION;
+  // ——— Scope: alleen gekozen opties (geen vaste lijst) ———
+  const scopeOptionNames = (quoteData.selectedOptions || []).map((o) => o.name);
+  const scopeDesc = quoteData.scopeDescription?.trim();
+  const hasScope = scopeOptionNames.length > 0 || scopeDesc;
+  if (hasScope) {
+    const scopeDescLines = scopeDesc ? doc.splitTextToSize(scopeDesc, CONTENT_WIDTH).length + 1 : 0;
+    const scopeBlockHeight = 14 + scopeDescLines * LINE + scopeOptionNames.length * LINE + SPACE_SECTION;
+    y = ensureSpace(doc, y, scopeBlockHeight, drawHeader);
+    doc.setFontSize(FONT_SECTION);
+    doc.setFont('helvetica', 'bold');
+    setColor(doc, NUDGE_PRIMARY);
+    doc.text('Scope', MARGIN, y);
+    y += LINE_LOOSE;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(FONT_SMALL);
+    if (scopeDesc) {
+      setColor(doc, NUDGE_FOREGROUND);
+      y += writeWrapped(doc, scopeDesc, MARGIN, y, CONTENT_WIDTH) * LINE;
+      y += SPACE_BLOCK;
+    }
+    setColor(doc, NUDGE_FOREGROUND);
+    scopeOptionNames.forEach((name) => {
+      doc.text('· ' + name, MARGIN, y);
+      y += LINE;
+    });
+    y += SPACE_SECTION;
+    y = hr(doc, y);
+    y += SPACE_SECTION;
+  }
 
-  // ——— [SECTION 3 — INVESTERING] ———
-  doc.setFontSize(FONT_SECTION);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Investering', MARGIN, y);
-  y += LINE_LOOSE;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(FONT_BODY);
-
+  // ——— Investering: alleen wat is gekozen/ingevuld ———
   const addRow = (label: string, amount: number, indent = false) => {
     const prefix = indent ? '   ' : '';
     const lines = doc.splitTextToSize(prefix + label, DESC_WIDTH);
+    const rowHeight = lines.length * LINE + 2;
+    y = ensureSpace(doc, y, rowHeight, drawHeader);
     const rowY = y;
     lines.forEach((l: string) => {
       doc.text(l, MARGIN, y);
       y += LINE;
     });
-    doc.text(formatCurrency(amount), AMOUNT_X, rowY + LINE - 1, { align: 'right' });
+    doc.text(formatCurrency(amount), AMOUNT_X, rowY + (lines.length - 1) * LINE, { align: 'right' });
     y += 2;
   };
 
+  y = ensureSpace(doc, y, 15, drawHeader);
+  doc.setFontSize(FONT_SECTION);
+  doc.setFont('helvetica', 'bold');
+  setColor(doc, NUDGE_PRIMARY);
+  doc.text('Investering', MARGIN, y);
+  y += LINE_LOOSE;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(FONT_BODY);
+  setColor(doc, NUDGE_FOREGROUND);
+
   if (quoteData.selectedPackage) {
+    y = ensureSpace(doc, y, 12, drawHeader);
     doc.setFont('helvetica', 'bold');
     doc.text(quoteData.selectedPackage.name, MARGIN, y);
     doc.text(formatCurrency(quoteData.selectedPackage.basePrice), AMOUNT_X, y, { align: 'right' });
@@ -296,6 +339,9 @@ export async function generateQuotePdfBlob(
   const contentPages = quoteData.contentPages ?? 0;
   if (extraPages > 0) addRow(`Extra pagina's: ${extraPages}`, extraPages * 125);
   if (contentPages > 0) addRow(`Content pagina's: ${contentPages}`, contentPages * 125);
+  if (quoteData.selectedMaintenance) {
+    addRow(`${quoteData.selectedMaintenance.name} (1e maand)`, quoteData.selectedMaintenance.price, true);
+  }
   (quoteData.customLineItems || []).forEach((item) => addRow(item.name, item.price, true));
 
   if (quoteData.discount?.type && quoteData.discount.value > 0) {
@@ -303,9 +349,12 @@ export async function generateQuotePdfBlob(
     addRow(lbl, -discountAmount);
   }
 
+  const totalsBlockHeight = 28;
   y += SPACE_BLOCK;
+  y = ensureSpace(doc, y, totalsBlockHeight, drawHeader);
   y = hr(doc, y);
   doc.setFontSize(FONT_SMALL);
+  setColor(doc, NUDGE_FOREGROUND);
   doc.text('Subtotaal (excl. BTW)', MARGIN, y);
   doc.text(formatCurrency(Math.max(0, subtotalExVat - discountAmount)), AMOUNT_X, y, { align: 'right' });
   y += LINE;
@@ -314,41 +363,39 @@ export async function generateQuotePdfBlob(
   y += LINE + 2;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(FONT_BODY);
-  doc.setTextColor(COLOR_ACCENT);
+  setColor(doc, NUDGE_PRIMARY);
   doc.text('Totaal (incl. BTW)', MARGIN, y);
   doc.text(formatCurrency(totalPrice), AMOUNT_X, y, { align: 'right' });
-  doc.setTextColor(COLOR_TEXT);
+  setColor(doc, NUDGE_FOREGROUND);
   doc.setFont('helvetica', 'normal');
   y += LINE_LOOSE + SPACE_SECTION;
 
-  doc.setFontSize(FONT_SMALL);
-  doc.setTextColor(COLOR_MUTED);
-  doc.text('Onderhoud (maandelijks):', MARGIN, y);
-  y += LINE;
-  MAINTENANCE_TIERS.forEach((tier) => {
-    doc.text('· ' + tier.name + ' – ' + formatCurrency(tier.price) + '/maand', MARGIN + 4, y);
-    y += LINE;
-  });
-  y += SPACE_BLOCK;
-  doc.setTextColor(COLOR_TEXT);
+  // ——— Onderhoud alleen tonen als er een is gekozen ———
+  if (quoteData.selectedMaintenance) {
+    doc.setFontSize(FONT_SMALL);
+    setColor(doc, NUDGE_MUTED);
+    doc.text('Onderhoud (maandelijks): ' + quoteData.selectedMaintenance.name + ' – ' + formatCurrency(quoteData.selectedMaintenance.price) + '/maand', MARGIN, y);
+    y += LINE + SPACE_BLOCK;
+    setColor(doc, NUDGE_FOREGROUND);
+  }
 
-  // ——— [SECTION 4 — PLANNING & BETALING] ———
+  // ——— Planning & betaling ———
+  const planningBlockHeight = 35;
+  y = ensureSpace(doc, y, planningBlockHeight, drawHeader);
   y = hr(doc, y);
   y += SPACE_BLOCK;
   doc.setFontSize(FONT_SECTION);
   doc.setFont('helvetica', 'bold');
+  setColor(doc, NUDGE_PRIMARY);
   doc.text('Planning & betaling', MARGIN, y);
   y += LINE_LOOSE;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(FONT_SMALL);
-  doc.setTextColor(COLOR_MUTED);
-  const paymentLabels: Record<string, string> = {
-    once: 'Betaling: 100% vooraf',
-    twice_25: 'Betaling: 25% voorschot, 75% bij aflevering',
-    thrice_33: 'Betaling: 33% begin, 33% midden, 33% aflevering',
-  };
+  setColor(doc, NUDGE_MUTED);
   const payment = quoteData.paymentSchedule ?? 'once';
-  const timelineStr = quoteData.timelineWeeks != null && quoteData.timelineWeeks > 0 ? `${quoteData.timelineWeeks} weken` : 'n.t.b.';
+  const timelineStr = quoteData.timelineWeeks != null && quoteData.timelineWeeks > 0
+    ? `${quoteData.timelineWeeks} weken`
+    : (quoteData.timeline?.trim() || 'n.t.b.');
   const feedbackStr = quoteData.feedbackRounds != null && quoteData.feedbackRounds >= 0 ? `${quoteData.feedbackRounds}` : 'n.t.b.';
   doc.text('Start: na goedkeuring', MARGIN, y);
   y += LINE;
@@ -358,19 +405,14 @@ export async function generateQuotePdfBlob(
   y += LINE;
   doc.text('Factuur: bij akkoord', MARGIN, y);
   y += LINE;
-  doc.text(paymentLabels[payment] ?? paymentLabels.once, MARGIN, y);
-  y += SPACE_SECTION;
-  doc.setTextColor(COLOR_TEXT);
-  doc.setFontSize(FONT_BODY);
+  doc.text(PAYMENT_LABELS[payment] ?? PAYMENT_LABELS.once, MARGIN, y);
+  setColor(doc, NUDGE_FOREGROUND);
 
-  // ——— [FOOTER — LOCKED] ———
-  if (y > footerY - 14) y = footerY - 14;
-  y = hr(doc, footerY - 10);
-  doc.setFontSize(FONT_FOOTER);
-  doc.setTextColor(COLOR_MUTED);
-  doc.text(BRAND_NAME + ' · ' + BRAND_TAGLINE, MARGIN, footerY - 6);
-  doc.text('Deze offerte is geldig zoals opgesteld. Voorwaarden zoals overeengekomen.', MARGIN, footerY - 2);
-  doc.setTextColor(COLOR_TEXT);
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    drawFooter(doc);
+  }
 
   return doc.output('blob');
 }

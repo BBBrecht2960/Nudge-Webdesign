@@ -17,7 +17,7 @@ export default function OverOnsPage() {
           <section>
             <h2>Wie zijn wij?</h2>
             <p>
-              Nudge Webdesign is een webdesign agentschap, gespecialiseerd in het bouwen van moderne websites en webshops voor Belgische KMO&apos;s. Onze missie is om websites te maken die niet alleen mooi zijn, maar ook écht resultaat opleveren.
+              Nudge Webdesign is een webdesign agentschap, gespecialiseerd in het bouwen van moderne websites en webshops voor Belgische KMO's. Onze missie is om websites te maken die niet alleen mooi zijn, maar ook écht resultaat opleveren.
             </p>
           </section>
 
@@ -48,7 +48,7 @@ export default function OverOnsPage() {
           <section>
             <h2>Onze Focus</h2>
             <p>
-              We werken voornamelijk met Belgische KMO&apos;s (5-30 medewerkers) en B2B service bedrijven. We begrijpen de uitdagingen waar deze bedrijven voor staan: weinig tijd, beperkte kennis van marketing en technologie, en de behoefte aan resultaat.
+              We werken voornamelijk met Belgische KMO's (5-30 medewerkers) en B2B service bedrijven. We begrijpen de uitdagingen waar deze bedrijven voor staan: weinig tijd, beperkte kennis van marketing en technologie, en de behoefte aan resultaat.
             </p>
             <p>
               Daarom bieden we niet alleen websites, maar complete oplossingen met onderhoud en groei inbegrepen.
