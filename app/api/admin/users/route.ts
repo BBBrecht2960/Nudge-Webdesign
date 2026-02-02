@@ -172,12 +172,13 @@ export async function POST(request: NextRequest) {
     const msg = error.message || '';
     const details: string[] = [];
     if (msg.includes('does not exist') || msg.includes('column') || msg.includes('undefined_column')) {
-      details.push('Voer in Supabase SQL Editor uit: add-admin-user-profile-fields.sql, add-admin-permissions.sql, add-admin-user-extended-fields.sql');
+      details.push('Voer run-admin-users-migrations.sql uit in Supabase SQL Editor.');
     }
+    // Toon echte foutmelding zodat je op productie kunt zien wat er misgaat (bv. RLS, ontbrekende env)
     return NextResponse.json(
       {
         error: details.length ? 'Databasekolommen ontbreken. Voer de admin_users-migraties uit in Supabase.' : 'Fout bij aanmaken gebruiker',
-        details: details.length ? details : undefined,
+        details: details.length ? details : [msg],
       },
       { status: 500 }
     );
