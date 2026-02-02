@@ -69,9 +69,21 @@ export const packages: PricingPackage[] = [
     ],
   },
   {
+    id: 'custom-website',
+    name: 'Website op maat',
+    basePrice: 0,
+    description: 'Volledig op maat – prijs op basis van scope en gekozen opties.',
+    category: 'website',
+    features: [
+      'Custom scope na intake',
+      'Alleen gekozen opties in offerte',
+      'Geen vaste pakketgrenzen',
+    ],
+  },
+  {
     id: 'basic-webshop',
     name: 'Basic Webshop',
-    basePrice: 1499,
+    basePrice: 999,
     description: 'Tot 50 producten, Mollie, WooCommerce/Shopify Light.',
     category: 'webshop',
     features: [
@@ -110,6 +122,18 @@ export const packages: PricingPackage[] = [
       'Volledige customisatie',
       'Schaalbaarheid',
       'API-koppelingen',
+    ],
+  },
+  {
+    id: 'custom-webshop',
+    name: 'Webshop op maat',
+    basePrice: 0,
+    description: 'Volledig op maat – prijs op basis van scope en gekozen opties.',
+    category: 'webshop',
+    features: [
+      'Custom scope na intake',
+      'Alleen gekozen opties in offerte',
+      'Geen vaste pakketgrenzen',
     ],
   },
   {

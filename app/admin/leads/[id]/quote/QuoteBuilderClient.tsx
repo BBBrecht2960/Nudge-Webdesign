@@ -836,7 +836,9 @@ export default function QuoteBuilderClient({ leadId }: { leadId: string }) {
                 <div className="text-left min-w-0">
                   <h2 className="text-base sm:text-xl font-bold break-words">Basis Pakket</h2>
                   {selectedPackage && (
-                    <p className="text-sm text-muted-foreground break-words truncate sm:whitespace-normal">{selectedPackage.name} – Vanaf €{selectedPackage.basePrice.toLocaleString('nl-BE')}</p>
+                    <p className="text-sm text-muted-foreground break-words truncate sm:whitespace-normal">
+                      {selectedPackage.name} – {selectedPackage.basePrice === 0 ? 'Op maat' : `Vanaf €${selectedPackage.basePrice.toLocaleString('nl-BE')}`}
+                    </p>
                   )}
                 </div>
               </div>
@@ -908,7 +910,7 @@ export default function QuoteBuilderClient({ leadId }: { leadId: string }) {
                           <div className="flex-1">
                             <h3 className="font-bold text-lg mb-1">{pkg.name}</h3>
                             <p className="text-2xl font-bold text-primary">
-                              Vanaf €{pkg.basePrice.toLocaleString('nl-BE')}
+                              {pkg.basePrice === 0 ? 'Op maat' : `Vanaf €${pkg.basePrice.toLocaleString('nl-BE')}`}
                             </p>
                           </div>
                           {state.selectedPackage?.id === pkg.id && (
@@ -1845,7 +1847,7 @@ export default function QuoteBuilderClient({ leadId }: { leadId: string }) {
                           <div className="text-xs text-muted-foreground mt-1">{selectedPackage.description}</div>
                         </div>
                         <div className="ml-4 font-bold text-primary">
-                          Vanaf € {selectedPackage.basePrice.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {selectedPackage.basePrice === 0 ? 'Op maat' : `Vanaf € ${selectedPackage.basePrice.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                         </div>
                       </div>
                     </div>
