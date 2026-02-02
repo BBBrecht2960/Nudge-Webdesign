@@ -150,7 +150,7 @@ export async function generateQuotePdfBlob(
   clientInfo: QuotePdfClientInfo,
   quoteData: ApprovedQuoteData,
   totalPrice: number,
-  logoDataUrl?: string | null
+  _logoDataUrl?: string | null
 ): Promise<Blob> {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const footerY = PAGE_HEIGHT - 6;
@@ -164,48 +164,54 @@ export async function generateQuotePdfBlob(
   const validUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' });
   const quoteNum = (quoteData.quoteNumber ?? '').toString().trim() || 'n.t.b.';
 
+  /** Accentlijn links van sectietitel (paars) */
+  const sectionAccent = (pdf: jsPDF, y: number, title: string): number => {
+    setDrawColor(pdf, NUDGE_PRIMARY);
+    pdf.setLineWidth(0.8);
+    pdf.line(MARGIN, y - 3.5, MARGIN, y + 4);
+    pdf.setFontSize(FONT_SECTION);
+    pdf.setFont('helvetica', 'bold');
+    setColor(pdf, NUDGE_PRIMARY);
+    pdf.text(title, MARGIN + 4, y);
+    pdf.setFont('helvetica', 'normal');
+    return y + LINE_LOOSE;
+  };
+
   const drawHeader = (pdf: jsPDF, isContinuation: boolean): number => {
     let y = MARGIN;
-    if (logoDataUrl) {
-      try {
-        const format = logoDataUrl.startsWith('data:image/jpeg') || logoDataUrl.startsWith('data:image/jpg') ? 'JPEG' : 'PNG';
-        pdf.addImage(logoDataUrl, format, MARGIN, y - 3, 36, 14);
-        y += 14 + 4;
-      } catch {
-        // geen logo
-      }
-    }
-    if (!logoDataUrl || isContinuation) {
-      pdf.setFontSize(FONT_SECTION);
-      pdf.setFont('helvetica', 'bold');
-      setColor(pdf, NUDGE_PRIMARY);
-      pdf.text(BRAND_NAME, MARGIN, y);
-      y += LINE;
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(FONT_SMALL);
-      setColor(pdf, NUDGE_MUTED);
-      pdf.text(BRAND_TAGLINE, MARGIN, y);
-      y += LINE;
-    }
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'bold');
+    setColor(pdf, NUDGE_PRIMARY);
+    pdf.text(BRAND_NAME, MARGIN, y);
+    y += LINE;
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(FONT_SMALL);
+    setColor(pdf, NUDGE_MUTED);
+    pdf.text(BRAND_TAGLINE, MARGIN, y);
+    y += LINE;
     if (!isContinuation) {
       pdf.setFontSize(FONT_SMALL);
       setColor(pdf, NUDGE_MUTED);
       pdf.text(`Datum: ${dateStr}  ·  Nr: ${quoteNum}  ·  Geldig tot: ${validUntil}`, PAGE_WIDTH - MARGIN_RIGHT, y, { align: 'right' });
       y += LINE_LOOSE;
     }
-    y = hr(pdf, y);
+    setDrawColor(pdf, NUDGE_PRIMARY);
+    pdf.setLineWidth(0.4);
+    pdf.line(MARGIN, y, PAGE_WIDTH - MARGIN_RIGHT, y);
     y += SPACE_SECTION;
     return y;
   };
 
   const drawFooter = (pdf: jsPDF) => {
-    setDrawColor(pdf, NUDGE_BORDER);
-    pdf.setLineWidth(0.25);
+    setDrawColor(pdf, NUDGE_PRIMARY);
+    pdf.setLineWidth(0.3);
     pdf.line(MARGIN, FOOTER_TOP, PAGE_WIDTH - MARGIN_RIGHT, FOOTER_TOP);
     pdf.setFontSize(FONT_FOOTER);
     setColor(pdf, NUDGE_MUTED);
-    pdf.text(BRAND_NAME + ' · ' + BRAND_TAGLINE, MARGIN, footerY - 4);
-    pdf.text('Deze offerte is geldig zoals opgesteld. Voorwaarden zoals overeengekomen.', MARGIN, footerY);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(BRAND_NAME, MARGIN, footerY - 5);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(BRAND_TAGLINE + ' · Deze offerte is geldig zoals opgesteld.', MARGIN, footerY);
   };
 
   let y = drawHeader(doc, false);
@@ -228,14 +234,9 @@ export async function generateQuotePdfBlob(
     for (const line of clientLines) {
       clientLineCount += doc.splitTextToSize(line, CONTENT_WIDTH).length;
     }
-    const clientHeight = clientLineCount * LINE + SPACE_BLOCK;
+    const clientHeight = clientLineCount * LINE + SPACE_BLOCK + 4;
     y = ensureSpace(doc, y, clientHeight, drawHeader);
-    doc.setFontSize(FONT_SECTION);
-    doc.setFont('helvetica', 'bold');
-    setColor(doc, NUDGE_PRIMARY);
-    doc.text('Klantgegevens', MARGIN, y);
-    y += LINE_LOOSE;
-    doc.setFont('helvetica', 'normal');
+    y = sectionAccent(doc, y, 'Klantgegevens');
     doc.setFontSize(FONT_SMALL);
     setColor(doc, NUDGE_FOREGROUND);
     for (const line of clientLines) {
@@ -249,22 +250,25 @@ export async function generateQuotePdfBlob(
 
   // ——— Titel ———
   const titleText = `Offerte – ${projectType} voor ${clientName}`;
-  doc.setFontSize(FONT_TITLE);
+  doc.setFontSize(18);
   const titleLines = doc.splitTextToSize(titleText, CONTENT_WIDTH);
-  const titleHeight = titleLines.length * (LINE_LOOSE + 1) + LINE_LOOSE + SPACE_SECTION;
+  const titleHeight = titleLines.length * 7 + 14;
   y = ensureSpace(doc, y, titleHeight, drawHeader);
   doc.setFont('helvetica', 'bold');
   setColor(doc, NUDGE_FOREGROUND);
   titleLines.forEach((line: string) => {
     doc.text(line, MARGIN, y);
-    y += LINE_LOOSE + 1;
+    y += 7;
   });
-  y += LINE;
+  y += 3;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(FONT_BODY);
+  setColor(doc, NUDGE_MUTED);
   doc.text('Op maat gemaakte oplossing volgens onderstaande scope en investering.', MARGIN, y);
   y += LINE_LOOSE + SPACE_SECTION;
-  y = hr(doc, y);
+  setDrawColor(doc, NUDGE_BORDER);
+  doc.setLineWidth(0.3);
+  doc.line(MARGIN, y, PAGE_WIDTH - MARGIN_RIGHT, y);
   y += SPACE_SECTION;
 
   // ——— Scope: alleen gekozen opties (geen vaste lijst) ———
@@ -275,12 +279,7 @@ export async function generateQuotePdfBlob(
     const scopeDescLines = scopeDesc ? doc.splitTextToSize(scopeDesc, CONTENT_WIDTH).length + 1 : 0;
     const scopeBlockHeight = 14 + scopeDescLines * LINE + scopeOptionNames.length * LINE + SPACE_SECTION;
     y = ensureSpace(doc, y, scopeBlockHeight, drawHeader);
-    doc.setFontSize(FONT_SECTION);
-    doc.setFont('helvetica', 'bold');
-    setColor(doc, NUDGE_PRIMARY);
-    doc.text('Scope', MARGIN, y);
-    y += LINE_LOOSE;
-    doc.setFont('helvetica', 'normal');
+    y = sectionAccent(doc, y, 'Scope');
     doc.setFontSize(FONT_SMALL);
     if (scopeDesc) {
       setColor(doc, NUDGE_FOREGROUND);
@@ -289,7 +288,7 @@ export async function generateQuotePdfBlob(
     }
     setColor(doc, NUDGE_FOREGROUND);
     scopeOptionNames.forEach((name) => {
-      doc.text('· ' + name, MARGIN, y);
+      doc.text('· ' + name, MARGIN + 2, y);
       y += LINE;
     });
     y += SPACE_SECTION;
@@ -313,12 +312,7 @@ export async function generateQuotePdfBlob(
   };
 
   y = ensureSpace(doc, y, 15, drawHeader);
-  doc.setFontSize(FONT_SECTION);
-  doc.setFont('helvetica', 'bold');
-  setColor(doc, NUDGE_PRIMARY);
-  doc.text('Investering', MARGIN, y);
-  y += LINE_LOOSE;
-  doc.setFont('helvetica', 'normal');
+  y = sectionAccent(doc, y, 'Investering');
   doc.setFontSize(FONT_BODY);
   setColor(doc, NUDGE_FOREGROUND);
 
@@ -349,10 +343,13 @@ export async function generateQuotePdfBlob(
     addRow(lbl, -discountAmount);
   }
 
-  const totalsBlockHeight = 28;
+  const totalsBlockHeight = 32;
   y += SPACE_BLOCK;
   y = ensureSpace(doc, y, totalsBlockHeight, drawHeader);
-  y = hr(doc, y);
+  setDrawColor(doc, NUDGE_BORDER);
+  doc.setLineWidth(0.35);
+  doc.line(MARGIN, y, PAGE_WIDTH - MARGIN_RIGHT, y);
+  y += LINE;
   doc.setFontSize(FONT_SMALL);
   setColor(doc, NUDGE_FOREGROUND);
   doc.text('Subtotaal (excl. BTW)', MARGIN, y);
@@ -360,7 +357,11 @@ export async function generateQuotePdfBlob(
   y += LINE;
   doc.text('BTW (21%)', MARGIN, y);
   doc.text(formatCurrency(vatAmount), AMOUNT_X, y, { align: 'right' });
-  y += LINE + 2;
+  y += LINE + 3;
+  setDrawColor(doc, NUDGE_PRIMARY);
+  doc.setLineWidth(0.4);
+  doc.line(MARGIN, y - 1, PAGE_WIDTH - MARGIN_RIGHT, y - 1);
+  y += 2;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(FONT_BODY);
   setColor(doc, NUDGE_PRIMARY);
@@ -384,12 +385,7 @@ export async function generateQuotePdfBlob(
   y = ensureSpace(doc, y, planningBlockHeight, drawHeader);
   y = hr(doc, y);
   y += SPACE_BLOCK;
-  doc.setFontSize(FONT_SECTION);
-  doc.setFont('helvetica', 'bold');
-  setColor(doc, NUDGE_PRIMARY);
-  doc.text('Planning & betaling', MARGIN, y);
-  y += LINE_LOOSE;
-  doc.setFont('helvetica', 'normal');
+  y = sectionAccent(doc, y, 'Planning & betaling');
   doc.setFontSize(FONT_SMALL);
   setColor(doc, NUDGE_MUTED);
   const payment = quoteData.paymentSchedule ?? 'once';

@@ -532,22 +532,8 @@ export default function QuoteBuilderClient({ leadId }: { leadId: string }) {
         timeline: state.timeline?.trim() || undefined,
         scopeDescription: state.scopeDescription?.trim() || undefined,
       };
-      let logoDataUrl: string | null = null;
-      try {
-        const logoRes = await fetch('/Nudge%20websdesign%20%26%20marketing%20Hasselt%20logo.png');
-        if (logoRes.ok) {
-          const logoBlob = await logoRes.blob();
-          logoDataUrl = await new Promise<string>((res, rej) => {
-            const r = new FileReader();
-            r.onload = () => res(r.result as string);
-            r.onerror = rej;
-            r.readAsDataURL(logoBlob);
-          });
-        }
-      } catch {
-        // PDF zonder logo
-      }
-      const blob = await generateQuotePdfBlob(clientInfo, approvedQuote, calculations.total, logoDataUrl);
+      // Logo tijdelijk uit: wordt later toegevoegd wanneer het definitieve logo klaar is
+      const blob = await generateQuotePdfBlob(clientInfo, approvedQuote, calculations.total);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
