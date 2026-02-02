@@ -12,31 +12,31 @@ export default function NewAdminUserPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
-    email: '',
+    email: 'emiclalferarano@gmail.com',
     password: '',
-    full_name: '',
-    first_name: '',
-    gender: '' as '' | 'M' | 'V' | 'X',
-    birth_date: '',
-    birth_place: '',
-    nationality: '',
-    rijksregisternummer: '',
-    address: '',
-    postal_code: '',
-    city: '',
+    full_name: 'Emiel',
+    first_name: 'Alfarano',
+    gender: 'M' as '' | 'M' | 'V' | 'X',
+    birth_date: '23/04/2004',
+    birth_place: 'Hasselt',
+    nationality: 'Belgische',
+    rijksregisternummer: '04042317948',
+    address: 'Weg naar Bijloos 16',
+    postal_code: '3530',
+    city: 'Houthalen',
     country: 'België',
-    gsm: '',
-    phone: '',
-    iban: '',
-    bic: '',
-    bank_name: '',
-    account_holder: '',
-    emergency_contact_name: '',
-    emergency_contact_relation: '',
-    emergency_contact_phone: '',
+    gsm: '+32487317229',
+    phone: '011 23 45 67',
+    iban: 'BE25303147880782',
+    bic: 'BBAUBEBB',
+    bank_name: 'ING',
+    account_holder: 'Emiel Alfarano',
+    emergency_contact_name: 'Test',
+    emergency_contact_relation: 'Test',
+    emergency_contact_phone: '044',
     can_leads: true,
     can_customers: true,
-    can_analytics: true,
+    can_analytics: false,
     can_manage_users: false,
   });
 
@@ -82,7 +82,8 @@ export default function NewAdminUserPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error || 'Fout bij aanmaken gebruiker');
+        const detailMsg = Array.isArray(data.details) ? data.details.join(' ') : data.details || '';
+        setError([data.error, detailMsg].filter(Boolean).join(' — ') || 'Fout bij aanmaken gebruiker');
         return;
       }
       if (data.id) {

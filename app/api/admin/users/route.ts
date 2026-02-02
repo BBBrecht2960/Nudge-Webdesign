@@ -169,7 +169,18 @@ export async function POST(request: NextRequest) {
   if (error) {
     if (error.code === '23505') return NextResponse.json({ error: 'E-mail of rijksregisternummer bestaat al.' }, { status: 409 });
     console.error('Error creating admin user:', error);
-    return NextResponse.json({ error: 'Fout bij aanmaken gebruiker' }, { status: 500 });
+    const msg = error.message || '';
+    const details: string[] = [];
+    if (msg.includes('does not exist') || msg.includes('column') || msg.includes('undefined_column')) {
+      details.push('Voer in Supabase SQL Editor uit: add-admin-user-profile-fields.sql, add-admin-permissions.sql, add-admin-user-extended-fields.sql');
+    }
+    return NextResponse.json(
+      {
+        error: details.length ? 'Databasekolommen ontbreken. Voer de admin_users-migraties uit in Supabase.' : 'Fout bij aanmaken gebruiker',
+        details: details.length ? details : undefined,
+      },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({
