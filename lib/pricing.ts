@@ -294,7 +294,7 @@ export function isOptionIncludedInPackage(option: PricingOption, pkg: PricingPac
   });
 }
 
-/** Geeft alle opties terug die bij dit pakket inbegrepen zijn (worden automatisch aangevinkt). */
+/** Geeft alle opties terug die bij dit pakket inbegrepen zijn (alleen voor display). */
 export function getOptionsForPackage(pkg: PricingPackage): PricingOption[] {
   const allOptions: PricingOption[] = [
     ...scopeOptions,
@@ -303,6 +303,25 @@ export function getOptionsForPackage(pkg: PricingPackage): PricingOption[] {
     ...maintenanceOptions,
   ];
   return allOptions.filter((option) => isOptionIncludedInPackage(option, pkg));
+}
+
+const ALL_ADDON_OPTIONS: PricingOption[] = [
+  ...scopeOptions,
+  ...complexityOptions,
+  ...growthOptions,
+  ...maintenanceOptions,
+];
+
+/** Opties die als add-on kunnen worden toegevoegd (niet in pakket inbegrepen). Geen dubbels. */
+export function getAddOnOptionsForPackage(pkg: PricingPackage | null): PricingOption[] {
+  if (!pkg) return ALL_ADDON_OPTIONS;
+  return ALL_ADDON_OPTIONS.filter((option) => !isOptionIncludedInPackage(option, pkg));
+}
+
+/** Opties met hoeveelheid (per stuk): extra-pages, content-creation. */
+export const QUANTITY_OPTION_IDS = ['extra-pages', 'content-creation'] as const;
+export function isQuantityOption(optionId: string): boolean {
+  return (QUANTITY_OPTION_IDS as readonly string[]).includes(optionId);
 }
 
 export function calculateTotal(

@@ -76,7 +76,6 @@ const NUDGE_FOREGROUND = { r: 36, g: 32, b: 56 };
 const NUDGE_MUTED = { r: 141, g: 134, b: 201 };
 const NUDGE_BORDER = { r: 202, g: 196, b: 206 };
 
-const FONT_TITLE = 20;
 const FONT_SECTION = 12;
 const FONT_BODY = 10;
 const FONT_SMALL = 9;
@@ -150,7 +149,8 @@ export async function generateQuotePdfBlob(
   clientInfo: QuotePdfClientInfo,
   quoteData: ApprovedQuoteData,
   totalPrice: number,
-  _logoDataUrl?: string | null
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- reserved for future logo in PDF
+  _logoDataUrl?: string | null,
 ): Promise<Blob> {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const footerY = PAGE_HEIGHT - 6;

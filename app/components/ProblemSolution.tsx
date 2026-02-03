@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock, AlertCircle, TrendingDown, Sparkles, Zap, Target } from 'lucide-react';
+import { Clock, AlertCircle, TrendingDown } from 'lucide-react';
 
 export function ProblemSolution() {
   const problems = [

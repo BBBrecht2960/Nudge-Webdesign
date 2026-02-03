@@ -551,7 +551,6 @@ export default function QuoteBuilderClient({ leadId }: { leadId: string }) {
       setIsDownloadingPDF(false);    }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- reserved for send-quote UI
   const _handleSendQuote = async () => {
     if (!lead || !selectedPackage) {
       alert('Selecteer eerst een pakket voordat je de offerte verzendt.');
