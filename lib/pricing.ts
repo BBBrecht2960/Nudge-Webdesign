@@ -313,7 +313,7 @@ const ALL_ADDON_OPTIONS: PricingOption[] = [
 ];
 
 /** Opties die als add-on kunnen worden toegevoegd (niet in pakket inbegrepen). Geen dubbels. */
-export function getAddOnOptionsForPackage(pkg: PricingPackage | null): PricingOption[] {
+function getAddOnOptionsForPackage(pkg: PricingPackage | null): PricingOption[] {
   if (!pkg) return ALL_ADDON_OPTIONS;
   return ALL_ADDON_OPTIONS.filter((option) => !isOptionIncludedInPackage(option, pkg));
 }
@@ -350,3 +350,6 @@ export function calculateTotal(
 
   return total;
 }
+
+// Expliciet her-exporteren voor Turbopack/bundler
+export { getAddOnOptionsForPackage };
