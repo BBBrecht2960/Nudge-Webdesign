@@ -32,7 +32,7 @@ import {
   growthOptions,
   maintenanceOptions,
   getDisplayFeatures,
-  isOptionIncludedInPackage,
+  getAddOnOptionsForPackage,
   type PricingOption,
   type PricingPackage,
 } from '@/lib/pricing';
@@ -130,16 +130,14 @@ export default function QuoteBuilderClient({ leadId }: { leadId: string }) {
             if (pkg) restoredState.selectedPackage = pkg;
           }
           
-          // Restore options - need to find full option objects from pricing config
+          // Restore options: alleen add-ons (geen dubbel met pakket)
           if (data.selectedOptions && Array.isArray(data.selectedOptions)) {
+            const allOptions = [...scopeOptions, ...complexityOptions, ...growthOptions, ...maintenanceOptions];
+            const addOnIds = new Set(getAddOnOptionsForPackage(restoredState.selectedPackage ?? null).map((o) => o.id));
             const restoredOptions: PricingOption[] = [];
             data.selectedOptions.forEach((savedOpt: { id: string; name?: string; price?: number }) => {
-              // Try to find in all option arrays
-              const allOptions = [...scopeOptions, ...complexityOptions, ...growthOptions, ...maintenanceOptions];
-              const found = allOptions.find(opt => opt.id === savedOpt.id);
-              if (found) {
-                restoredOptions.push(found);
-              }
+              const found = allOptions.find((opt) => opt.id === savedOpt.id);
+              if (found && addOnIds.has(found.id)) restoredOptions.push(found);
             });
             restoredState.selectedOptions = restoredOptions;
           }
@@ -483,6 +481,14 @@ export default function QuoteBuilderClient({ leadId }: { leadId: string }) {
   const getTotal = () => calculations.total;
 
   const getOptionPrice = (option: PricingOption): number => {
+    if (option.id === 'extra-pages') {
+      const qty = Math.max(0, state.extraPages) || 1;
+      return qty * 125;
+    }
+    if (option.id === 'content-creation') {
+      const qty = Math.max(0, state.contentPages) || 1;
+      return qty * 125;
+    }
     if (option.price > 0) return option.price;
     return customPrices[option.id] || 0;
   };
@@ -1037,38 +1043,55 @@ export default function QuoteBuilderClient({ leadId }: { leadId: string }) {
 
                 {expandedSections.has('scope') && (
                   <div className="px-6 pb-6 space-y-3">
-                    {/* Extra Pages Counter */}
+                    {/* Extra Pages: quantity + optie in sync */}
+                    {getAddOnOptionsForPackage(selectedPackage).some((o) => o.id === 'extra-pages') && (
                     <div className="flex items-center justify-between p-4 border-2 border-border rounded-lg bg-muted/30">
                       <div>
                         <div className="font-semibold mb-1">Extra pagina&apos;s</div>
-                        <div className="text-sm text-muted-foreground">Vanaf €100 per pagina</div>
+                        <div className="text-sm text-muted-foreground">€125 per pagina</div>
                       </div>
                       <div className="flex items-center gap-3">
                         <button
-                          onClick={() => actions.setExtraPages(state.extraPages - 1)}
-                          disabled={extraPages === 0}
+                          type="button"
+                          onClick={() => {
+                            const next = Math.max(0, state.extraPages - 1);
+                            actions.setExtraPages(next);
+                            if (next === 0) {
+                              const opt = scopeOptions.find((o) => o.id === 'extra-pages');
+                              if (opt && state.selectedOptions.some((o) => o.id === 'extra-pages')) actions.toggleOption(opt);
+                            }
+                          }}
+                          disabled={state.extraPages === 0}
                           className="w-10 h-10 rounded-lg border-2 border-border hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                         >
                           <Minus className="w-4 h-4" />
                         </button>
                         <span className="w-16 text-center font-bold text-lg">{state.extraPages}</span>
                         <button
-                          onClick={() => actions.setExtraPages(state.extraPages + 1)}
+                          type="button"
+                          onClick={() => {
+                            const next = state.extraPages + 1;
+                            actions.setExtraPages(next);
+                            if (next === 1) {
+                              const opt = scopeOptions.find((o) => o.id === 'extra-pages');
+                              if (opt && !state.selectedOptions.some((o) => o.id === 'extra-pages')) actions.toggleOption(opt);
+                            }
+                          }}
                           className="w-10 h-10 rounded-lg border-2 border-primary bg-primary text-white hover:bg-primary/90 flex items-center justify-center"
                         >
                           <Plus className="w-4 h-4" />
                         </button>
-                        {state.extraPages > 0 && (
-                          <span className="ml-2 font-semibold text-primary">
-                            Vanaf €{(state.extraPages * 100).toLocaleString('nl-BE')}
+{state.extraPages > 0 && (
+                            <span className="ml-2 font-semibold text-primary">
+                            €{(state.extraPages * 125).toLocaleString('nl-BE', { minimumFractionDigits: 2 })}
                           </span>
                         )}
                       </div>
                     </div>
+                    )}
 
-                    {scopeOptions.filter((o: PricingOption) => o.id !== 'extra-pages').map((option: PricingOption) => {
+                    {scopeOptions.filter((o: PricingOption) => getAddOnOptionsForPackage(selectedPackage).some((a) => a.id === o.id) && o.id !== 'extra-pages').map((option: PricingOption) => {
                       const isSelected = state.selectedOptions.some((o) => o.id === option.id);
-                      const isIncludedInPackage = selectedPackage && isOptionIncludedInPackage(option, selectedPackage);
                       return (
                         <div
                           key={option.id}
@@ -1086,20 +1109,13 @@ export default function QuoteBuilderClient({ leadId }: { leadId: string }) {
                               <div className="flex-1">
                                 <div className="font-semibold mb-1 flex items-center gap-2">
                                   {option.name}
-                                  {isSelected && isIncludedInPackage && (
-                                    <span className="text-xs font-normal bg-primary/15 text-primary px-2 py-0.5 rounded">
-                                      Inbegrepen in pakket
-                                    </span>
-                                  )}
                                 </div>
                                 {option.description && (
                                   <div className="text-sm text-muted-foreground">{option.description}</div>
                                 )}
                               </div>
                               <div className="flex items-center gap-3 ml-4">
-                                {isSelected && isIncludedInPackage ? (
-                                  <span className="text-xs text-muted-foreground">Inbegrepen</span>
-                                ) : option.price > 0 ? (
+                                {option.price > 0 ? (
                                   <span className="font-bold text-primary">
                                     Vanaf €{option.price.toLocaleString('nl-BE')}
                                   </span>
@@ -1213,9 +1229,8 @@ export default function QuoteBuilderClient({ leadId }: { leadId: string }) {
 
                 {expandedSections.has('complexity') && (
                   <div className="px-6 pb-6 space-y-3">
-                    {complexityOptions.map((option: PricingOption) => {
+                    {complexityOptions.filter((o: PricingOption) => getAddOnOptionsForPackage(selectedPackage).some((a) => a.id === o.id)).map((option: PricingOption) => {
                       const isSelected = state.selectedOptions.some((o) => o.id === option.id);
-                      const isIncludedInPackage = selectedPackage && isOptionIncludedInPackage(option, selectedPackage);
                       return (
                         <div
                           key={option.id}
@@ -1233,20 +1248,13 @@ export default function QuoteBuilderClient({ leadId }: { leadId: string }) {
                               <div className="flex-1">
                                 <div className="font-semibold mb-1 flex items-center gap-2">
                                   {option.name}
-                                  {isSelected && isIncludedInPackage && (
-                                    <span className="text-xs font-normal bg-primary/15 text-primary px-2 py-0.5 rounded">
-                                      Inbegrepen in pakket
-                                    </span>
-                                  )}
                                 </div>
                                 {option.description && (
                                   <div className="text-sm text-muted-foreground">{option.description}</div>
                                 )}
                               </div>
                               <div className="flex items-center gap-3 ml-4">
-                                {isSelected && isIncludedInPackage ? (
-                                  <span className="text-xs text-muted-foreground">Inbegrepen</span>
-                                ) : option.price > 0 ? (
+                                {option.price > 0 ? (
                                   <span className="font-bold text-primary">
                                     Vanaf €{option.price.toLocaleString('nl-BE')}
                                   </span>
@@ -1360,43 +1368,58 @@ export default function QuoteBuilderClient({ leadId }: { leadId: string }) {
 
                 {expandedSections.has('growth') && (
                   <div className="px-6 pb-6 space-y-3">
-                    {/* Content Creation Counter */}
-                    <div 
-                      className="relative flex items-center justify-between p-4 border-2 border-border rounded-lg bg-muted/30"
-                    >
+                    {/* Content creatie: quantity + optie in sync */}
+                    {getAddOnOptionsForPackage(selectedPackage).some((o) => o.id === 'content-creation') && (
+                    <div className="relative flex items-center justify-between p-4 border-2 border-border rounded-lg bg-muted/30">
                       <div>
                         <div className="font-semibold mb-1">Content creatie</div>
-                        <div className="text-sm text-muted-foreground">Vanaf €125 per pagina</div>
+                        <div className="text-sm text-muted-foreground">€125 per pagina</div>
                         <div className="text-xs text-muted-foreground/80 mt-1">
                           Professionele tekst schrijven voor pagina&apos;s of blog posts
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
                         <button
-                          onClick={() => actions.setContentPages(state.contentPages - 1)}
-                          disabled={contentPages === 0}
+                          type="button"
+                          onClick={() => {
+                            const next = Math.max(0, state.contentPages - 1);
+                            actions.setContentPages(next);
+                            if (next === 0) {
+                              const opt = growthOptions.find((o) => o.id === 'content-creation');
+                              if (opt && state.selectedOptions.some((o) => o.id === 'content-creation')) actions.toggleOption(opt);
+                            }
+                          }}
+                          disabled={state.contentPages === 0}
                           className="w-10 h-10 rounded-lg border-2 border-border hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                         >
                           <Minus className="w-4 h-4" />
                         </button>
                         <span className="w-16 text-center font-bold text-lg">{state.contentPages}</span>
                         <button
-                          onClick={() => actions.setContentPages(state.contentPages + 1)}
+                          type="button"
+                          onClick={() => {
+                            const next = state.contentPages + 1;
+                            actions.setContentPages(next);
+                            if (next === 1) {
+                              const opt = growthOptions.find((o) => o.id === 'content-creation');
+                              if (opt && !state.selectedOptions.some((o) => o.id === 'content-creation')) actions.toggleOption(opt);
+                            }
+                          }}
                           className="w-10 h-10 rounded-lg border-2 border-primary bg-primary text-white hover:bg-primary/90 flex items-center justify-center"
                         >
                           <Plus className="w-4 h-4" />
                         </button>
                         {state.contentPages > 0 && (
                           <span className="ml-2 font-semibold text-primary">
-                            Vanaf €{(state.contentPages * 125).toLocaleString('nl-BE')}
+                            €{(state.contentPages * 125).toLocaleString('nl-BE', { minimumFractionDigits: 2 })}
                           </span>
                         )}
                       </div>
                     </div>
+                    )}
 
-                    {growthOptions.filter((o: PricingOption) => o.id !== 'content-creation').map((option: PricingOption) => {
+                    {growthOptions.filter((o: PricingOption) => getAddOnOptionsForPackage(selectedPackage).some((a) => a.id === o.id) && o.id !== 'content-creation').map((option: PricingOption) => {
                       const isSelected = state.selectedOptions.some((o) => o.id === option.id);
-                      const isIncludedInPackage = selectedPackage && isOptionIncludedInPackage(option, selectedPackage);
                       return (
                         <div
                           key={option.id}
@@ -1414,20 +1437,13 @@ export default function QuoteBuilderClient({ leadId }: { leadId: string }) {
                               <div className="flex-1">
                                 <div className="font-semibold mb-1 flex items-center gap-2">
                                   {option.name}
-                                  {isSelected && isIncludedInPackage && (
-                                    <span className="text-xs font-normal bg-primary/15 text-primary px-2 py-0.5 rounded">
-                                      Inbegrepen in pakket
-                                    </span>
-                                  )}
                                 </div>
                                 {option.description && (
                                   <div className="text-sm text-muted-foreground">{option.description}</div>
                                 )}
                               </div>
                               <div className="flex items-center gap-3 ml-4">
-                                {isSelected && isIncludedInPackage ? (
-                                  <span className="text-xs text-muted-foreground">Inbegrepen</span>
-                                ) : option.price > 0 ? (
+                                {option.price > 0 ? (
                                   <span className="font-bold text-primary">
                                     Vanaf €{option.price.toLocaleString('nl-BE')}
                                   </span>
@@ -1542,7 +1558,25 @@ export default function QuoteBuilderClient({ leadId }: { leadId: string }) {
                 {expandedSections.has('maintenance') && (
                   <div className="px-6 pb-6 space-y-3">
                     {/* Maintenance Packages */}
-                    {maintenanceOptions.filter((opt: PricingOption) => opt.id.startsWith('maintenance-')).map((option: PricingOption) => {
+                    {/* Geen onderhoud: afvinken */}
+                    <button
+                      type="button"
+                      onClick={() => actions.setSelectedMaintenance(null)}
+                      className={`w-full p-4 border-2 rounded-lg text-left transition-all ${
+                        !selectedMaintenance ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold">Geen onderhoud</span>
+                        {!selectedMaintenance && (
+                          <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center">
+                            <Check className="w-4 h-4" />
+                          </div>
+                        )}
+                      </div>
+                    </button>
+
+                    {maintenanceOptions.filter((opt: PricingOption) => opt.id.startsWith('maintenance-') && getAddOnOptionsForPackage(selectedPackage).some((a) => a.id === opt.id)).map((option: PricingOption) => {
                       const isSelected = selectedMaintenance?.id === option.id;
                       return (
                         <div
@@ -1550,7 +1584,8 @@ export default function QuoteBuilderClient({ leadId }: { leadId: string }) {
                           className="relative"
                         >
                           <button
-                            onClick={() => actions.setSelectedMaintenance(option)}
+                            type="button"
+                            onClick={() => actions.setSelectedMaintenance(isSelected ? null : option)}
                             className={`w-full p-4 border-2 rounded-lg text-left transition-all ${
                               isSelected
                                 ? 'border-primary bg-primary/5'
@@ -1677,25 +1712,58 @@ export default function QuoteBuilderClient({ leadId }: { leadId: string }) {
             {/* Discount Section - Above Summary */}
             <div className="bg-card border-2 border-border rounded-lg p-4 space-y-3">
               <h3 className="text-sm font-semibold text-foreground">Korting</h3>
-              <div className="flex gap-2 items-center">
-                <Percent className="w-4 h-4 text-muted-foreground shrink-0" />
-                <select
-                  value={state.discount.type === 'percentage' ? state.discount.value : ''}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === '') {
-                      actions.setDiscount(null, 0);
-                    } else {
-                      actions.setDiscount('percentage', Number(val));
-                    }
-                  }}
-                  className="flex-1 px-3 py-2 border border-border rounded-lg text-sm bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="">Geen korting</option>
-                  {ALLOWED_DISCOUNT_PERCENTAGES.map((p) => (
-                    <option key={p} value={p}>{p}%</option>
-                  ))}
-                </select>
+              <div className="space-y-3">
+                <div className="flex gap-2 items-center">
+                  <Percent className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <select
+                    value={state.discount.type === null ? 'none' : state.discount.type}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === 'none') {
+                        actions.setDiscount(null, 0);
+                      } else if (val === 'percentage') {
+                        actions.setDiscount('percentage', 5);
+                      } else {
+                        actions.setDiscount('fixed', state.discount.type === 'fixed' ? state.discount.value : 0);
+                      }
+                    }}
+                    className="flex-1 px-3 py-2 border border-border rounded-lg text-sm bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="none">Geen korting</option>
+                    <option value="percentage">Percentage (max 15%)</option>
+                    <option value="fixed">Vast bedrag (€)</option>
+                  </select>
+                </div>
+                {state.discount.type === 'percentage' && (
+                  <div className="flex gap-2 items-center pl-6">
+                    <select
+                      value={state.discount.value}
+                      onChange={(e) => actions.setDiscount('percentage', Number(e.target.value))}
+                      className="flex-1 px-3 py-2 border border-border rounded-lg text-sm bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      {ALLOWED_DISCOUNT_PERCENTAGES.map((p) => (
+                        <option key={p} value={p}>{p}%</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {state.discount.type === 'fixed' && (
+                  <div className="flex gap-2 items-center pl-6">
+                    <span className="text-sm text-muted-foreground">€</span>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={state.discount.value === 0 ? '' : state.discount.value}
+                      onChange={(e) => {
+                        const v = e.target.value === '' ? 0 : Math.max(0, Number(e.target.value));
+                        actions.setDiscount('fixed', v);
+                      }}
+                      placeholder="0"
+                      className="flex-1 px-3 py-2 border border-border rounded-lg text-sm bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 

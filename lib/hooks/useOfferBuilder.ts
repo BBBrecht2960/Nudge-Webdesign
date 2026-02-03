@@ -1,13 +1,11 @@
 import { useState, useCallback, useMemo } from 'react';
-import {
-  getOptionsForPackage,
-  isOptionIncludedInPackage,
-  type PricingPackage,
-  type PricingOption,
-} from '@/lib/pricing';
+import type { PricingPackage, PricingOption } from '@/lib/pricing';
 
-/** Alleen deze kortingspercentages zijn toegestaan (dropdown). */
-export const ALLOWED_DISCOUNT_PERCENTAGES = [5, 10, 15, 20, 25, 30] as const;
+const EXTRA_PAGES_PRICE = 125;
+const CONTENT_PAGE_PRICE = 125;
+
+/** Alleen deze kortingspercentages zijn toegestaan (max 15%). */
+export const ALLOWED_DISCOUNT_PERCENTAGES = [5, 10, 15] as const;
 
 /** Betalingsschema: wanneer betaald de klant. */
 export type PaymentSchedule = 'once' | 'twice_25' | 'thrice_33';
@@ -20,9 +18,10 @@ export const PAYMENT_SCHEDULE_OPTIONS: { value: PaymentSchedule; label: string }
 
 function normalizeDiscountPercentage(value: number): number {
   if (value <= 0) return 0;
+  const capped = Math.min(value, 15);
   const allowed = [...ALLOWED_DISCOUNT_PERCENTAGES];
   const nearest = allowed.reduce((prev, curr) =>
-    Math.abs(curr - value) < Math.abs(prev - value) ? curr : prev
+    Math.abs(curr - capped) < Math.abs(prev - capped) ? curr : prev
   );
   return nearest;
 }
@@ -92,14 +91,11 @@ export function useOfferBuilder() {
   const [state, setState] = useState<OfferBuilderState>(initialState);
 
   const setSelectedPackage = useCallback((pkg: PricingPackage | null) => {
-    setState((prev) => {
-      const packageOptions = pkg ? getOptionsForPackage(pkg) : [];
-      return {
-        ...prev,
-        selectedPackage: pkg,
-        selectedOptions: packageOptions,
-      };
-    });
+    setState((prev) => ({
+      ...prev,
+      selectedPackage: pkg,
+      selectedOptions: [],
+    }));
   }, []);
 
   const toggleOption = useCallback((option: PricingOption) => {
@@ -233,66 +229,53 @@ export function useOfferBuilder() {
     });
   }, []);
 
-  // Calculate subtotal before discount (excluding VAT)
+  // Één duidelijke berekening: pakket + add-ons (geen dubbels), onderhoud, extra regels. Alles afronden op 2 decimalen.
   const subtotalBeforeDiscount = useMemo(() => {
-    let total = 0;
-
+    let sum = 0;
     if (state.selectedPackage) {
-      total += state.selectedPackage.basePrice;
+      sum += state.selectedPackage.basePrice;
     }
-
     state.selectedOptions.forEach((option) => {
-      if (state.selectedPackage && isOptionIncludedInPackage(option, state.selectedPackage)) {
-        return;
-      }
-      const price = state.customPrices[option.id] ?? option.price;
-      if (price > 0) {
-        total += price;
+      if (option.id === 'extra-pages') {
+        const qty = Math.max(0, state.extraPages) || 1;
+        sum += qty * EXTRA_PAGES_PRICE;
+      } else if (option.id === 'content-creation') {
+        const qty = Math.max(0, state.contentPages) || 1;
+        sum += qty * CONTENT_PAGE_PRICE;
+      } else {
+        const price = state.customPrices[option.id] ?? option.price;
+        sum += Math.max(0, price);
       }
     });
-
-    // Extra pages
-    total += state.extraPages * 125; // Updated price
-
-    // Content pages
-    total += state.contentPages * 125;
-
-    // Maintenance (first month for quote)
     if (state.selectedMaintenance) {
-      total += state.selectedMaintenance.price;
+      sum += state.selectedMaintenance.price;
     }
-
-    // Custom line items
     state.customLineItems.forEach((item) => {
-      total += item.price;
+      sum += Math.max(0, item.price);
     });
-
-    return total;
+    return Math.round(sum * 100) / 100;
   }, [state]);
 
-  // Calculate discount amount
   const discountAmount = useMemo(() => {
     if (state.discount.type === 'percentage') {
-      return subtotalBeforeDiscount * (state.discount.value / 100);
-    } else if (state.discount.type === 'fixed') {
-      return Math.min(state.discount.value, subtotalBeforeDiscount);
+      return Math.round((subtotalBeforeDiscount * (state.discount.value / 100)) * 100) / 100;
+    }
+    if (state.discount.type === 'fixed') {
+      return Math.round(Math.min(state.discount.value, subtotalBeforeDiscount) * 100) / 100;
     }
     return 0;
   }, [state.discount, subtotalBeforeDiscount]);
 
-  // Calculate subtotal after discount (excluding VAT)
   const subtotal = useMemo(() => {
-    return Math.max(0, subtotalBeforeDiscount - discountAmount);
+    return Math.round(Math.max(0, subtotalBeforeDiscount - discountAmount) * 100) / 100;
   }, [subtotalBeforeDiscount, discountAmount]);
 
-  // Calculate VAT (21% in Belgium)
   const vat = useMemo(() => {
-    return subtotal * 0.21;
+    return Math.round(subtotal * 0.21 * 100) / 100;
   }, [subtotal]);
 
-  // Calculate total (including VAT)
   const total = useMemo(() => {
-    return subtotal + vat;
+    return Math.round((subtotal + vat) * 100) / 100;
   }, [subtotal, vat]);
 
 
