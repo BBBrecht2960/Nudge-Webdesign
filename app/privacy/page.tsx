@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'Privacybeleid - Nudge Webdesign',
+  title: 'Privacybeleid - Nudge',
   description: 'Privacybeleid en GDPR informatie voor onze website.',
 };
 

@@ -20,22 +20,22 @@ export default function ThanksPage() {
           <CheckCircle2 className="w-10 h-10 text-green-600" />
         </div>
         <h1 className="text-4xl md:text-5xl font-bold mb-4">
-          Bedankt voor je aanvraag!
+          Bedankt
         </h1>
         <p className="text-xl text-muted-foreground mb-8">
-          We hebben je aanvraag ontvangen en nemen zo snel mogelijk contact met je op. Meestal reageren we binnen 24 uur.
+          We hebben je bericht ontvangen en nemen contact op voor een gesprek.
         </p>
         <div className="space-y-4">
           <p className="text-muted-foreground">
-            In de tussentijd kunt u meer lezen over onze diensten en pakketten.
+            Meer lezen over onze aanpak of mogelijkheden?
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
-              onClick={() => router.push('/pakketten')}
+              onClick={() => router.push('/proces')}
               variant="outline"
               size="lg"
             >
-              Bekijk pakketten
+              Ons proces
             </Button>
             <Button
               onClick={() => router.push('/')}

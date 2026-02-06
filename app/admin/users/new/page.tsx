@@ -1,44 +1,93 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Mail, User, MapPin, Phone, CreditCard, Users, ShieldCheck } from 'lucide-react';
 import { Button } from '@/app/components/Button';
 import { Field, Input, Textarea, Section } from '../_form-fields';
 
+const EMPTY_FORM = {
+  email: '',
+  password: '',
+  full_name: '',
+  first_name: '',
+  gender: '' as '' | 'M' | 'V' | 'X',
+  birth_date: '',
+  birth_place: '',
+  nationality: '',
+  rijksregisternummer: '',
+  address: '',
+  postal_code: '',
+  city: '',
+  country: 'België',
+  gsm: '',
+  phone: '',
+  iban: '',
+  bic: '',
+  bank_name: '',
+  account_holder: '',
+  emergency_contact_name: '',
+  emergency_contact_relation: '',
+  emergency_contact_phone: '',
+  can_leads: true,
+  can_customers: true,
+  can_analytics: false,
+  can_manage_users: false,
+};
+
+function isFormDirty(form: typeof EMPTY_FORM): boolean {
+  return (
+    form.email !== '' ||
+    form.password !== '' ||
+    form.full_name !== '' ||
+    form.first_name !== '' ||
+    form.gender !== '' ||
+    form.birth_date !== '' ||
+    form.birth_place !== '' ||
+    form.nationality !== '' ||
+    form.rijksregisternummer !== '' ||
+    form.address !== '' ||
+    form.postal_code !== '' ||
+    form.city !== '' ||
+    (form.country !== '' && form.country !== 'België') ||
+    form.gsm !== '' ||
+    form.phone !== '' ||
+    form.iban !== '' ||
+    form.bic !== '' ||
+    form.bank_name !== '' ||
+    form.account_holder !== '' ||
+    form.emergency_contact_name !== '' ||
+    form.emergency_contact_relation !== '' ||
+    form.emergency_contact_phone !== ''
+  );
+}
+
 export default function NewAdminUserPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState({
-    email: 'emiclalferarano@gmail.com',
-    password: '',
-    full_name: 'Emiel',
-    first_name: 'Alfarano',
-    gender: 'M' as '' | 'M' | 'V' | 'X',
-    birth_date: '23/04/2004',
-    birth_place: 'Hasselt',
-    nationality: 'Belgische',
-    rijksregisternummer: '04042317948',
-    address: 'Weg naar Bijloos 16',
-    postal_code: '3530',
-    city: 'Houthalen',
-    country: 'België',
-    gsm: '+32487317229',
-    phone: '011 23 45 67',
-    iban: 'BE25303147880782',
-    bic: 'BBAUBEBB',
-    bank_name: 'ING',
-    account_holder: 'Emiel Alfarano',
-    emergency_contact_name: 'Test',
-    emergency_contact_relation: 'Test',
-    emergency_contact_phone: '044',
-    can_leads: true,
-    can_customers: true,
-    can_analytics: false,
-    can_manage_users: false,
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
+  const savedSuccessfully = useRef(false);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!savedSuccessfully.current && isFormDirty(form)) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [form]);
+
+  const handleLeave = (e: React.MouseEvent, href: string) => {
+    if (!savedSuccessfully.current && isFormDirty(form)) {
+      e.preventDefault();
+      if (window.confirm('Er staan nog gegevens in het formulier. Weet je zeker dat je wilt sluiten? Niet-opgeslagen gegevens gaan verloren.')) {
+        router.push(href);
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,6 +135,7 @@ export default function NewAdminUserPage() {
         setError([data.error, detailMsg].filter(Boolean).join(' — ') || 'Fout bij aanmaken gebruiker');
         return;
       }
+      savedSuccessfully.current = true;
       if (data.id) {
         router.replace(`/admin/users/${data.id}`);
         return;
@@ -103,7 +153,18 @@ export default function NewAdminUserPage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 w-full">
       <div className="mb-6">
-        <Link href="/admin/users" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <Link
+          href="/admin/users"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          onClick={(e) => {
+            if (!savedSuccessfully.current && isFormDirty(form)) {
+              e.preventDefault();
+              if (window.confirm('Er staan nog gegevens in het formulier. Weet je zeker dat je wilt sluiten? Niet-opgeslagen gegevens gaan verloren.')) {
+                router.push('/admin/users');
+              }
+            }
+          }}
+        >
           <ArrowLeft className="w-4 h-4" />
           Terug naar gebruikersbeheer
         </Link>
@@ -265,7 +326,19 @@ export default function NewAdminUserPage() {
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? 'Bezig...' : 'Gebruiker aanmaken'}
           </Button>
-          <Button type="button" variant="outline" onClick={() => router.push('/admin/users')}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              if (!savedSuccessfully.current && isFormDirty(form)) {
+                if (window.confirm('Er staan nog gegevens in het formulier. Weet je zeker dat je wilt annuleren? Niet-opgeslagen gegevens gaan verloren.')) {
+                  router.push('/admin/users');
+                }
+              } else {
+                router.push('/admin/users');
+              }
+            }}
+          >
             Annuleren
           </Button>
         </div>

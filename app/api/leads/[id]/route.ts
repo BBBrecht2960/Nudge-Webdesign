@@ -3,6 +3,9 @@ import { createClient } from '@supabase/supabase-js';
 import { secureAdminRoute } from '@/lib/api-security';
 
 const allowedLeadUpdateKeys = [
+  'name',
+  'email',
+  'phone',
   'status',
   'company_name',
   'vat_number',

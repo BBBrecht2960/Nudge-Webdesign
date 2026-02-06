@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import { generateQuotePdfBlob, type ApprovedQuoteData } from '@/lib/quotePdf';
 
-type CustomerTabId = 'overview' | 'offerte' | 'updates' | 'activiteiten' | 'bijlagen';
+type CustomerTabId = 'overview' | 'updates_activiteiten' | 'offerte_bijlagen';
 
 function CustomerDetailClientInner({ customerId }: { customerId: string }) {
   const router = useRouter();

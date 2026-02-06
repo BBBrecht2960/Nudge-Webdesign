@@ -2,7 +2,7 @@ export function StructuredData() {
   const businessData = {
     '@context': 'https://schema.org',
     '@type': 'LocalBusiness',
-    name: 'Nudge Webdesign',
+    name: 'Nudge',
     legalName: 'Almost 3000 BV',
     taxID: 'BE 1007.673.513',
     address: {
@@ -15,7 +15,7 @@ export function StructuredData() {
     telephone: process.env.NEXT_PUBLIC_BUSINESS_PHONE || '',
     email: 'info@example.com', // UPDATE THIS - vervang met echt e-mailadres
     url: process.env.NEXT_PUBLIC_SITE_URL || 'https://yourwebsite.com',
-    description: 'Nudge Webdesign - Webdesign op maat tegen een eerlijke prijs. Websites die voor jou werken en meegroeien met je business.',
+    description: 'Nudge bouwt digitale systemen op maat waar bedrijven op kunnen draaien. Niet alleen een website, maar een systeem dat meewerkt. Hasselt, België.',
     areaServed: {
       '@type': 'Country',
       name: 'Belgium',

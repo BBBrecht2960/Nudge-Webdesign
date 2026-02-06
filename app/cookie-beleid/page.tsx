@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Cookiebeleid - Nudge Webdesign',
+  title: 'Cookiebeleid - Nudge',
   description: 'Cookiebeleid en informatie over het gebruik van cookies op onze website.',
 };
 

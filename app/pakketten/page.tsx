@@ -13,8 +13,8 @@ import {
 import { Button } from '@/app/components/Button';
 
 export const metadata: Metadata = {
-  title: 'Pakketten & Prijzen - Nudge Webdesign',
-  description: 'Bekijk onze website, webshop en webapp pakketten. Van eenvoudige one-pager tot uitgebreide KMO-website. Transparante prijzen vanaf €300.',
+  title: 'Pakketten & Prijzen - Nudge',
+  description: 'Waarmee we kunnen starten: websites, webshops, webapps. Van eenvoudige presentatie tot maatwerk. Transparante prijzen; na een gesprek bepalen we samen wat past.',
 };
 
 export default function PakkettenPage() {
@@ -24,13 +24,13 @@ export default function PakkettenPage() {
       <div className="bg-gradient-to-b from-primary/10 via-white to-muted/30 py-16 sm:py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 leading-tight">
-            Pakketten & Prijzen
+            Waarmee we kunnen starten
           </h1>
           <p className="text-lg sm:text-xl text-muted-foreground mb-2">
             Helder geprijsd. Geen verrassingen.
           </p>
           <p className="text-muted-foreground/90 max-w-2xl mx-auto">
-            Kies het pakket dat bij je past – van eenvoudige one-pager tot uitgebreide webapp. Alle prijzen zijn vanaf-bedragen; wat je ziet is waar we op starten.
+            Van eenvoudige presentatie tot uitgebreid systeem. Alle prijzen zijn vanaf-bedragen. Na een gesprek bepalen we samen wat het beste past bij je situatie.
           </p>
         </div>
       </div>
@@ -44,7 +44,7 @@ export default function PakkettenPage() {
             </div>
             <div>
               <h2 className="text-2xl sm:text-3xl font-bold">Website Pakketten</h2>
-              <p className="text-muted-foreground text-sm sm:text-base">Websites die werken, zonder gedoe</p>
+              <p className="text-muted-foreground text-sm sm:text-base">Van presentatie tot uitgebreide bedrijfsite</p>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
@@ -124,7 +124,7 @@ export default function PakkettenPage() {
             </div>
             <div>
               <h2 className="text-2xl sm:text-3xl font-bold">Webshop Pakketten</h2>
-              <p className="text-muted-foreground text-sm sm:text-base">E-commerce die verkoopt</p>
+              <p className="text-muted-foreground text-sm sm:text-base">Verkoopsystemen die schalen</p>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
@@ -191,14 +191,14 @@ export default function PakkettenPage() {
             <h3 className="text-xl sm:text-2xl font-bold mb-2">Custom Webapplicaties</h3>
             <p className="text-2xl font-bold text-primary mb-4">Vanaf €4.999</p>
             <p className="text-muted-foreground mb-4">
-              Custom webapplicaties voor specifieke bedrijfsprocessen. Intake gesprek vereist voor offerte op maat.
+              Op maat gebouwde systemen voor processen, data en automatisering. We bepalen samen scope en prijs na een intake.
             </p>
             <p className="text-sm text-muted-foreground mb-6">
-              Neem contact op voor een intake gesprek om uw behoeften te bespreken.
+              Plan een gesprek om je behoeften te bespreken; we geven daarna een concreet voorstel.
             </p>
             <Link href="/contact">
               <Button size="lg" className="w-full sm:w-auto">
-                Plan intake gesprek <ArrowRight className="w-4 h-4 ml-2 inline" />
+                Plan een gesprek <ArrowRight className="w-4 h-4 ml-2 inline" />
               </Button>
             </Link>
           </div>
@@ -209,12 +209,11 @@ export default function PakkettenPage() {
           <div className="bg-white border-2 border-border rounded-2xl p-6 sm:p-8 lg:p-10 shadow-lg max-w-3xl mx-auto text-center">
             <h2 className="text-xl sm:text-2xl font-bold mb-3">Extra opties beschikbaar</h2>
             <p className="text-muted-foreground mb-6">
-              Wil je extra pagina&apos;s, een blog, multi-language, integraties of marketing? 
-              We bespreken graag wat je nodig hebt en geven een offerte op maat.
+              Extra pagina&apos;s, blog, meertaligheid, koppelingen of uitbreiding? We bespreken wat je nodig hebt en geven een concreet voorstel.
             </p>
             <Link href="/contact">
               <Button variant="outline" size="lg" className="w-full sm:w-auto">
-                Vraag een offerte aan <ArrowRight className="w-4 h-4 ml-2 inline" />
+                Plan een gesprek <ArrowRight className="w-4 h-4 ml-2 inline" />
               </Button>
             </Link>
           </div>
@@ -222,13 +221,13 @@ export default function PakkettenPage() {
 
         {/* Eind-CTA */}
         <div className="bg-gradient-to-r from-primary/10 to-secondary/10 border-2 border-primary/20 rounded-2xl p-8 sm:p-10 lg:p-12 text-center">
-          <h3 className="text-xl sm:text-2xl font-bold mb-2">Niet zeker welk pakket bij je past?</h3>
+          <h3 className="text-xl sm:text-2xl font-bold mb-2">Niet zeker wat bij je situatie past?</h3>
           <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
-            Plan een gratis gesprek. We denken graag met je mee – zonder verplichtingen.
+            Plan een gesprek. We luisteren naar je situatie en geven aan wat mogelijk is, zonder verplichtingen.
           </p>
           <Link href="/contact">
             <Button size="lg">
-              Plan een gratis gesprek <ArrowRight className="w-4 h-4 ml-2 inline" />
+              Plan een gesprek <ArrowRight className="w-4 h-4 ml-2 inline" />
             </Button>
           </Link>
         </div>

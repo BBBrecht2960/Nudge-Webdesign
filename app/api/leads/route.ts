@@ -4,8 +4,8 @@ import { checkRateLimit, getClientIP, getRateLimitHeaders, isValidEmail, isValid
 import { requireAdminPermission } from '@/lib/api-security';
 import * as z from 'zod';
 
-// GET: List leads (admin only, requires can_leads)
-export async function GET() {
+// GET: List leads (admin only, requires can_leads). Query: status, assigned_to, source, sort, order, include_last_activity.
+export async function GET(request: NextRequest) {
   const authResult = await requireAdminPermission('can_leads');
   if ('error' in authResult) return authResult.error;
 
@@ -15,17 +15,81 @@ export async function GET() {
     return NextResponse.json({ error: 'Database niet geconfigureerd' }, { status: 500 });
   }
 
+  const { searchParams } = new URL(request.url);
+  const statusFilter = searchParams.get('status') || '';
+  const assignedTo = searchParams.get('assigned_to') || '';
+  const sourceFilter = searchParams.get('source') || '';
+  const sortBy = searchParams.get('sort') || 'created_at';
+  const order = (searchParams.get('order') || 'desc') as 'asc' | 'desc';
+  const includeLastActivity = searchParams.get('include_last_activity') === '1';
+
   const supabase = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
-  const { data, error } = await supabase
-    .from('leads')
-    .select('*')
-    .order('created_at', { ascending: false });
+
+  let query = supabase.from('leads').select('*');
+
+  if (statusFilter && statusFilter !== 'all') {
+    query = query.eq('status', statusFilter);
+  }
+  if (assignedTo === '__none__') {
+    query = query.or('assigned_to.is.null,assigned_to.eq.');
+  } else if (assignedTo) {
+    query = query.eq('assigned_to', assignedTo);
+  }
+  if (sourceFilter && sourceFilter !== 'all') {
+    if (sourceFilter === 'website') {
+      query = query.or('referrer.not.is.null,landing_path.not.is.null');
+    } else if (sourceFilter === 'manual') {
+      query = query.is('referrer', null).is('landing_path', null);
+    }
+  }
+
+  const validSortColumns: Record<string, string> = {
+    created_at: 'created_at',
+    name: 'name',
+    status: 'status',
+    company_name: 'company_name',
+    email: 'email',
+  };
+  const sortColumn = validSortColumns[sortBy] || 'created_at';
+  query = query.order(sortColumn, { ascending: order === 'asc' });
+
+  const { data: leads, error } = await query;
 
   if (error) {
     console.error('Error fetching leads:', error);
     return NextResponse.json({ error: 'Fout bij ophalen leads' }, { status: 500 });
   }
-  return NextResponse.json(data ?? []);
+
+  const list = leads ?? [];
+
+  if (!includeLastActivity || list.length === 0) {
+    return NextResponse.json(list);
+  }
+
+  const leadIds = list.map((l: { id: string }) => l.id);
+  const { data: activities } = await supabase
+    .from('lead_activities')
+    .select('lead_id, title, created_at')
+    .in('lead_id', leadIds)
+    .order('created_at', { ascending: false });
+
+  const lastByLead: Record<string, { title: string; created_at: string }> = {};
+  for (const a of activities ?? []) {
+    const lid = (a as { lead_id: string }).lead_id;
+    if (!lastByLead[lid]) {
+      lastByLead[lid] = {
+        title: (a as { title: string | null }).title ?? '',
+        created_at: (a as { created_at: string }).created_at,
+      };
+    }
+  }
+
+  const enriched = list.map((lead: { id: string }) => ({
+    ...lead,
+    last_activity: lastByLead[lead.id] ?? null,
+  }));
+
+  return NextResponse.json(enriched);
 }
 
 // Strict validation schema for lead submission

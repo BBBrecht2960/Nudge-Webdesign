@@ -18,24 +18,24 @@ const spaceGrotesk = Space_Grotesk({
 
 export const metadata: Metadata = {
   title: {
-    default: "Nudge Webdesign - Websites die voor jou werken",
-    template: "%s | Nudge Webdesign",
+    default: "Nudge - Digitale systemen op maat voor bedrijven",
+    template: "%s | Nudge",
   },
-  description: "Webdesign op maat tegen een eerlijke prijs. Websites die voor jou werken en meegroeien met je business. Moderne technologie voor Belgische KMO's.",
-  keywords: ["website", "webshop", "webdesign", "Nudge Webdesign", "België", "KMO", "SEO", "online marketing", "Hasselt"],
-  authors: [{ name: "Nudge Webdesign" }],
+  description: "Nudge bouwt digitale systemen op maat waar bedrijven op kunnen draaien. Niet alleen een website, maar een systeem dat meewerkt. Van analyse tot bouw en uitbreiding. Hasselt, België.",
+  keywords: ["digitaal systeem", "bedrijfssystemen", "webapplicaties", "Nudge", "België", "KMO", "automatisering", "Hasselt", "op maat"],
+  authors: [{ name: "Nudge" }],
   openGraph: {
     type: "website",
     locale: "nl_BE",
     url: process.env.NEXT_PUBLIC_SITE_URL || "https://yourwebsite.com",
-    siteName: "Nudge Webdesign",
-    title: "Nudge Webdesign - Websites die voor jou werken",
-    description: "Webdesign op maat tegen een eerlijke prijs. Websites die voor jou werken en meegroeien met je business.",
+    siteName: "Nudge",
+    title: "Nudge - Digitale systemen op maat voor bedrijven",
+    description: "Nudge bouwt digitale systemen op maat waar bedrijven op kunnen draaien. Niet alleen een website, maar een systeem dat meewerkt.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Nudge Webdesign - Websites die voor jou werken",
-    description: "Webdesign op maat tegen een eerlijke prijs. Websites die voor jou werken en meegroeien met je business.",
+    title: "Nudge - Digitale systemen op maat voor bedrijven",
+    description: "Nudge bouwt digitale systemen op maat waar bedrijven op kunnen draaien. Niet alleen een website, maar een systeem dat meewerkt.",
   },
   robots: {
     index: true,

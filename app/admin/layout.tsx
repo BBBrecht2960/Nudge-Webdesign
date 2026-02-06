@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Button } from '../components/Button';
-import { LogOut, LayoutDashboard, Users, BarChart3, Menu, X, Briefcase, Moon, Sun, Plus, UserCog } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, BarChart3, Menu, X, Briefcase, Moon, Sun, Plus, UserCog, Phone } from 'lucide-react';
 
 type AdminPermissions = {
   can_leads: boolean;
@@ -96,18 +96,16 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center min-w-0">
-              <div className="flex-shrink-0 flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="flex-shrink-0 flex items-center min-w-0">
                 <Image
-                  src="/Nudge websdesign & marketing Hasselt logo.png"
+                  src="/Nudge Webdesign & Marketing logo no background.png"
                   loading="eager"
                   alt="Nudge Webdesign"
-                  width={40}
-                  height={40}
-                  className="object-contain shrink-0"
-                  style={{ background: 'transparent' }}
+                  width={140}
+                  height={44}
+                  className="object-contain shrink-0 h-10 max-w-[160px]"
+                  style={{ background: 'transparent', width: 'auto', height: 'auto' }}
                 />
-                <h1 className="text-lg sm:text-xl font-bold break-words hidden sm:block">Beheerpaneel</h1>
-                <h1 className="text-base font-bold break-words sm:hidden">Beheer</h1>
               </div>
               <div className="hidden lg:ml-6 lg:flex lg:space-x-4 xl:space-x-8">
                 <a
@@ -122,17 +120,30 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                   Overzicht
                 </a>
                 {permissions?.can_leads && (
-                  <Link
-                    href="/admin/leads"
-                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium whitespace-nowrap ${
-                      pathname === '/admin/leads' || pathname?.startsWith('/admin/leads/')
-                        ? 'border-primary text-foreground'
-                        : 'border-transparent text-muted-foreground hover:border-gray-300 hover:text-foreground'
-                    }`}
-                  >
-                    <Users className="w-4 h-4 mr-2 shrink-0" />
-                    Leads
-                  </Link>
+                  <>
+                    <Link
+                      href="/admin/leads"
+                      className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium whitespace-nowrap ${
+                        pathname === '/admin/leads' || pathname?.startsWith('/admin/leads/')
+                          ? 'border-primary text-foreground'
+                          : 'border-transparent text-muted-foreground hover:border-gray-300 hover:text-foreground'
+                      }`}
+                    >
+                      <Users className="w-4 h-4 mr-2 shrink-0" />
+                      Leads
+                    </Link>
+                    <Link
+                      href="/admin/leads?preset=new"
+                      className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium whitespace-nowrap ${
+                        pathname === '/admin/leads' && searchParams.get('preset') === 'new'
+                          ? 'border-primary text-foreground'
+                          : 'border-transparent text-muted-foreground hover:border-gray-300 hover:text-foreground'
+                      }`}
+                    >
+                      <Phone className="w-4 h-4 mr-2 shrink-0" />
+                      Bellen
+                    </Link>
+                  </>
                 )}
                 {permissions?.can_customers && (
                   <Link
@@ -242,6 +253,16 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                     <div className="flex items-center">
                       <Users className="w-4 h-4 mr-2" />
                       Leads
+                    </div>
+                  </Link>
+                  <Link
+                    href="/admin/leads?preset=new"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block px-4 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    <div className="flex items-center">
+                      <Phone className="w-4 h-4 mr-2" />
+                      Bellen (nieuwe leads)
                     </div>
                   </Link>
                   <Link

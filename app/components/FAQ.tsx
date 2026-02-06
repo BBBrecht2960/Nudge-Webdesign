@@ -6,83 +6,42 @@ import { track } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
 
 const faqs = [
-  {
-    question: 'Hoe lang duurt het?',
-    answer: '2 weken tot 2 maanden, afhankelijk van de scope. Een eenvoudige one-pager kan binnen 2 weken klaar zijn.',
-  },
-  {
-    question: 'Wat kost een website?',
-    answer: 'Vanaf €399 voor een Mini Website, €699 voor een Standard Website, en €2.499 voor een Extended Website. Webshops vanaf €1.499, webapps vanaf €4.999.',
-  },
-  {
-    question: 'Moet ik een onderhoudsplan afnemen?',
-    answer: 'Onderhoud is inbegrepen vanaf €19,99/maand. Dit omvat updates, backups, beveiliging en support.',
-  },
-  {
-    question: 'Kunnen jullie mijn oude WordPress site overnemen?',
-    answer: 'Ja, we kunnen bestaande WordPress-sites migreren naar een moderne oplossing.',
-  },
-  {
-    question: 'Werken jullie met webshops?',
-    answer: 'Ja, webshops vanaf €2.000. Van eenvoudig tot complex.',
-  },
-  {
-    question: 'Wat is het verschil tussen de pakketten?',
-    answer: 'Mini: 1 pagina. Standard: 5-10 pagina\'s. Extended: onbeperkt aantal pagina\'s met custom design.',
-  },
-  {
-    question: 'Bieden jullie SEO/marketing aan?',
-    answer: 'Ja, optioneel vanaf €99/maand voor SEO, content en online marketing.',
-  },
-  {
-    question: 'Kunnen we later uitbreiden?',
-    answer: 'Ja, je kunt later eenvoudig uitbreiden met extra pagina\'s of functionaliteiten.',
-  },
+  { question: 'Wat bedoelen jullie met een digitaal systeem?', answer: 'Een geïntegreerd geheel: front-end (wat klanten zien), back-end (logica, data), automatisering en waar nodig koppelingen. Niet alleen een website, maar iets waar je dagelijks op draait: verkoop, processen, overzicht.' },
+  { question: 'Hoe lang duurt een project?', answer: 'Van 2 weken tot enkele maanden, afhankelijk van de scope. Na een intake of analyse geven we een concreet tijdsbeeld.' },
+  { question: 'Werken jullie met bestaande systemen?', answer: 'Ja. We kunnen bestaande sites of tools migreren of koppelen. Geen lock-in: je data en processen blijven beheersbaar.' },
+  { question: 'Wie is de eigenaar van de data?', answer: 'Jij. Klantdata wordt niet gebruikt voor training van AI of andere doeleinden. We bouwen volgens duidelijke afspraken over rechten en toegang.' },
+  { question: 'Moet ik onderhoud afnemen?', answer: 'Voor veiligheid en updates raden we onderhoud aan (vanaf €19,99/maand). De exacte invulling stemmen we af op je situatie.' },
+  { question: 'Hoe starten we?', answer: 'Met een gesprek: we luisteren naar je situatie en doelen, en geven aan wat mogelijk is. Geen verkooppraatje, wel een heldere diagnose en opties.' },
 ];
 
-export function FAQ() {
+export function FAQ({ className }: { className?: string }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
-  const toggleFAQ = (index: number) => {
-    if (openIndex === index) {
-      setOpenIndex(null);
-    } else {
+  const toggle = (index: number) => {
+    if (openIndex === index) setOpenIndex(null);
+    else {
       setOpenIndex(index);
       track('faq_expanded', { faq_question: faqs[index].question });
     }
   };
 
   return (
-    <section className="snap-start min-h-[70vh] flex items-center py-14 sm:py-16 px-5 sm:px-6 lg:px-8 bg-muted w-full min-w-0 overflow-hidden">
-      <div className="max-w-3xl mx-auto min-w-0">
-        <div className="mb-6 sm:mb-8">
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 break-words px-0.5">
-            Veelgestelde vragen
-          </h2>
-        </div>
-
-        <div className="space-y-3 min-w-0">
-          {faqs.map((faq, index) => (
-            <div
-              key={index}
-              className="bg-white border border-border rounded-xl overflow-hidden min-w-0 shadow-sm"
-            >
+    <section className={cn('py-12 md:py-16', className)}>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 w-full min-w-0 text-center">
+        <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-8">Veelgestelde vragen</h2>
+        <div className="space-y-3 max-w-2xl mx-auto">
+          {faqs.map((faq, i) => (
+            <div key={i} className="rounded-xl border border-border bg-white overflow-hidden">
               <button
-                onClick={() => toggleFAQ(index)}
-                className="w-full p-4 min-h-[52px] sm:p-5 text-left flex items-center justify-between gap-3 hover:bg-muted active:bg-muted/80 transition-colors group min-w-0 touch-manipulation"
+                type="button"
+                onClick={() => toggle(i)}
+                className="w-full p-4 text-left flex items-center justify-between gap-3 hover:bg-muted/50 transition-colors"
               >
-                <span className="font-medium text-sm sm:text-base pr-2 sm:pr-4 break-words text-left min-w-0">
-                  {faq.question}
-                </span>
-                <ChevronDown
-                  className={cn(
-                    'w-5 h-5 flex-shrink-0 transition-transform text-muted-foreground shrink-0',
-                    openIndex === index && 'rotate-180'
-                  )}
-                />
+                <span className="font-medium text-sm text-foreground">{faq.question}</span>
+                <ChevronDown className={cn('w-5 h-5 shrink-0 text-muted-foreground transition-transform', openIndex === i && 'rotate-180')} />
               </button>
-              {openIndex === index && (
-                <div className="px-4 sm:px-5 pb-4 sm:pb-5 text-muted-foreground leading-relaxed text-sm border-t border-border pt-4 break-words min-w-0">
+              {openIndex === i && (
+                <div className="px-4 pb-4 text-sm text-muted-foreground border-t border-border pt-3">
                   {faq.answer}
                 </div>
               )}

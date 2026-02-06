@@ -126,13 +126,13 @@ export function LeadForm() {
 
   if (submitSuccess) {
     return (
-      <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 text-center">
-        <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-          <CheckCircle2 className="w-8 h-8 text-green-600" />
+      <div className="bg-white border border-border rounded-xl p-6 sm:p-8 text-center max-w-2xl mx-auto">
+        <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4 text-primary">
+          <CheckCircle2 className="w-7 h-7" />
         </div>
-        <h3 className="text-2xl font-bold mb-2">Bedankt!</h3>
-        <p className="text-muted-foreground">
-          We hebben je aanvraag ontvangen en nemen zo snel mogelijk contact met je op.
+        <h3 className="text-xl font-bold text-foreground mb-2">Bedankt!</h3>
+        <p className="text-sm text-muted-foreground">
+          We hebben je bericht ontvangen en nemen contact op voor een gesprek.
         </p>
       </div>
     );
@@ -142,11 +142,11 @@ export function LeadForm() {
     <form
       id="contact-form"
       onSubmit={handleSubmit(onSubmit)}
-      className="bg-card border-2 border-border rounded-2xl p-4 sm:p-5 md:p-6 space-y-4 sm:space-y-5 shadow-xl w-full max-w-2xl mx-auto"
+      className="bg-white border border-border rounded-xl p-5 sm:p-6 space-y-4 w-full max-w-2xl mx-auto"
     >
-      <div className="text-center space-y-1 sm:space-y-2 mb-4 sm:mb-5">
-        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold">Neem contact op</h2>
-        <p className="text-sm sm:text-base text-muted-foreground">Vul je gegevens in en we nemen zo snel mogelijk contact met je op</p>
+      <div className="text-center space-y-1 mb-5">
+        <h2 className="text-xl sm:text-2xl font-bold text-foreground">Plan een gesprek</h2>
+        <p className="text-sm text-muted-foreground">Vertel kort waar je vastloopt; we nemen contact op voor een intake of analyse</p>
       </div>
 
       <div className="space-y-3 sm:space-y-4">
@@ -159,7 +159,7 @@ export function LeadForm() {
               {...register('first_name')}
               type="text"
               id="first_name"
-              className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm sm:text-base"
+              className="w-full px-3 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm bg-white"
               placeholder="Jan"
             />
             {errors.first_name && (
@@ -175,7 +175,7 @@ export function LeadForm() {
               {...register('last_name')}
               type="text"
               id="last_name"
-              className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm sm:text-base"
+              className="w-full px-3 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm bg-white"
               placeholder="Janssen"
             />
             {errors.last_name && (
@@ -192,7 +192,7 @@ export function LeadForm() {
             {...register('email')}
             type="email"
             id="email"
-            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm sm:text-base"
+            className="w-full px-3 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm bg-white"
             placeholder="jan@voorbeeld.be"
           />
           {errors.email && (
@@ -208,7 +208,7 @@ export function LeadForm() {
             {...register('phone')}
             type="tel"
             id="phone"
-            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm sm:text-base"
+            className="w-full px-3 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm bg-white"
             placeholder="0491234567"
           />
           {errors.phone && (
@@ -224,8 +224,8 @@ export function LeadForm() {
             {...register('message')}
             id="message"
             rows={3}
-            className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none text-sm sm:text-base"
-            placeholder="Vertel ons meer over je project of vraag..."
+            className="w-full px-3 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none text-sm bg-white"
+            placeholder="Kort: je situatie, wat je wil bereiken of waar je vastloopt..."
           />
         </div>
 
@@ -255,7 +255,7 @@ export function LeadForm() {
         disabled={isSubmitting}
         className="w-full py-2.5 sm:py-3 text-sm sm:text-base font-semibold"
       >
-        {isSubmitting ? 'Verzenden...' : 'Verstuur aanvraag'}
+        {isSubmitting ? 'Verzenden...' : 'Aanvraag versturen'}
       </Button>
     </form>
   );

@@ -38,3 +38,12 @@ Gebruik voor alle admin-tabellen hetzelfde layoutpatroon: scroll-container volle
   </div>
 </div>
 ```
+
+## Backend & changes (NUDGE)
+
+- **Niets kapot maken:** bestaande backend, admin, leadflow, offerte builder, rollen en integraties moeten 100% blijven werken.
+- **Minimal change:** alleen wijzigen wat nodig is; geen grote refactors of "cleanup" zonder expliciete opdracht.
+- **Geen accidental deletion:** geen code, endpoints, types, env vars of bestanden verwijderen zonder zekerheid dat het nergens wordt gebruikt; bij twijfel laten staan.
+- **Verificatie verplicht:** voor elke change de checklist in NUDGE_RULES.md doorlopen (auth, leads, offerte, PDF, mail, user management, etc.).
+
+Volledige regels: NUDGE_RULES.md.

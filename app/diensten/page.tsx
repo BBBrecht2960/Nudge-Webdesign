@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Diensten - Nudge Webdesign',
-  description: 'Onze diensten: websites, webshops, webapps, AI-integraties, onderhoud en marketing. Alles wat u nodig heeft voor online succes.',
+  title: 'Diensten - Nudge',
+  description: 'Digitale systemen op maat: van presentatie tot volledig bedrijfssysteem. Websites, webshops, webapps, koppelingen en onderhoud.',
 };
 
 export default function DienstenPage() {
@@ -10,75 +10,67 @@ export default function DienstenPage() {
     <main className="min-h-screen py-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-4xl md:text-5xl font-bold text-center mb-4">
-          Onze Diensten
+          Waar we in uitblinken
         </h1>
-        <p className="text-xl text-muted-foreground text-center mb-12">
-          Van eenvoudige websites tot complexe webapplicaties. Alles wat u nodig heeft voor online succes.
+        <p className="text-xl text-muted-foreground text-center mb-12 max-w-2xl mx-auto">
+          Geen losse producten, maar bouwstenen van een systeem waar je op kunt draaien. Capabilities gekoppeld aan jouw problemen.
         </p>
 
         <div className="grid md:grid-cols-2 gap-8 mb-12">
           <div className="bg-card border border-border rounded-lg p-8">
-            <h2 className="text-2xl font-bold mb-4">Website Ontwikkeling</h2>
+            <h2 className="text-2xl font-bold mb-4">Websites & presentatie</h2>
             <p className="text-muted-foreground mb-4">
-              Moderne, snelle websites gebouwd met Next.js. Van eenvoudige one-pagers tot uitgebreide KMO-websites met alle functionaliteiten die u nodig heeft.
+              Van eenvoudige one-pagers tot uitgebreide bedrijfsites. Snel, helder, onderhoudbaar. Vaak het startpunt voor meer.
             </p>
             <ul className="space-y-2 text-muted-foreground">
-              <li>• Responsive design (mobiel & desktop)</li>
-              <li>• SEO-optimalisatie</li>
-              <li>• Contactformulieren</li>
-              <li>• Blog functionaliteit</li>
-              <li>• Multi-language support</li>
+              <li>• Responsive, SEO, formulieren</li>
+              <li>• Multi-language waar nodig</li>
+              <li>• Klaar om uit te breiden</li>
             </ul>
             <a href="/pakketten" className="inline-block mt-4 text-primary hover:underline">
-              Bekijk pakketten →
+              Bekijk mogelijkheden →
             </a>
           </div>
 
           <div className="bg-card border border-border rounded-lg p-8">
-            <h2 className="text-2xl font-bold mb-4">Webshop Ontwikkeling</h2>
+            <h2 className="text-2xl font-bold mb-4">Webshops & verkoop</h2>
             <p className="text-muted-foreground mb-4">
-              Professionele webshops die verkopen. Van eenvoudige shops tot complexe e-commerce oplossingen met geavanceerde functionaliteiten.
+              Verkoopsystemen die schalen: catalogus, betalingen, verzending, klantaccounts. Geïntegreerd met je processen waar mogelijk.
             </p>
             <ul className="space-y-2 text-muted-foreground">
-              <li>• Productcatalogus</li>
-              <li>• Betalingsintegratie</li>
-              <li>• Verzendopties</li>
-              <li>• Klantaccounts</li>
-              <li>• Bestelbeheer</li>
-            </ul>
-            <a href="/pakketten" className="inline-block mt-4 text-primary hover:underline">
-              Bekijk pakketten →
-            </a>
-          </div>
-
-          <div className="bg-card border border-border rounded-lg p-8">
-            <h2 className="text-2xl font-bold mb-4">Webapp Ontwikkeling</h2>
-            <p className="text-muted-foreground mb-4">
-              Custom webapplicaties voor specifieke bedrijfsprocessen. Van boekingssystemen tot volledige bedrijfssoftware.
-            </p>
-            <ul className="space-y-2 text-muted-foreground">
-              <li>• Custom functionaliteiten</li>
-              <li>• API- en AI-integraties</li>
-              <li>• Database oplossingen</li>
-              <li>• Automatisering</li>
-              <li>• Schaalbaarheid</li>
+              <li>• Productcatalogus en bestelbeheer</li>
+              <li>• Betalings- en verzendintegraties</li>
+              <li>• Rapportage en overzicht</li>
             </ul>
             <a href="/contact" className="inline-block mt-4 text-primary hover:underline">
-              Neem contact op →
+              Plan een gesprek →
             </a>
           </div>
 
           <div className="bg-card border border-border rounded-lg p-8">
-            <h2 className="text-2xl font-bold mb-4">Onderhoud & Support</h2>
+            <h2 className="text-2xl font-bold mb-4">Webapps & bedrijfssystemen</h2>
             <p className="text-muted-foreground mb-4">
-              Onderhoud inbegrepen. Updates, backups, beveiliging en support.
+              Op maat gebouwde applicaties voor processen, data en automatisering. Geen lock-in; modulair en uitbreidbaar.
             </p>
             <ul className="space-y-2 text-muted-foreground">
-              <li>• Regelmatige updates</li>
-              <li>• Automatische backups</li>
-              <li>• Beveiliging & monitoring</li>
-              <li>• Email & telefonische support</li>
-              <li>• Performance monitoring</li>
+              <li>• Custom logica en workflows</li>
+              <li>• API- en systeemkoppelingen</li>
+              <li>• Data-eigenaarschap bij jou</li>
+            </ul>
+            <a href="/contact" className="inline-block mt-4 text-primary hover:underline">
+              Plan een gesprek →
+            </a>
+          </div>
+
+          <div className="bg-card border border-border rounded-lg p-8">
+            <h2 className="text-2xl font-bold mb-4">Onderhoud & support</h2>
+            <p className="text-muted-foreground mb-4">
+              Je systeem blijft veilig en actueel. Updates, backups, beveiliging en support op een afgesproken niveau.
+            </p>
+            <ul className="space-y-2 text-muted-foreground">
+              <li>• Updates en backups</li>
+              <li>• Beveiliging en monitoring</li>
+              <li>• Duidelijke supportafspraken</li>
             </ul>
             <a href="/pakketten" className="inline-block mt-4 text-primary hover:underline">
               Bekijk plannen →
@@ -86,24 +78,16 @@ export default function DienstenPage() {
           </div>
         </div>
 
-        <div className="bg-accent border border-border rounded-lg p-8 text-center">
-          <h2 className="text-2xl font-bold mb-4">Marketing & Groei</h2>
-          <p className="text-muted-foreground mb-6">
-            Optionele marketing- en groeidiensten om uw website te laten groeien. SEO, content, Google Ads en meer.
+        <div className="bg-muted/50 border border-border rounded-lg p-8 text-center">
+          <h2 className="text-xl font-bold mb-4">Groei en zichtbaarheid</h2>
+          <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
+            Optioneel: SEO, content, advertenties of rapportage. Altijd in dienst van het systeem dat je wilt laten werken, niet als losse hype.
           </p>
-          <ul className="grid md:grid-cols-3 gap-4 text-left mb-6">
-            <li>• SEO-optimalisatie</li>
-            <li>• Content creatie</li>
-            <li>• Google Ads beheer</li>
-            <li>• Social media</li>
-            <li>• Analytics & rapportage</li>
-            <li>• Conversie-optimalisatie</li>
-          </ul>
           <a
             href="/contact"
             className="inline-block px-6 py-3 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
           >
-            Vraag een offerte aan
+            Plan een gesprek
           </a>
         </div>
       </div>

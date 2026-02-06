@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import { LeadForm } from '../components/LeadForm';
 
 export const metadata: Metadata = {
-  title: 'Contact - Nudge Webdesign',
-  description: 'Neem contact met ons op voor een gratis gesprek over uw website of webshop project.',
+  title: 'Contact - Nudge',
+  description: 'Plan een gesprek voor een intake of analyse. We bespreken je situatie en geven aan wat mogelijk is.',
 };
 
 export default function ContactPage() {
@@ -12,10 +12,10 @@ export default function ContactPage() {
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            Neem contact met ons op
+            Plan een gesprek
           </h1>
-          <p className="text-xl text-muted-foreground">
-            Vul het formulier in en we nemen zo snel mogelijk contact met u op. Meestal reageren we binnen 24 uur.
+          <p className="text-xl text-muted-foreground max-w-xl mx-auto">
+            Vertel kort waar je vastloopt of wat je wilt bereiken. We nemen contact op voor een intake of analyse.
           </p>
         </div>
 

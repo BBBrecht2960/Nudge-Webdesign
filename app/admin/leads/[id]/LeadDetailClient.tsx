@@ -31,7 +31,7 @@ import {
   Paperclip,
 } from 'lucide-react';
 
-type LeadTabId = 'overview' | 'bedrijf' | 'activiteiten' | 'offerte';
+type LeadTabId = 'overview' | 'offerte';
 
 const COUNTRIES = [
   'België',
@@ -346,7 +346,7 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
 
   const getNextStatusHint = (currentStatus: string): string | null => {
     if (currentStatus !== 'converted' && currentStatus !== 'lost' && !hasMinimalCompanyDetails) {
-      return 'Vul eerst bedrijfsgegevens in (tab Bedrijfsgegevens) voordat je de status wijzigt';
+      return 'Vul eerst bedrijfsgegevens in (sectie Bedrijfsgegevens) voordat je de status wijzigt';
     }
     if (currentStatus === 'new') {
       const hasContact = activities.some(act =>
@@ -396,7 +396,7 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
     if (newIndex > currentIndex && !hasMinimalCompanyDetails) {
       return {
         allowed: false,
-        reason: 'Vul eerst bedrijfsgegevens in (tab Bedrijfsgegevens) voordat je de status wijzigt',
+        reason: 'Vul eerst bedrijfsgegevens in (sectie Bedrijfsgegevens) voordat je de status wijzigt',
       };
     }
 
@@ -1070,13 +1070,74 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
               </div>
             </div>
 
+            {/* Volgende stap + Toegewezen aan */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 py-3 border-y border-border mb-4">
+              <div className="flex-1 min-w-0">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Volgende stap</span>
+                <p className="text-sm font-medium mt-0.5 break-words">
+                  {activities.length > 0
+                    ? activities[0].title || 'Laatste activiteit'
+                    : (lead.status !== 'converted' && lead.status !== 'lost' && getNextStatusHint(lead.status)) || 'Geen volgende stap vastgelegd'}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 min-w-0 shrink-0">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Toegewezen aan</span>
+                <select
+                  value={assignedTo}
+                  onChange={(e) => handleAssignTo(e.target.value)}
+                  disabled={isSaving}
+                  className="px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm bg-card min-w-[180px]"
+                >
+                  <option value="">Niet toegewezen</option>
+                  {adminUsers.map((user) => (
+                    <option key={(user as { email?: string }).email} value={(user as { email: string }).email}>
+                      {(user as { full_name?: string }).full_name || (user as { email: string }).email}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Quick actions */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => { setShowActivityForm(true); setActivityType('call'); setActivityTitle('Telefoongesprek'); }}
+                className="flex items-center gap-2"
+              >
+                <PhoneCall className="w-4 h-4" />
+                Log gesprek
+              </Button>
+              <a href={`mailto:${lead.email}`} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md border border-border bg-card hover:bg-muted">
+                <Mail className="w-4 h-4" />
+                E-mail
+              </a>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => { setShowActivityForm(true); setActivityType('meeting'); setActivityTitle('Afspraak'); }}
+                className="flex items-center gap-2"
+              >
+                <Calendar className="w-4 h-4" />
+                Plan afspraak
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => router.push(`/admin/leads/${leadId}/quote`)}
+                className="flex items-center gap-2"
+              >
+                <FileText className="w-4 h-4" />
+                Offerte maken / bekijken
+              </Button>
+            </div>
+
             {/* Tabs */}
             <nav className="border-b border-border mb-4 -mx-4 sm:-mx-6 px-4 sm:px-6" aria-label="Secties">
               <div className="flex gap-2 overflow-x-auto scrollbar-hide -mb-px">
                 {([
                   { id: 'overview' as LeadTabId, label: 'Overzicht', icon: User },
-                  { id: 'bedrijf' as LeadTabId, label: 'Bedrijfsgegevens', icon: Briefcase },
-                  { id: 'activiteiten' as LeadTabId, label: 'Activiteiten', icon: History },
                   { id: 'offerte' as LeadTabId, label: 'Offerte & bijlagen', icon: Paperclip },
                 ]).map((tab) => {
                   const Icon = tab.icon;
@@ -1165,31 +1226,6 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
               </div>
             )}
 
-            {/* Toegewezen aan (in overview) */}
-            <div className="bg-card border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
-              <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 break-words">Toegewezen aan</h2>
-              <div className="space-y-3">
-                <select
-                  value={assignedTo}
-                  onChange={(e) => handleAssignTo(e.target.value)}
-                  disabled={isSaving}
-                  className="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-sm sm:text-base"
-                >
-                  <option value="">Niet toegewezen</option>
-                  {adminUsers.map((user) => (
-                    <option key={user.email} value={user.email}>
-                      {user.email}
-                    </option>
-                  ))}
-                </select>
-                {(lead as Lead & { assigned_to?: string }).assigned_to && (
-                  <p className="text-xs sm:text-sm text-muted-foreground break-words">
-                    Huidig: <span className="font-medium break-all">{(lead as Lead & { assigned_to?: string }).assigned_to}</span>
-                  </p>
-                )}
-              </div>
-            </div>
-
             {/* Attributie (in overview) */}
             {(lead.utm_source || lead.referrer) && (
               <div className="bg-card border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
@@ -1238,8 +1274,9 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
             </div>
             )}
 
-            {activeLeadTab === 'bedrijf' && (
-            <div className="bg-muted/50 border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
+            {/* Sectie Bedrijfsgegevens (binnen Overzicht) */}
+            {activeLeadTab === 'overview' && (
+            <div className="bg-muted/50 border border-border rounded-lg p-4 sm:p-6 w-full min-w-0 mt-6">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 w-full min-w-0">
                 <h2 className="text-base sm:text-lg font-bold break-words">Bedrijfsgegevens</h2>
                 <Button
@@ -1488,8 +1525,9 @@ export default function LeadDetailClient({ leadId }: { leadId: string }) {
             </div>
             )}
 
-            {activeLeadTab === 'activiteiten' && (
-            <div className="bg-card border border-border rounded-lg p-4 sm:p-6 w-full min-w-0">
+            {/* Sectie Activiteiten (binnen Overzicht) */}
+            {activeLeadTab === 'overview' && (
+            <div className="bg-card border border-border rounded-lg p-4 sm:p-6 w-full min-w-0 mt-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6 w-full min-w-0">
               <h2 className="text-lg sm:text-xl font-bold break-words">Activiteiten & Geschiedenis</h2>
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
