@@ -6,11 +6,11 @@ import { track } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
 
 const faqs = [
-  { question: 'Wat bedoelen jullie met een digitaal systeem?', answer: 'Een geïntegreerd geheel: front-end (wat klanten zien), back-end (logica, data), automatisering en waar nodig koppelingen. Niet alleen een website, maar iets waar je dagelijks op draait: verkoop, processen, overzicht.' },
-  { question: 'Hoe lang duurt een project?', answer: 'Van 2 weken tot enkele maanden, afhankelijk van de scope. Na een intake of analyse geven we een concreet tijdsbeeld.' },
+  { question: 'Wat bedoelen jullie met een digitaal systeem?', answer: 'Jouw groeiplan in softwarevorm: slimme bedrijfsflows die tijd vrijmaken en je bedrijf schaalbaar maken. Eén dashboard, rust in je hoofd, geen rompslomp. We bouwen en implementeren alles voor jou en trainen je team mee.' },
+  { question: 'Hoe snel is mijn eerste proces live?', answer: 'Binnen 14 dagen je eerste proces live. We hebben een resultaatgarantie: binnen 30 dagen je eerste proces live of je betaalt niets.' },
   { question: 'Werken jullie met bestaande systemen?', answer: 'Ja. We kunnen bestaande sites of tools migreren of koppelen. Geen lock-in: je data en processen blijven beheersbaar.' },
   { question: 'Wie is de eigenaar van de data?', answer: 'Jij. Klantdata wordt niet gebruikt voor training van AI of andere doeleinden. We bouwen volgens duidelijke afspraken over rechten en toegang.' },
-  { question: 'Moet ik onderhoud afnemen?', answer: 'Voor veiligheid en updates raden we onderhoud aan (vanaf €19,99/maand). De exacte invulling stemmen we af op je situatie.' },
+  { question: 'Moet ik onderhoud afnemen?', answer: 'Onderhoud is geen verplichting, wel een aanrader: we positioneren het als veiligheidsplan en groeiplan, niet als kostenpost. Met NudgeCare blijft je systeem up-to-date, veilig en klaar voor groei. Bij elk project bieden we 3 maanden onderhoud gratis; daarna kun je doorgaan met Basis (€85/maand), Pro (€150/maand) of Elite (€250/maand), passend bij je pakket.' },
   { question: 'Hoe starten we?', answer: 'Met een gesprek: we luisteren naar je situatie en doelen, en geven aan wat mogelijk is. Geen verkooppraatje, wel een heldere diagnose en opties.' },
 ];
 
@@ -31,7 +31,7 @@ export function FAQ({ className }: { className?: string }) {
         <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-8">Veelgestelde vragen</h2>
         <div className="space-y-3 max-w-2xl mx-auto">
           {faqs.map((faq, i) => (
-            <div key={i} className="rounded-xl border border-border bg-white overflow-hidden">
+            <div key={i} className="rounded-lg border border-border bg-white overflow-hidden">
               <button
                 type="button"
                 onClick={() => toggle(i)}

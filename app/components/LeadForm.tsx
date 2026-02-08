@@ -1,12 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { CheckCircle2 } from 'lucide-react';
 import { Button } from './Button';
 import { track } from '@/lib/analytics';
+
+const AANBOD_TO_PACKAGE: Record<string, string> = {
+  'nudge-flow': 'Nudge Flow',
+  'nudge-ops': 'Nudge Ops',
+  'nudge-os': 'Nudge OS',
+};
 
 // Email validation
 const validateEmail = (email: string): boolean => {
@@ -39,9 +46,11 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 export function LeadForm() {
+  const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [utmData, setUtmData] = useState<Record<string, string>>({});
+  const [packageInterest, setPackageInterest] = useState<string | null>(null);
 
   const {
     register,
@@ -54,7 +63,7 @@ export function LeadForm() {
     },
   });
 
-  // Capture UTM parameters
+  // Capture UTM and aanbod (package_interest) from URL
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -67,7 +76,11 @@ export function LeadForm() {
       utm.landing_path = window.location.pathname;
       setUtmData(utm);
     }
-  }, []);
+    const aanbod = searchParams.get('aanbod');
+    if (aanbod && AANBOD_TO_PACKAGE[aanbod]) {
+      setPackageInterest(AANBOD_TO_PACKAGE[aanbod]);
+    }
+  }, [searchParams]);
 
   const onSubmit = async (data: FormData) => {
     
@@ -96,6 +109,7 @@ export function LeadForm() {
           phone: data.phone,
           message: data.message || null,
           gdpr_consent: data.gdpr_consent,
+          package_interest: packageInterest || undefined,
           ...utmData,
         }),
       });
@@ -126,7 +140,7 @@ export function LeadForm() {
 
   if (submitSuccess) {
     return (
-      <div className="bg-white border border-border rounded-xl p-6 sm:p-8 text-center max-w-2xl mx-auto">
+      <div className="bg-white border border-border rounded-lg p-6 sm:p-8 text-center max-w-2xl mx-auto">
         <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4 text-primary">
           <CheckCircle2 className="w-7 h-7" />
         </div>
@@ -142,9 +156,12 @@ export function LeadForm() {
     <form
       id="contact-form"
       onSubmit={handleSubmit(onSubmit)}
-      className="bg-white border border-border rounded-xl p-5 sm:p-6 space-y-4 w-full max-w-2xl mx-auto"
+      className="bg-white border border-border rounded-lg p-5 sm:p-6 space-y-4 w-full max-w-2xl mx-auto"
     >
       <div className="text-center space-y-1 mb-5">
+        {packageInterest && (
+          <p className="text-sm font-medium text-primary mb-2">Jouw aanbeveling: {packageInterest}</p>
+        )}
         <h2 className="text-xl sm:text-2xl font-bold text-foreground">Plan een gesprek</h2>
         <p className="text-sm text-muted-foreground">Vertel kort waar je vastloopt; we nemen contact op voor een intake of analyse</p>
       </div>
@@ -229,7 +246,7 @@ export function LeadForm() {
           />
         </div>
 
-        <div className="bg-muted/50 rounded-xl p-3 sm:p-4">
+        <div className="bg-muted/40 rounded-lg p-3 sm:p-4 border border-border">
           <label className="flex items-start gap-2 sm:gap-3 cursor-pointer">
             <input
               {...register('gdpr_consent')}

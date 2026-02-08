@@ -26,7 +26,7 @@ export function Hero() {
           <img
             src="/Brecht_Just_Russel_Foto-removebg-preview%20%282%29.png"
             alt="Brecht, Nudge"
-            className="hero-portrait-fade absolute bottom-0 right-0 md:right-0 xl:right-8 w-auto max-h-[320px] md:max-h-none h-[300px] md:h-[300px] xl:h-[360px] object-contain object-bottom pointer-events-none z-0 opacity-95"
+            className="hero-portrait-fade absolute bottom-0 right-0 md:right-0 xl:right-8 w-auto max-h-[320px] md:max-h-none h-[300px] md:h-[300px] xl:h-[360px] object-contain object-bottom pointer-events-none z-0 opacity-95 hidden min-[480px]:block"
           />
           <h1 className="font-display leading-[1.06] tracking-tight w-full max-w-4xl mx-auto px-1 relative z-10 text-center">
             <span className="hero-fill block text-[48px] sm:text-[68px] md:text-[96px] font-extrabold">
@@ -38,14 +38,17 @@ export function Hero() {
           </h1>
         </div>
 
-        <p className="hero-in hero-in-3 text-muted-foreground text-base sm:text-lg mt-6 mb-8 max-w-xl mx-auto text-center">
-          Waar bedrijven op kunnen draaien. Niet alleen een website, maar een systeem dat meewerkt.
+        <p className="hero-in hero-in-3 text-muted-foreground text-base sm:text-lg mt-6 mb-2 max-w-xl mx-auto text-center">
+          Jouw groeiplan in softwarevorm: slimme bedrijfsflows die tijd vrijmaken en je bedrijf schaalbaar maken, zonder extra kopzorgen.
+        </p>
+        <p className="hero-in hero-in-3 text-muted-foreground/90 text-sm sm:text-base mt-1 mb-8 max-w-lg mx-auto text-center font-medium">
+          Live in 14 dagen. Gegarandeerd.
         </p>
         <div className="hero-in hero-in-4 flex flex-col sm:flex-row gap-3 justify-center items-center w-full max-w-sm sm:max-w-none mx-auto">
           <Button
             onClick={handlePrimaryCTA}
             size="lg"
-            className="btn-hero bg-primary text-primary-foreground hover:bg-primary/90 border-0 rounded-lg px-6 py-4 text-sm font-medium w-full max-w-[280px] sm:max-w-none sm:w-auto min-w-0 transition-transform hover:scale-[1.02] active:scale-[0.98]"
+            className="btn-hero bg-primary text-primary-foreground hover:bg-primary/90 border-0 rounded-lg px-6 py-4 text-sm font-medium w-full max-w-[280px] sm:max-w-none sm:w-auto min-w-0"
           >
             Plan een gesprek
           </Button>
@@ -53,7 +56,7 @@ export function Hero() {
             onClick={handleSecondaryCTA}
             variant="outline"
             size="lg"
-            className="btn-hero border-2 border-primary text-primary bg-white hover:bg-primary/5 rounded-lg px-6 py-4 text-sm font-medium w-full max-w-[280px] sm:max-w-none sm:w-auto min-w-0 transition-transform hover:scale-[1.02] active:scale-[0.98]"
+            className="btn-hero border border-primary text-primary bg-white hover:bg-primary/5 rounded-lg px-6 py-4 text-sm font-medium w-full max-w-[280px] sm:max-w-none sm:w-auto min-w-0"
           >
             Bekijk aanpak
           </Button>

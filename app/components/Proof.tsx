@@ -32,9 +32,9 @@ export function Proof({ className }: { className?: string }) {
             return (
               <div
                 key={i}
-                className="rounded-xl border border-border p-4 bg-white hover:border-primary/40 transition-colors text-center"
+                className="rounded-lg border border-border p-4 bg-white text-center"
               >
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-2 text-primary">
+                <div className="w-9 h-9 rounded-md bg-muted flex items-center justify-center mx-auto mb-2 text-primary">
                   <Icon className="w-5 h-5" strokeWidth={2} />
                 </div>
                 <p className="font-medium text-sm text-foreground">{s.name}</p>
@@ -42,7 +42,7 @@ export function Proof({ className }: { className?: string }) {
             );
           })}
         </div>
-        <div className="rounded-xl border border-border border-l-4 border-l-primary p-6 bg-muted/30 text-center max-w-2xl mx-auto">
+        <div className="rounded-lg border border-border border-l-2 border-l-primary p-5 bg-muted/40 text-center max-w-2xl mx-auto">
           <h3 className="font-semibold text-foreground mb-4">Onze garanties</h3>
           <ul className="space-y-3 text-left max-w-md mx-auto">
             {guarantees.map((g, i) => (

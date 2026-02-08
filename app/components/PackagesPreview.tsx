@@ -8,30 +8,30 @@ import { cn } from '@/lib/utils';
 
 const packages = [
   {
-    name: 'Mini Website',
-    tagline: 'Onepager – supersnel leverbaar.',
-    price: 'Vanaf €399',
+    name: 'Nudge Flow',
+    tagline: 'Eén proces op orde, live in 14 dagen.',
+    price: '€1.950 eenmalig',
     image: '/Design Nudge Webdesign Hasselt.jpg',
     icon: FileText,
-    features: ['1 pagina', 'Responsive', 'Contactformulier', 'Basis SEO', '1 maand gratis onderhoud'],
+    features: ['1 bedrijfsproces gedigitaliseerd', 'Live in 14 dagen', 'Basic AI (mail, tekst, reminders)', '30 dagen launch success begeleiding', 'Incl. AI-workshop, Support Portal, 30-dagen garantie'],
     popular: false,
   },
   {
-    name: 'Standard Website',
-    tagline: '4–6 pagina\'s, veelgevraagd.',
-    price: 'Vanaf €699',
+    name: 'Nudge Ops',
+    tagline: 'Schaal, controle en inzicht, de sweet spot.',
+    price: '€4.950 of €850/maand × 6',
     image: '/Business foto Nudge Webdesign & Marketing.jpg',
     icon: Building2,
-    features: ['4-6 pagina\'s', 'Responsive', 'SEO', 'Blog mogelijkheid', '1 maand gratis onderhoud'],
+    features: ['Tot 3 processen geautomatiseerd', 'Dashboard voor data & opvolging', 'Koppeling boekhouding, CRM, planning of webshop', 'AI-tooling offerte/klantcommunicatie', '60 dagen persoonlijke ondersteuning', 'Incl. e-mailflow, AI-scripts, strategiecall (€950)'],
     popular: true,
   },
   {
-    name: 'Extended Website',
-    tagline: 'Op maat voor KMO\'s.',
-    price: 'Vanaf €2.499',
+    name: 'Nudge OS',
+    tagline: 'Volledig digitaal operationsysteem op maat.',
+    price: 'Vanaf €15.000',
     image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
     icon: Rocket,
-    features: ['Onbeperkt pagina\'s', 'Custom design', 'Multi-language', 'CRM-integratie', '2 maanden gratis onderhoud'],
+    features: ['Volledig digitaal operationsysteem op maat', 'Automatiseringen + integraties + API\'s', 'AI-beslisflows en realtime dashboards', 'UX/UI, branding indien nodig', 'Dedicated productmanager', 'Incl. e-mailflow, strategiecall (€950)'],
     popular: false,
   },
 ];
@@ -40,7 +40,7 @@ export function PackagesPreview({ className }: { className?: string }) {
   const scrollToForm = () => document.getElementById('contact-form')?.scrollIntoView({ behavior: 'smooth' });
 
   const onPackageClick = (name: string) => {
-    track('package_card_click', { package_name: name, package_type: 'website', section: 'packages_preview' });
+    track('package_card_click', { package_name: name, package_type: 'nudge', section: 'packages_preview' });
     scrollToForm();
   };
 
@@ -48,8 +48,8 @@ export function PackagesPreview({ className }: { className?: string }) {
     <section id="packages" className={cn('py-12 md:py-16', className)}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 w-full min-w-0">
         <div className="mb-10 text-center">
-          <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">Waarmee we kunnen starten</h2>
-          <p className="text-sm text-muted-foreground max-w-xl mx-auto">Van eenvoudige presentatie tot volledig bedrijfssysteem, afhankelijk van je situatie</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">Jouw groeiplan in softwarevorm</h2>
+          <p className="text-sm text-muted-foreground max-w-xl mx-auto">Drie duidelijke instapniveaus. Live in 14 dagen. Gegarandeerd.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {packages.map((pkg, i) => {
@@ -58,8 +58,8 @@ export function PackagesPreview({ className }: { className?: string }) {
               <div
                 key={i}
                 className={cn(
-                  'rounded-xl border overflow-hidden bg-white flex flex-col',
-                  pkg.popular ? 'border-primary shadow-md' : 'border-border hover:border-primary/40'
+                  'rounded-lg border overflow-hidden bg-white flex flex-col',
+                  pkg.popular ? 'border-primary' : 'border-border'
                 )}
               >
                 {pkg.popular && (
@@ -73,7 +73,7 @@ export function PackagesPreview({ className }: { className?: string }) {
                     className="object-cover"
                     sizes="(max-width: 768px) 100vw, 33vw"
                   />
-                  <div className="absolute top-3 left-3 w-9 h-9 rounded-lg bg-white/90 flex items-center justify-center text-primary">
+                  <div className="absolute top-3 left-3 w-8 h-8 rounded-md bg-white border border-border flex items-center justify-center text-primary">
                     <Icon className="w-4 h-4" />
                   </div>
                 </div>
@@ -100,12 +100,12 @@ export function PackagesPreview({ className }: { className?: string }) {
             );
           })}
         </div>
-        <div className="mt-6 p-4 rounded-xl border border-border bg-muted/30 text-center">
+        <div className="mt-6 p-4 rounded-lg border border-border bg-muted/40 text-center">
           <p className="text-sm text-muted-foreground mb-3">
-            Webshops, webapps en maatwerk: we bepalen samen wat past bij een intake of analyse.
+            Niet zeker welk pakket bij je past? Doe de korte check en ontvang je aanbevolen aanbod.
           </p>
-          <Button variant="outline" size="sm" onClick={() => window.location.assign('/pakketten')}>
-            Bekijk mogelijkheden →
+          <Button variant="outline" size="sm" onClick={() => window.location.assign('/aanbod')}>
+            Bekijk jouw aanbod →
           </Button>
         </div>
       </div>

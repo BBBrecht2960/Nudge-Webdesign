@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { HomeHeader } from './components/HomeHeader';
 import { Hero } from './components/Hero';
 import { ProblemSolution } from './components/ProblemSolution';
@@ -12,6 +13,12 @@ import { StickyMobileCTA } from './components/StickyMobileCTA';
 
 const sectionBase = 'bg-white w-full min-w-0 overflow-hidden border-t border-border/60';
 
+function LeadFormFallback() {
+  return (
+    <div className="bg-white border border-border rounded-lg p-6 sm:p-8 w-full max-w-2xl mx-auto animate-pulse h-64" aria-hidden />
+  );
+}
+
 export default function Home() {
   return (
     <main className="min-h-screen overflow-y-auto overflow-x-hidden scroll-smooth bg-white w-full min-w-0">
@@ -25,7 +32,9 @@ export default function Home() {
       <FAQ className={sectionBase} />
       <section id="contact-form" className={sectionBase}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16 w-full min-w-0 flex flex-col items-center">
-          <LeadForm />
+          <Suspense fallback={<LeadFormFallback />}>
+            <LeadForm />
+          </Suspense>
         </div>
       </section>
       <FinalCTA />

@@ -8,6 +8,8 @@ import { Button } from './Button';
 
 const navLinks = [
   { href: '/diensten', label: 'Diensten' },
+  { href: '/pakketten', label: 'Pakketten' },
+  { href: '/aanbod', label: 'Bekijk jouw aanbod' },
   { href: '/over-ons', label: 'Over ons' },
   { href: '/proces', label: 'Proces' },
 ];

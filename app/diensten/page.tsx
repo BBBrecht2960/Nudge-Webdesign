@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Diensten - Nudge',
-  description: 'Digitale systemen op maat: van presentatie tot volledig bedrijfssysteem. Websites, webshops, webapps, koppelingen en onderhoud.',
+  description: 'Jouw groeiplan in softwarevorm: slimme bedrijfsflows die tijd vrijmaken en je bedrijf schaalbaar maken. Controle, rust en groei, live in 14 dagen.',
 };
 
 export default function DienstenPage() {
@@ -13,7 +13,7 @@ export default function DienstenPage() {
           Waar we in uitblinken
         </h1>
         <p className="text-xl text-muted-foreground text-center mb-12 max-w-2xl mx-auto">
-          Geen losse producten, maar bouwstenen van een systeem waar je op kunt draaien. Capabilities gekoppeld aan jouw problemen.
+          Controle, rust en groei: slimme bedrijfsflows die tijd vrijmaken en je bedrijf schaalbaar maken. Eén dashboard, geen rompslomp.
         </p>
 
         <div className="grid md:grid-cols-2 gap-8 mb-12">
@@ -63,17 +63,17 @@ export default function DienstenPage() {
           </div>
 
           <div className="bg-card border border-border rounded-lg p-8">
-            <h2 className="text-2xl font-bold mb-4">Onderhoud & support</h2>
+            <h2 className="text-2xl font-bold mb-4">Onderhoud & support (NudgeCare)</h2>
             <p className="text-muted-foreground mb-4">
-              Je systeem blijft veilig en actueel. Updates, backups, beveiliging en support op een afgesproken niveau.
+              Je systeem draait op een digitale motor. Zonder onderhoud begint het te haperen. NudgeCare houdt het operationeel, veilig en klaar voor groei, zonder verrassingen. 3 maanden gratis bij elk project.
             </p>
             <ul className="space-y-2 text-muted-foreground">
-              <li>• Updates en backups</li>
-              <li>• Beveiliging en monitoring</li>
-              <li>• Duidelijke supportafspraken</li>
+              <li>• Bugfixing, updates en hosting & monitoring</li>
+              <li>• Kleine aanpassingen (max. 1u/maand), support binnen 48u</li>
+              <li>• Drie niveaus: Basis (€85/m), Pro (€150/m), Elite (€250/m)</li>
             </ul>
-            <a href="/pakketten" className="inline-block mt-4 text-primary hover:underline">
-              Bekijk plannen →
+            <a href="/#onderhoud" className="inline-block mt-4 text-primary hover:underline">
+              Bekijk onderhoudsniveaus →
             </a>
           </div>
         </div>

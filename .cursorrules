@@ -1,6 +1,6 @@
 # Project Rules
 
-## Security (HARD RULES — ALWAYS APPLY)
+## Security (HARD RULES, ALWAYS APPLY)
 
 You must follow the project security rules in SECURITY_RULES.md for all code in this project and in the future. Summarized:
 

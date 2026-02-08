@@ -17,7 +17,7 @@
 ## 3. Request Validation
 
 - **Validate every request with a strict schema** (e.g. Zod, Yup).
-- **Reject unknown fields** — use `.strict()` or equivalent; do not allow extra properties.
+- **Reject unknown fields**, use `.strict()` or equivalent; do not allow extra properties.
 - Validate types, lengths, and formats. Fail closed on invalid input.
 
 ## 4. Secrets & Logging

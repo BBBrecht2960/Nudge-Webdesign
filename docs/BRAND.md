@@ -23,14 +23,14 @@ We geven ondernemers een "nudge" richting online succes: met heldere prijzen, pr
 ## Positionering
 - **Middenmarkt:** duidelijk boven budgetbouwers (Wix/Fiverr), onder dure agencies met €5k+ trajecten
 - **Transparant, efficiënt, strak**
-- Geen fluff, geen premium-bla — maar ook niet amateuristisch
+- Geen fluff, geen premium-bla, maar ook niet amateuristisch
 - Slim gebruik van tools (Cursor, AI, no-code) om snel én kwalitatief op te leveren
 
 ---
 
 ## Tone of Voice
 - **Toegankelijk, jong, eerlijk en professioneel**
-- Geen buzzwords, geen designpraat — spreektaal mag
+- Geen buzzwords, geen designpraat, spreektaal mag
 - Klanten zijn vaak niet technisch, dus leg alles helder uit
 - Vertrouwen opbouwen met transparantie
 

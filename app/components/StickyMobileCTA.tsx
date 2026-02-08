@@ -49,7 +49,7 @@ export function StickyMobileCTA() {
   const phoneNumber = process.env.NEXT_PUBLIC_BUSINESS_PHONE || '+32494299633';
 
   const handleClick = () => {
-    track('sticky_cta_click', { cta_type: 'primary', cta_text: 'Plan een gratis gesprek', section: 'sticky_mobile_bar' });
+    track('sticky_cta_click', { cta_type: 'primary', cta_text: 'Plan een gesprek', section: 'sticky_mobile_bar' });
     document.getElementById('contact-form')?.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -63,7 +63,7 @@ export function StickyMobileCTA() {
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-3">
         <Button onClick={handleClick} className="flex-1 text-sm font-medium" size="lg">
-          Plan gratis gesprek
+          Plan een gesprek
         </Button>
         <a
           href={`tel:${phoneNumber}`}

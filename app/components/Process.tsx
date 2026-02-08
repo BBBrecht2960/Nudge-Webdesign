@@ -20,10 +20,10 @@ export function Process({ className }: { className?: string }) {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {steps.map((step, i) => (
-            <div key={i} className="rounded-xl border border-border overflow-hidden bg-white">
+            <div key={i} className="rounded-lg border border-border overflow-hidden bg-white">
               <div className="relative h-40 w-full">
                 <Image src={step.image} alt={step.title} fill className="object-cover" sizes="(max-width: 1024px) 50vw, 25vw" />
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-9 h-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
+                <div className="absolute top-3 left-3 w-8 h-8 rounded-md bg-foreground text-background flex items-center justify-center font-semibold text-xs">
                   {i + 1}
                 </div>
               </div>

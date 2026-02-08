@@ -778,7 +778,7 @@ export default function AnalyticsPage() {
                   />
                 </div>
 
-                {/* Leads per periode — overzicht elke dag/week/maand */}
+                {/* Leads per periode, overzicht elke dag/week/maand */}
                 {leadData.timeline.length > 0 && (
                   <div className="bg-card border border-border rounded-xl overflow-hidden mb-6">
                     <div className="px-5 py-4 border-b border-border flex flex-wrap items-center justify-between gap-2">

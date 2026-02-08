@@ -249,23 +249,23 @@ export const growthOptions: PricingOption[] = [
 export const maintenanceOptions: PricingOption[] = [
   {
     id: 'maintenance-starter',
-    name: 'Onderhoud Starter',
-    price: 24.99,
-    description: '€24,99/maand - Maandelijkse updates (plugins, themes, core), automatische backups, basis beveiliging (SSL, firewall), en email support',
+    name: 'NudgeCare Basis',
+    price: 85,
+    description: '€85/maand. Hosting & monitoring, bugfixing, support (binnen 48u), kleine aanpassingen (max. 1u/maand). Passend bij Nudge Flow.',
     category: 'maintenance',
   },
   {
     id: 'maintenance-business',
-    name: 'Onderhoud Business',
-    price: 59.99,
-    description: '€59,99/maand - Wekelijkse updates, real-time backups, geavanceerde beveiliging, prioriteit support (binnen 24u), en uptime monitoring',
+    name: 'NudgeCare Pro',
+    price: 150,
+    description: '€150/maand. Alles van Basis, plus updates & compatibiliteit, prioriteit support, advies. Passend bij Nudge Ops.',
     category: 'maintenance',
   },
   {
     id: 'maintenance-growth',
-    name: 'Onderhoud Growth',
-    price: 119,
-    description: '€119/maand - Dagelijkse updates, onbeperkte backups, premium beveiliging, telefonische support (binnen 4u), performance optimalisatie, en maandelijkse rapportage',
+    name: 'NudgeCare Elite',
+    price: 250,
+    description: '€250/maand. Alles van Pro, plus kwartaalcall, groeiplan, SLA 24u. Passend bij Nudge OS.',
     category: 'maintenance',
   },
   {

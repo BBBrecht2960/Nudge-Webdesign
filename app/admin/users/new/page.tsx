@@ -132,7 +132,7 @@ export default function NewAdminUserPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         const detailMsg = Array.isArray(data.details) ? data.details.join(' ') : data.details || '';
-        setError([data.error, detailMsg].filter(Boolean).join(' — ') || 'Fout bij aanmaken gebruiker');
+        setError([data.error, detailMsg].filter(Boolean).join(', ') || 'Fout bij aanmaken gebruiker');
         return;
       }
       savedSuccessfully.current = true;

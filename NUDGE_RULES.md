@@ -1,4 +1,4 @@
-# NUDGE — Backend-Safety & Minimal-Change Rules
+# NUDGE, Backend-Safety & Minimal-Change Rules
 
 Je voert wijzigingen door op een bestaande productiecodebase met werkende backend, dashboards en interne systemen.
 

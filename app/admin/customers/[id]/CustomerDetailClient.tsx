@@ -979,7 +979,7 @@ function CustomerDetailClientInner({ customerId }: { customerId: string }) {
                       {customer.quote_total ? `€${Number(customer.quote_total).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '€0,00'}
                     </p>
                   ) : (
-                    <p className="text-2xl font-bold text-red-600 line-through">—</p>
+                    <p className="text-2xl font-bold text-red-600 line-through">-</p>
                   )}
                   <p className="text-sm text-red-600 font-semibold mt-1">
                     Geannuleerd - telt niet mee in omzet
@@ -993,7 +993,7 @@ function CustomerDetailClientInner({ customerId }: { customerId: string }) {
                       €{Number(customer.quote_total).toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   ) : (
-                    <p className="text-2xl font-bold text-muted-foreground">—</p>
+                    <p className="text-2xl font-bold text-muted-foreground">-</p>
                   )}
                 </div>
               ) : null}

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Over ons - Nudge',
-  description: 'Nudge bouwt digitale systemen op maat waar bedrijven op kunnen draaien. Geen agency, geen templatefabriek. Wel een partner die begrijpt hoe bedrijven werken.',
+  description: 'Nudge bouwt jouw groeiplan in softwarevorm: slimme bedrijfsflows voor controle, rust en groei. Live in 14 dagen. Gegarandeerd.',
 };
 
 export default function OverOnsPage() {
@@ -17,7 +17,7 @@ export default function OverOnsPage() {
           <section>
             <h2>Wat we doen</h2>
             <p>
-              Nudge bouwt digitale systemen op maat waar bedrijven op kunnen draaien. Niet alleen een website, maar een systeem dat meewerkt: front-end, back-end, logica, automatisatie en data. Extern (klanten, leads, verkoop) en intern (processen, overzicht, schaal). Modulair en uitbreidbaar, zonder lock-in.
+              Nudge bouwt jouw groeiplan in softwarevorm: slimme bedrijfsflows die tijd vrijmaken en je bedrijf schaalbaar maken. Controle, rust en groei, zonder extra kopzorgen. Binnen 14 dagen je eerste proces live. Modulair en uitbreidbaar, zonder lock-in.
             </p>
           </section>
 

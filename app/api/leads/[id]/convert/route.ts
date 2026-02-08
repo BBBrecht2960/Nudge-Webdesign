@@ -509,12 +509,12 @@ Als het een andere afbeelding is, beschrijf wat je ziet en hoe het relevant is v
     context += `## CONTEXT-velden\n`;
     context += `- ProductType: ${productType}\n`;
     context += `- Package: ${packageName}\n`;
-    context += `- Business: ${lead.company_name || lead.name} | ${lead.company_website || '—'} | ${[lead.company_address, lead.company_postal_code, lead.company_city, lead.company_country].filter(Boolean).join(', ') || '—'}\n`;
-    context += `- Primary goal: ${lead.package_interest || lead.message || '—'}\n\n`;
+    context += `- Business: ${lead.company_name || lead.name} | ${lead.company_website || '-'} | ${[lead.company_address, lead.company_postal_code, lead.company_city, lead.company_country].filter(Boolean).join(', ') || '-'}\n`;
+    context += `- Primary goal: ${lead.package_interest || lead.message || '-'}\n\n`;
 
     context += `## Contact\n`;
-    context += `- Naam: ${lead.name} | Email: ${lead.email} | Telefoon: ${lead.phone || '—'}\n`;
-    context += `- BTW: ${lead.vat_number || '—'} | Bedrijfsgrootte: ${lead.company_size || '—'}\n\n`;
+    context += `- Naam: ${lead.name} | Email: ${lead.email} | Telefoon: ${lead.phone || '-'}\n`;
+    context += `- BTW: ${lead.vat_number || '-'} | Bedrijfsgrootte: ${lead.company_size || '-'}\n\n`;
 
     context += `## Pagina's & features (uit offerte)\n`;
     context += `- Minimaal: Home, Over, Diensten/Product, Contact, Privacy\n`;
@@ -691,7 +691,7 @@ function generateBasicPrompt(
 CONTEXT
 - ProductType: ${productType}
 - Package: ${packageName}
-- Business: ${lead.company_name || lead.name} | ${lead.company_website || '—'}
+- Business: ${lead.company_name || lead.name} | ${lead.company_website || '-'}
 - Primary goal: ${lead.package_interest || lead.message || 'Leads/verkoop/info'}
 
 NON-NEGOTIABLE RULES

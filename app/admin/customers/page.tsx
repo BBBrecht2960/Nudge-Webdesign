@@ -176,7 +176,7 @@ export default function CustomersPage() {
         </div>
       )}
 
-      {/* Quick Stats — belangrijkste groot, rest compact en mooi */}
+      {/* Quick Stats, belangrijkste groot, rest compact en mooi */}
       <section className="mb-8" aria-label="Statistieken">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Statistieken</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
@@ -471,7 +471,7 @@ export default function CustomersPage() {
                           </span>
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap">
-                              —
+                              -
                             </td>
                           </tr>
                         );

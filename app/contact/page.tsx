@@ -1,10 +1,17 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { LeadForm } from '../components/LeadForm';
 
 export const metadata: Metadata = {
   title: 'Contact - Nudge',
   description: 'Plan een gesprek voor een intake of analyse. We bespreken je situatie en geven aan wat mogelijk is.',
 };
+
+function LeadFormFallback() {
+  return (
+    <div className="bg-white border border-border rounded-lg p-6 sm:p-8 w-full max-w-2xl mx-auto animate-pulse h-64" aria-hidden />
+  );
+}
 
 export default function ContactPage() {
   return (
@@ -19,7 +26,9 @@ export default function ContactPage() {
           </p>
         </div>
 
-        <LeadForm />
+        <Suspense fallback={<LeadFormFallback />}>
+          <LeadForm />
+        </Suspense>
       </div>
     </main>
   );

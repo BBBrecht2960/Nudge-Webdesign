@@ -216,7 +216,7 @@ export async function generateQuotePdfBlob(
 
   let y = drawHeader(doc, false);
 
-  // ——— Klantgegevens (alleen ingevulde velden) ———
+  // --- Klantgegevens (alleen ingevulde velden) ---
   const hasClient = !!(clientInfo.company_name || clientInfo.name || clientInfo.email || clientInfo.phone
     || clientInfo.company_address || clientInfo.company_postal_code || clientInfo.company_city
     || clientInfo.vat_number || clientInfo.company_website);
@@ -248,7 +248,7 @@ export async function generateQuotePdfBlob(
     y += SPACE_SECTION;
   }
 
-  // ——— Titel ———
+  // --- Titel ---
   const titleText = `Offerte – ${projectType} voor ${clientName}`;
   doc.setFontSize(18);
   const titleLines = doc.splitTextToSize(titleText, CONTENT_WIDTH);
@@ -271,7 +271,7 @@ export async function generateQuotePdfBlob(
   doc.line(MARGIN, y, PAGE_WIDTH - MARGIN_RIGHT, y);
   y += SPACE_SECTION;
 
-  // ——— Scope: alleen gekozen opties (geen vaste lijst) ———
+  // --- Scope: alleen gekozen opties (geen vaste lijst) ---
   const scopeOptionNames = (quoteData.selectedOptions || []).map((o) => o.name);
   const scopeDesc = quoteData.scopeDescription?.trim();
   const hasScope = scopeOptionNames.length > 0 || scopeDesc;
@@ -296,7 +296,7 @@ export async function generateQuotePdfBlob(
     y += SPACE_SECTION;
   }
 
-  // ——— Investering: alleen wat is gekozen/ingevuld ———
+  // --- Investering: alleen wat is gekozen/ingevuld ---
   const addRow = (label: string, amount: number, indent = false) => {
     const prefix = indent ? '   ' : '';
     const lines = doc.splitTextToSize(prefix + label, DESC_WIDTH);
@@ -371,7 +371,7 @@ export async function generateQuotePdfBlob(
   doc.setFont('helvetica', 'normal');
   y += LINE_LOOSE + SPACE_SECTION;
 
-  // ——— Onderhoud alleen tonen als er een is gekozen ———
+  // --- Onderhoud alleen tonen als er een is gekozen ---
   if (quoteData.selectedMaintenance) {
     doc.setFontSize(FONT_SMALL);
     setColor(doc, NUDGE_MUTED);
@@ -380,7 +380,7 @@ export async function generateQuotePdfBlob(
     setColor(doc, NUDGE_FOREGROUND);
   }
 
-  // ——— Planning & betaling ———
+  // --- Planning & betaling ---
   const planningBlockHeight = 35;
   y = ensureSpace(doc, y, planningBlockHeight, drawHeader);
   y = hr(doc, y);
